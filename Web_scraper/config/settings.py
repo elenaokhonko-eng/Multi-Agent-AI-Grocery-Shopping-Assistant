@@ -5,7 +5,7 @@ class Config:
     """Configuration settings for the web scraping application."""
     
     # API Keys and External Services
-    GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "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")
+    GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "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")
     GROQ_MODEL: str = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
     
     # Database Configuration

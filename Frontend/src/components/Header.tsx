@@ -1,15 +1,95 @@
 import { useState } from 'react';
-import { Search, ShoppingCart, User, Menu, Image, Mic, Camera } from 'lucide-react';
+import { Search, ShoppingCart, User, Menu, Image, Mic, Camera, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useToast } from '@/hooks/use-toast';
 
 export const Header = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [cartCount] = useState(3);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) {
+      toast({
+        title: "Search query required",
+        description: "Please enter what you're looking for",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSearching(true);
+    console.log('🔍 Starting search for:', searchQuery);
+    
+    try {
+      console.log('📡 Making API request to:', 'http://localhost:3004/api/search');
+      
+      const response = await fetch('http://localhost:3004/api/search', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query: searchQuery }),
+      });
+
+      console.log('📦 Response status:', response.status);
+      console.log('📦 Response headers:', Object.fromEntries(response.headers.entries()));
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('✅ Search response:', data);
+      
+      if (data.status === 'success') {
+        console.log('🚀 Navigating to order placement with results:', data.results);
+        // Navigate to order placement page with results
+        navigate('/order-placement', { 
+          state: { 
+            searchResults: data.results, 
+            originalQuery: searchQuery 
+          } 
+        });
+        
+        toast({
+          title: "Search completed!",
+          description: `Found ${data.results.items_count} optimized items`,
+        });
+      } else {
+        console.error('❌ API returned error:', data.message);
+        toast({
+          title: "Search failed",
+          description: data.message || "An error occurred during search",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('❌ Search error:', error);
+      toast({
+        title: "Connection error",
+        description: "Unable to connect to search service. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSearch();
+    }
+  };
 
   return (
     <header className="sticky top-0 z-50 bg-white shadow-soft border-b">
@@ -60,11 +140,13 @@ export const Header = () => {
                 }}
                 onFocus={() => setIsSearchFocused(true)}
                 onBlur={() => setIsSearchFocused(false)}
-                className={`pl-10 pr-24 py-3 text-base border-2 border-accent/20 focus:border-accent rounded-xl shadow-soft resize-none transition-all duration-300 ${
+                onKeyPress={handleKeyPress}
+                disabled={isSearching}
+                className={`pl-10 pr-32 py-3 text-base border-2 border-accent/20 focus:border-accent rounded-xl shadow-soft resize-none transition-all duration-300 ${
                   isSearchFocused || isSearchExpanded || searchQuery 
                     ? 'min-h-[80px]' 
                     : 'min-h-[48px] overflow-hidden'
-                }`}
+                } ${isSearching ? 'opacity-75' : ''}`}
                 rows={isSearchFocused || isSearchExpanded || searchQuery ? 3 : 1}
               />
               <div className={`absolute right-2 z-10 flex space-x-1 transition-all duration-200 ${isSearchFocused || searchQuery ? 'top-3' : 'top-1/2 transform -translate-y-1/2'}`}>
@@ -77,10 +159,22 @@ export const Header = () => {
                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-accent/10">
                   <Mic className="h-4 w-4 text-accent" />
                 </Button>
+                <Button 
+                  onClick={handleSearch}
+                  disabled={isSearching || !searchQuery.trim()}
+                  size="sm" 
+                  className="h-8 bg-gradient-primary text-white hover:opacity-90 disabled:opacity-50"
+                >
+                  {isSearching ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Search className="h-4 w-4" />
+                  )}
+                </Button>
               </div>
             </div>
             <div className={`transition-all duration-200 text-xs text-muted-foreground ml-10 ${isSearchFocused || searchQuery ? 'mt-2 opacity-100' : 'mt-1 opacity-70'}`}>
-              ✨ AI will help you find exactly what you're looking for
+              ✨ AI will help you find exactly what you're looking for {isSearching && '(Searching...)'}
             </div>
           </div>
 

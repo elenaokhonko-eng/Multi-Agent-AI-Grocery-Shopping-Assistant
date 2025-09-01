@@ -1,0 +1,54 @@
+{
+  "user_id": "user_002",
+  "budget_limit_lkr": 1500.0,
+  "location": "Colombo, Sri Lanka",
+  "dietary_needs": {
+    "vegetarian": false,
+    "vegan": false,
+    "gluten_free": false,
+    "dairy_free": true,
+    "organic_only": false,
+    "low_sodium": false,
+    "sugar_free": false,
+    "halal": false,
+    "kosher": false,
+    "allergies": [
+      "gluten"
+    ]
+  },
+  "brand_preferences": {
+    "preferred_brands": [
+      "Milo",
+      "Nestomalt"
+    ],
+    "disliked_brands": [],
+    "premium_brands_only": false,
+    "local_brands_priority": true
+  },
+  "household_inventory": {
+    "current_items": {
+      "rice": 5,
+      "tea": 3
+    },
+    "expiry_dates": {},
+    "low_stock_threshold": 2
+  },
+  "loyalty_membership": {
+    "memberships": {
+      "onlinekade": "bronze"
+    },
+    "points_balance": {},
+    "preferred_stores": [
+      "onlinekade"
+    ]
+  },
+  "delivery_preferences": {
+    "max_delivery_time_hours": 24,
+    "max_delivery_radius_km": 10,
+    "preferred_time_slots": [
+      "09:00-12:00",
+      "14:00-18:00"
+    ],
+    "avoid_weekends": false
+  }
+}
