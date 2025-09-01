@@ -34,21 +34,3 @@
 2025-09-01 06:05:00,492 - scraper - INFO - Parsed 12 valid items from LLM response
 2025-09-01 06:05:00,502 - scraper - INFO - MongoDB update: 12 inserted, 0 matched, 0 modified
 2025-09-01 06:05:00,504 - scraper - INFO - Scraping completed: 12 items in 7.28s
-2025-09-01 06:07:00,830 - scraper - INFO - Initialized GlowmarkScraper
-2025-09-01 06:07:00,831 - scraper - INFO - Starting scrape for query: 'rice' on Glowmark
-2025-09-01 06:07:02,217 - scraper - INFO - Processed markdown length: 6,015 characters
-2025-09-01 06:07:04,020 - scraper - INFO - Parsed 18 valid items from LLM response
-2025-09-01 06:07:04,030 - scraper - INFO - MongoDB update: 0 inserted, 18 matched, 18 modified
-2025-09-01 06:07:04,032 - scraper - INFO - Scraping completed: 18 items in 3.20s
-2025-09-01 06:07:04,037 - scraper - INFO - Initialized KaprukaScraper
-2025-09-01 06:07:04,038 - scraper - INFO - Starting scrape for query: 'rice' on Kapruka
-2025-09-01 06:07:04,643 - scraper - INFO - Processed markdown length: 8,812 characters
-2025-09-01 06:07:06,785 - scraper - INFO - Parsed 27 valid items from LLM response
-2025-09-01 06:07:06,800 - scraper - INFO - MongoDB update: 0 inserted, 27 matched, 27 modified
-2025-09-01 06:07:06,801 - scraper - INFO - Scraping completed: 27 items in 2.76s
-2025-09-01 06:07:06,803 - scraper - INFO - Initialized OnlineKadeScraper
-2025-09-01 06:07:06,803 - scraper - INFO - Starting scrape for query: 'rice' on OnlineKade
-2025-09-01 06:07:07,407 - scraper - INFO - Processed markdown length: 5,109 characters
-2025-09-01 06:07:08,536 - scraper - INFO - Parsed 12 valid items from LLM response
-2025-09-01 06:07:08,542 - scraper - INFO - MongoDB update: 0 inserted, 12 matched, 12 modified
-2025-09-01 06:07:08,543 - scraper - INFO - Scraping completed: 12 items in 1.74s

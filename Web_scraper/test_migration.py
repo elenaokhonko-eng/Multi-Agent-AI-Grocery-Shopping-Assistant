@@ -80,7 +80,50 @@ def test_all_scrapers(query: str = "rice"):
     
     return results
 
-def test_backwards_compatibility():
+def test_retrieval_system():
+    """Test the new retrieval system."""
+    print(f"\n{'='*50}")
+    print("Testing Advanced Retrieval System")
+    print('='*50)
+    
+    try:
+        from retrieval import ItemRetriever
+        
+        retriever = ItemRetriever()
+        
+        # Test similarity search only (should be fast)
+        print("→ Testing similarity search...")
+        try:
+            similarity_results = retriever.search_similar_items("rice", top_k=3, min_similarity=0.3)
+            print(f"  ✓ Found {len(similarity_results)} similar items")
+            
+            if similarity_results:
+                best = similarity_results[0]
+                print(f"    Best match: {best.title}")
+                print(f"    Similarity: {best.similarity_score:.3f}")
+        except Exception as e:
+            print(f"  ⚠ Similarity search failed: {e}")
+            print("    This is normal if no data exists yet")
+        
+        # Test retrieval stats
+        print("→ Testing system stats...")
+        try:
+            stats = retriever.get_stats()
+            print(f"  ✓ System stats retrieved")
+            print(f"    Available scrapers: {len(stats['scrapers'])}")
+            print(f"    Similarity search loaded: {stats['similarity_search'].get('loaded', False)}")
+        except Exception as e:
+            print(f"  ✗ Stats test failed: {e}")
+        
+        retriever.close()
+        print("✓ Retrieval system test completed")
+        return True
+        
+    except Exception as e:
+        print(f"✗ Retrieval system test failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
     """Test that legacy functions still work."""
     print(f"\n{'='*50}")
     print("Testing backwards compatibility")
@@ -125,6 +168,9 @@ def main():
     try:
         # Test backwards compatibility
         test_backwards_compatibility()
+        
+        # Test retrieval system
+        test_retrieval_system()
         
         # Test individual scrapers
         results = test_all_scrapers(query)

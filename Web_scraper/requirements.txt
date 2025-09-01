@@ -7,6 +7,11 @@ pymongo==4.8.0
 pandas==2.1.4
 nest-asyncio==1.5.8
 
+# Similarity search dependencies
+sentence-transformers==2.2.2
+faiss-cpu==1.7.4
+numpy==1.24.3
+
 # Optional dependencies for enhanced functionality
 requests==2.31.0
 python-dotenv==1.0.0
