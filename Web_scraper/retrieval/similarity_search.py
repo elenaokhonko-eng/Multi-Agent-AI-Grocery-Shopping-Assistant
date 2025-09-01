@@ -343,7 +343,7 @@ class SimilaritySearchEngine:
             self.logger.debug("Closed MongoDB connection")
 
 # Legacy compatibility function
-def search_similar_items(query: str, top_k: int = 3) -> List[Dict[str, Any]]:
+def search_similar_items(query: str, top_k: int = 10) -> List[Dict[str, Any]]:
     """Legacy function for backwards compatibility."""
     engine = SimilaritySearchEngine()
     try:

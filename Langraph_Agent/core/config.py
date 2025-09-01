@@ -13,7 +13,7 @@ class Config:
     GROQ_TEMPERATURE = 0
     
     # Application Settings
-    MAX_RESULTS_PER_KEYWORD = 5
+    MAX_RESULTS_PER_KEYWORD = 10
     DEBUG_MODE = True
     
     # Web_scraper Integration

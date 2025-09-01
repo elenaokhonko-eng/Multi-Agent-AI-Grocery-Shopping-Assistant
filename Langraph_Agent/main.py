@@ -19,7 +19,9 @@ from agents.keyword_extraction_agent import KeywordExtractionAgent
 from agents.data_acquisition_agent import DataAcquisitionAgent
 from agents.personalization_agent import PersonalizationAgent
 from agents.output_formatting_agent import OutputFormattingAgent
+from agents.logistics_agent import LogisticsAgent, UserLocation
 from utils.profile_manager import UserProfileManager, print_profile_summary
+from utils.location_utils import parse_user_location
 
 
 class ProductSearchOrchestrator:
@@ -42,11 +44,12 @@ class ProductSearchOrchestrator:
         self.data_agent = DataAcquisitionAgent(self.llm)
         self.personalization_agent = PersonalizationAgent(self.llm, self.user_profile)
         self.output_agent = OutputFormattingAgent()
+        self.logistics_agent = LogisticsAgent(self.llm)
         
         # Build the graph
         self.graph = self._build_graph()
         
-        print("🛒 Product Search Orchestrator initialized with Personalization")
+        print("🛒 Product Search Orchestrator initialized with Personalization & Logistics")
     
     def _build_graph(self) -> StateGraph:
         """Build the Langraph workflow"""
@@ -56,13 +59,15 @@ class ProductSearchOrchestrator:
         graph_builder.add_node("extract_keywords", self._extract_keywords_node)
         graph_builder.add_node("acquire_data", self._acquire_data_node)
         graph_builder.add_node("personalize", self._personalize_node)
+        graph_builder.add_node("optimize_logistics", self._optimize_logistics_node)
         graph_builder.add_node("format_output", self._format_output_node)
         
         # Add edges
         graph_builder.add_edge(START, "extract_keywords")
         graph_builder.add_edge("extract_keywords", "acquire_data")
         graph_builder.add_edge("acquire_data", "personalize")
-        graph_builder.add_edge("personalize", "format_output")
+        graph_builder.add_edge("personalize", "optimize_logistics")
+        graph_builder.add_edge("optimize_logistics", "format_output")
         graph_builder.add_edge("format_output", END)
         
         return graph_builder.compile()
@@ -184,14 +189,81 @@ class ProductSearchOrchestrator:
             "processing_stage": "personalization_complete"
         }
     
+    def _optimize_logistics_node(self, state: ApplicationState) -> Dict[str, Any]:
+        """Node for filtering items based on delivery distance"""
+        if Config.DEBUG_MODE:
+            print(f"[NODE] Logistics Filtering - Processing distance-based filtering")
+        
+        personalized_data = state.get("personalized_data", {})
+        if not personalized_data:
+            return {
+                "logistics_filtering": {"error": "No personalized data for logistics filtering"},
+                "processing_stage": "logistics_filtering_failed"
+            }
+        
+        # Extract user location from profile or prompt for it
+        user_location = None
+        
+        # Check if location is in user profile
+        if hasattr(self.user_profile, 'location') and self.user_profile.location:
+            user_location = parse_user_location(self.user_profile.location)
+        
+        # If no location in profile, use default Colombo location for demo
+        if not user_location:
+            if Config.DEBUG_MODE:
+                print("[LOGISTICS] No user location found, using default Colombo location")
+            user_location = UserLocation(
+                latitude=6.9271,
+                longitude=79.8612,
+                address="Colombo, Sri Lanka (Default)",
+                city="Colombo",
+                district="Colombo",
+                province="Western"
+            )
+        
+        # Apply distance-based filtering using logistics agent
+        try:
+            # Set maximum distance threshold (can be made configurable)
+            max_distance_km = 100.0  # 100km threshold
+            
+            filtering_result = self.logistics_agent.filter_by_distance(
+                user_location, 
+                personalized_data, 
+                max_distance_km
+            )
+            
+            if Config.DEBUG_MODE:
+                summary = filtering_result.get("filtering_summary", {})
+                print(f"[LOGISTICS] Filtering complete: {summary.get('items_before_filtering', 0)} → {summary.get('items_after_filtering', 0)} items")
+            
+            return {
+                "filtered_personalized_data": filtering_result.get("filtered_personalized_data", personalized_data),
+                "logistics_filtering_summary": filtering_result.get("filtering_summary", {}),
+                "user_location": user_location,
+                "processing_stage": "logistics_filtering_complete"
+            }
+            
+        except Exception as e:
+            if Config.DEBUG_MODE:
+                print(f"[LOGISTICS] Error during filtering: {str(e)}")
+            
+            return {
+                "filtered_personalized_data": personalized_data,  # Return original data on error
+                "logistics_filtering_summary": {"error": str(e)},
+                "user_location": user_location,
+                "processing_stage": "logistics_filtering_failed"
+            }
+    
     def _format_output_node(self, state: ApplicationState) -> Dict[str, Any]:
         """Node for output formatting"""
         if Config.DEBUG_MODE:
-            print(f"[NODE] Format Output - Processing personalized results")
+            print(f"[NODE] Format Output - Processing filtered results")
         
-        # Use personalized data if available, otherwise fall back to original product data
-        data_to_format = state.get("personalized_data", state.get("product_data", {}))
+        # Use filtered data if available, otherwise fall back to personalized data
+        data_to_format = state.get("filtered_personalized_data", state.get("personalized_data", state.get("product_data", {})))
         personalization_summary = state.get("personalization_summary", {})
+        logistics_summary = state.get("logistics_filtering_summary", {})
+        user_location = state.get("user_location")
         
         formatted_output = self.output_agent.format_results(data_to_format)
         
@@ -221,6 +293,37 @@ class ProductSearchOrchestrator:
             formatted_output = summary_text + formatted_output
         elif personalization_summary.get("error"):
             formatted_output = f"⚠️ Personalization failed: {personalization_summary['error']}\n\n" + formatted_output
+        
+        # Add logistics filtering summary to output
+        if logistics_summary and not logistics_summary.get("error"):
+            logistics_text = "\n" + "="*60 + "\n"
+            logistics_text += "LOGISTICS FILTERING SUMMARY\n"
+            logistics_text += "="*60 + "\n"
+            
+            if user_location:
+                logistics_text += f"User Location: {user_location.address}\n"
+                logistics_text += f"City: {user_location.city}, {user_location.district}\n"
+                logistics_text += f"Province: {user_location.province}\n\n"
+            
+            logistics_text += f"� DISTANCE-BASED FILTERING:\n"
+            logistics_text += f"Categories Processed: {logistics_summary.get('total_categories', 0)}\n"
+            logistics_text += f"Items Before Filtering: {logistics_summary.get('items_before_filtering', 0)}\n"
+            logistics_text += f"Items After Filtering: {logistics_summary.get('items_after_filtering', 0)}\n"
+            logistics_text += f"Items Removed (Too Far): {logistics_summary.get('items_removed', 0)}\n"
+            logistics_text += f"Distance Threshold: {logistics_summary.get('distance_threshold_km', 100)}km\n"
+            logistics_text += f"Single-Item Categories Kept: {logistics_summary.get('single_item_categories_kept', 0)}\n"
+            logistics_text += f"Categories with Filtering Applied: {logistics_summary.get('categories_filtered', 0)}\n"
+            
+            if logistics_summary.get('items_removed', 0) > 0:
+                logistics_text += f"\n✂️  Removed {logistics_summary['items_removed']} items from distant stores\n"
+                logistics_text += f"💡 Items from nearby stores prioritized for faster delivery\n"
+            else:
+                logistics_text += f"\n✅ All items are from nearby stores (within {logistics_summary.get('distance_threshold_km', 100)}km)\n"
+            
+            logistics_text += "="*60 + "\n"
+            formatted_output = formatted_output + logistics_text
+        elif logistics_summary.get("error"):
+            formatted_output = formatted_output + f"\n⚠️ Logistics filtering failed: {logistics_summary['error']}\n"
         
         # Print the output
         print(formatted_output)

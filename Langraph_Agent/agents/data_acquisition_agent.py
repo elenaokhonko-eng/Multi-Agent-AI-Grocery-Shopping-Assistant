@@ -13,7 +13,7 @@ kg_agent = KnowledgeGraphAgent()
 
 
 @tool
-def retrieve_product_data(keywords: List[str], max_results: int = 5) -> Dict[str, List[Dict[str, Any]]]:
+def retrieve_product_data(keywords: List[str], max_results: int = 10) -> Dict[str, List[Dict[str, Any]]]:
     """
     Retrieve product data for given keywords from e-commerce databases with knowledge graph enhancement.
     
