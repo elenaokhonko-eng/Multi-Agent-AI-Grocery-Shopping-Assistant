@@ -1,0 +1,16 @@
+{
+  "query": "rice",
+  "url": "https://glomark.lk/search?search-text=rice",
+  "website": "glowmark",
+  "timestamp": "20250901_060447",
+  "items_count": 18,
+  "stats": {
+    "count": 18,
+    "price_stats": {
+      "min": 43.5,
+      "max": 6500.0,
+      "avg": 2051.027777777778,
+      "median": 1050.0
+    }
+  }
+}

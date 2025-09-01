@@ -1,0 +1,54 @@
+2025-09-01 06:03:44,382 - scraper - INFO - Initialized GlowmarkScraper
+2025-09-01 06:03:44,382 - scraper - INFO - Starting scrape for query: 'vegetables' on Glowmark
+2025-09-01 06:03:47,526 - scraper - INFO - Processed markdown length: 6,122 characters
+2025-09-01 06:03:49,132 - scraper - INFO - Parsed 18 valid items from LLM response
+2025-09-01 06:03:49,169 - scraper - INFO - MongoDB update: 0 inserted, 18 matched, 18 modified
+2025-09-01 06:03:49,171 - scraper - INFO - Scraping completed: 18 items in 4.79s
+2025-09-01 06:03:49,187 - scraper - INFO - Initialized KaprukaScraper
+2025-09-01 06:03:49,187 - scraper - INFO - Starting scrape for query: 'vegetables' on Kapruka
+2025-09-01 06:03:49,817 - scraper - INFO - Processed markdown length: 10,138 characters
+2025-09-01 06:03:51,727 - scraper - INFO - Parsed 29 valid items from LLM response
+2025-09-01 06:03:51,749 - scraper - INFO - MongoDB update: 0 inserted, 29 matched, 29 modified
+2025-09-01 06:03:51,751 - scraper - INFO - Scraping completed: 29 items in 2.56s
+2025-09-01 06:03:51,754 - scraper - INFO - Initialized OnlineKadeScraper
+2025-09-01 06:03:51,755 - scraper - INFO - Starting scrape for query: 'vegetables' on OnlineKade
+2025-09-01 06:03:52,353 - scraper - INFO - Processed markdown length: 4,623 characters
+2025-09-01 06:03:53,246 - scraper - INFO - Parsed 10 valid items from LLM response
+2025-09-01 06:03:53,254 - scraper - INFO - MongoDB update: 0 inserted, 10 matched, 10 modified
+2025-09-01 06:03:53,256 - scraper - INFO - Scraping completed: 10 items in 1.50s
+2025-09-01 06:04:38,738 - scraper - INFO - Initialized GlowmarkScraper
+2025-09-01 06:04:38,738 - scraper - INFO - Starting scrape for query: 'rice' on Glowmark
+2025-09-01 06:04:45,646 - scraper - INFO - Processed markdown length: 6,015 characters
+2025-09-01 06:04:47,138 - scraper - INFO - Parsed 18 valid items from LLM response
+2025-09-01 06:04:47,155 - scraper - INFO - MongoDB update: 18 inserted, 0 matched, 0 modified
+2025-09-01 06:04:47,156 - scraper - INFO - Scraping completed: 18 items in 8.42s
+2025-09-01 06:04:47,161 - scraper - INFO - Initialized KaprukaScraper
+2025-09-01 06:04:47,161 - scraper - INFO - Starting scrape for query: 'rice' on Kapruka
+2025-09-01 06:04:51,033 - scraper - INFO - Processed markdown length: 8,812 characters
+2025-09-01 06:04:53,199 - scraper - INFO - Parsed 27 valid items from LLM response
+2025-09-01 06:04:53,215 - scraper - INFO - MongoDB update: 26 inserted, 1 matched, 1 modified
+2025-09-01 06:04:53,217 - scraper - INFO - Scraping completed: 27 items in 6.06s
+2025-09-01 06:04:53,220 - scraper - INFO - Initialized OnlineKadeScraper
+2025-09-01 06:04:53,220 - scraper - INFO - Starting scrape for query: 'rice' on OnlineKade
+2025-09-01 06:04:59,427 - scraper - INFO - Processed markdown length: 5,109 characters
+2025-09-01 06:05:00,492 - scraper - INFO - Parsed 12 valid items from LLM response
+2025-09-01 06:05:00,502 - scraper - INFO - MongoDB update: 12 inserted, 0 matched, 0 modified
+2025-09-01 06:05:00,504 - scraper - INFO - Scraping completed: 12 items in 7.28s
+2025-09-01 06:07:00,830 - scraper - INFO - Initialized GlowmarkScraper
+2025-09-01 06:07:00,831 - scraper - INFO - Starting scrape for query: 'rice' on Glowmark
+2025-09-01 06:07:02,217 - scraper - INFO - Processed markdown length: 6,015 characters
+2025-09-01 06:07:04,020 - scraper - INFO - Parsed 18 valid items from LLM response
+2025-09-01 06:07:04,030 - scraper - INFO - MongoDB update: 0 inserted, 18 matched, 18 modified
+2025-09-01 06:07:04,032 - scraper - INFO - Scraping completed: 18 items in 3.20s
+2025-09-01 06:07:04,037 - scraper - INFO - Initialized KaprukaScraper
+2025-09-01 06:07:04,038 - scraper - INFO - Starting scrape for query: 'rice' on Kapruka
+2025-09-01 06:07:04,643 - scraper - INFO - Processed markdown length: 8,812 characters
+2025-09-01 06:07:06,785 - scraper - INFO - Parsed 27 valid items from LLM response
+2025-09-01 06:07:06,800 - scraper - INFO - MongoDB update: 0 inserted, 27 matched, 27 modified
+2025-09-01 06:07:06,801 - scraper - INFO - Scraping completed: 27 items in 2.76s
+2025-09-01 06:07:06,803 - scraper - INFO - Initialized OnlineKadeScraper
+2025-09-01 06:07:06,803 - scraper - INFO - Starting scrape for query: 'rice' on OnlineKade
+2025-09-01 06:07:07,407 - scraper - INFO - Processed markdown length: 5,109 characters
+2025-09-01 06:07:08,536 - scraper - INFO - Parsed 12 valid items from LLM response
+2025-09-01 06:07:08,542 - scraper - INFO - MongoDB update: 0 inserted, 12 matched, 12 modified
+2025-09-01 06:07:08,543 - scraper - INFO - Scraping completed: 12 items in 1.74s

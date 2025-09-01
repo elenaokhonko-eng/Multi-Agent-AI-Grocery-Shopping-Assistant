@@ -1,0 +1,16 @@
+{
+  "query": "vegetables",
+  "url": "https://onlinekade.lk/?s=vegetables&post_type=product&dgwt_wcas=1",
+  "website": "onlinekade",
+  "timestamp": "20250901_060353",
+  "items_count": 10,
+  "stats": {
+    "count": 10,
+    "price_stats": {
+      "min": 142.0,
+      "max": 4500.0,
+      "avg": 1374.2,
+      "median": 975.0
+    }
+  }
+}

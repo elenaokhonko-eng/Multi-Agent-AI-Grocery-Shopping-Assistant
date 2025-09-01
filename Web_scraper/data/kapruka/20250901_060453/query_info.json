@@ -1,0 +1,16 @@
+{
+  "query": "rice",
+  "url": "https://www.kapruka.com/srilanka_online_search.jsp?d=rice",
+  "website": "kapruka",
+  "timestamp": "20250901_060453",
+  "items_count": 27,
+  "stats": {
+    "count": 27,
+    "price_stats": {
+      "min": 190.0,
+      "max": 19210.0,
+      "avg": 3990.0,
+      "median": 1190.0
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "query": "vegetables",
+  "url": "https://glomark.lk/search?search-text=vegetables",
+  "website": "glowmark",
+  "timestamp": "20250901_060349",
+  "items_count": 18,
+  "stats": {
+    "count": 18,
+    "price_stats": {
+      "min": 850.0,
+      "max": 3000.0,
+      "avg": 1593.888888888889,
+      "median": 1450.0
+    }
+  }
+}
