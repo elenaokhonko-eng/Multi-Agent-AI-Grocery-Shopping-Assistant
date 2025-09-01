@@ -6,58 +6,124 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-
-interface InventoryItem {
-  id: number;
-  name: string;
-  quantity: number;
-  unit: string;
-  category: string;
-  expiry?: string;
-}
-
-const initialInventory: InventoryItem[] = [
-  { id: 1, name: "Rice", quantity: 5, unit: "kg", category: "Grains", expiry: "2024-12-01" },
-  { id: 2, name: "Milk", quantity: 2, unit: "liters", category: "Dairy", expiry: "2024-01-15" },
-  { id: 3, name: "Eggs", quantity: 12, unit: "pieces", category: "Dairy" },
-  { id: 4, name: "Onions", quantity: 3, unit: "kg", category: "Vegetables" },
-  { id: 5, name: "Tomatoes", quantity: 1.5, unit: "kg", category: "Vegetables", expiry: "2024-01-10" },
-  { id: 6, name: "Chicken", quantity: 2, unit: "kg", category: "Meat", expiry: "2024-01-08" }
-];
+import { 
+  useInventoryItems, 
+  useCreateInventoryItem, 
+  useUpdateInventoryItem, 
+  useDeleteInventoryItem,
+  useUpdateQuantity 
+} from '@/hooks/useInventory';
+import { InventoryItem } from '@/services/api';
 
 const CATEGORIES = ['Grains', 'Dairy', 'Vegetables', 'Fruits', 'Meat', 'Seafood', 'Spices', 'Beverages', 'Snacks', 'Other'];
 const UNITS = ['pieces', 'kg', 'grams', 'liters', 'ml', 'cups', 'tbsp', 'tsp', 'lbs', 'oz'];
 
 export const KitchenInventory = () => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [inventory, setInventory] = useState<InventoryItem[]>(initialInventory);
-  const [newItem, setNewItem] = useState({ name: '', quantity: '', unit: 'pieces', category: 'Other' });
+  const [newItem, setNewItem] = useState({ name: '', quantity: '', unit: 'pieces', category: 'Other', expiry: '' });
 
-  const addItem = () => {
+  // React Query hooks for data fetching and mutations
+  const { data: inventory = [], isLoading, error } = useInventoryItems();
+  const createItemMutation = useCreateInventoryItem();
+  const updateItemMutation = useUpdateInventoryItem();
+  const deleteItemMutation = useDeleteInventoryItem();
+  const updateQuantityMutation = useUpdateQuantity();
+
+  const addItem = async () => {
     if (newItem.name && newItem.quantity) {
-      const item: InventoryItem = {
-        id: Date.now(),
-        name: newItem.name,
-        quantity: parseFloat(newItem.quantity),
-        unit: newItem.unit || 'pieces',
-        category: newItem.category
-      };
-      setInventory([...inventory, item]);
-      setNewItem({ name: '', quantity: '', unit: 'pieces', category: 'Other' });
+      try {
+        await createItemMutation.mutateAsync({
+          name: newItem.name,
+          quantity: parseFloat(newItem.quantity),
+          unit: newItem.unit || 'pieces',
+          category: newItem.category,
+          ...(newItem.expiry && { expiry: newItem.expiry })
+        });
+        setNewItem({ name: '', quantity: '', unit: 'pieces', category: 'Other', expiry: '' });
+      } catch (error) {
+        console.error('Failed to add item:', error);
+      }
     }
   };
 
-  const updateQuantity = (id: number, change: number) => {
-    setInventory(inventory.map(item => 
-      item.id === id 
-        ? { ...item, quantity: Math.max(0, item.quantity + change) }
-        : item
-    ).filter(item => item.quantity > 0));
+  const updateQuantity = async (id: string, change: number) => {
+    const item = inventory.find(item => item._id === id || item.id?.toString() === id);
+    if (item) {
+      const newQuantity = Math.max(0, item.quantity + change);
+      if (newQuantity === 0) {
+        await deleteItemMutation.mutateAsync(id);
+      } else {
+        await updateQuantityMutation.mutateAsync({ id, quantity: newQuantity });
+      }
+    }
   };
 
-  const removeItem = (id: number) => {
-    setInventory(inventory.filter(item => item.id !== id));
+  const removeItem = async (id: string) => {
+    try {
+      await deleteItemMutation.mutateAsync(id);
+    } catch (error) {
+      console.error('Failed to remove item:', error);
+    }
   };
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className={`transition-all duration-300 ${isExpanded ? 'w-80' : 'w-16'} bg-white border-l shadow-soft`}>
+        <div className="p-4 border-b">
+          <Button
+            variant="ghost"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="w-full flex items-center justify-center hover:bg-accent/10"
+          >
+            {isExpanded ? (
+              <>
+                <ChevronRight className="h-5 w-5" />
+                <span className="ml-2">Hide Inventory</span>
+              </>
+            ) : (
+              <ChefHat className="h-5 w-5 text-accent" />
+            )}
+          </Button>
+        </div>
+        {isExpanded && (
+          <div className="p-4 text-center">
+            <p className="text-muted-foreground">Loading inventory...</p>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className={`transition-all duration-300 ${isExpanded ? 'w-80' : 'w-16'} bg-white border-l shadow-soft`}>
+        <div className="p-4 border-b">
+          <Button
+            variant="ghost"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="w-full flex items-center justify-center hover:bg-accent/10"
+          >
+            {isExpanded ? (
+              <>
+                <ChevronRight className="h-5 w-5" />
+                <span className="ml-2">Hide Inventory</span>
+              </>
+            ) : (
+              <ChefHat className="h-5 w-5 text-accent" />
+            )}
+          </Button>
+        </div>
+        {isExpanded && (
+          <div className="p-4 text-center">
+            <p className="text-destructive">Failed to load inventory</p>
+            <p className="text-sm text-muted-foreground">Check if the backend server is running</p>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   const categories = Array.from(new Set(inventory.map(item => item.category)));
   const totalItems = inventory.reduce((sum, item) => sum + item.quantity, 0);
@@ -158,13 +224,21 @@ export const KitchenInventory = () => {
                   ))}
                 </SelectContent>
               </Select>
+              <Input
+                placeholder="Expiry date (optional)"
+                type="date"
+                value={newItem.expiry}
+                onChange={(e) => setNewItem({ ...newItem, expiry: e.target.value })}
+                className="text-sm"
+              />
               <Button 
                 onClick={addItem} 
                 className="w-full bg-gradient-primary border-0"
                 size="sm"
+                disabled={createItemMutation.isPending}
               >
                 <Plus className="h-4 w-4 mr-1" />
-                Add Item
+                {createItemMutation.isPending ? 'Adding...' : 'Add Item'}
               </Button>
             </CardContent>
           </Card>
@@ -177,57 +251,63 @@ export const KitchenInventory = () => {
                 <div className="space-y-1">
                   {inventory
                     .filter(item => item.category === category)
-                    .map(item => (
-                      <Card key={item.id} className="border-border/50">
-                        <CardContent className="p-3">
-                          <div className="flex items-center justify-between">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center space-x-2">
-                                <h5 className="font-medium text-sm truncate">{item.name}</h5>
-                                {isExpired(item.expiry) && (
-                                  <Badge variant="destructive" className="text-xs">Expired</Badge>
-                                )}
-                                {isExpiringSoon(item.expiry) && !isExpired(item.expiry) && (
-                                  <Badge variant="destructive" className="text-xs bg-warning">Soon</Badge>
-                                )}
+                    .map(item => {
+                      const itemId = item._id || item.id?.toString() || '';
+                      return (
+                        <Card key={itemId} className="border-border/50">
+                          <CardContent className="p-3">
+                            <div className="flex items-center justify-between">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center space-x-2">
+                                  <h5 className="font-medium text-sm truncate">{item.name}</h5>
+                                  {isExpired(item.expiry) && (
+                                    <Badge variant="destructive" className="text-xs">Expired</Badge>
+                                  )}
+                                  {isExpiringSoon(item.expiry) && !isExpired(item.expiry) && (
+                                    <Badge variant="destructive" className="text-xs bg-warning">Soon</Badge>
+                                  )}
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                  {item.quantity} {item.unit}
+                                  {item.expiry && (
+                                    <span className="ml-2">• Exp: {new Date(item.expiry).toLocaleDateString()}</span>
+                                  )}
+                                </p>
                               </div>
-                              <p className="text-xs text-muted-foreground">
-                                {item.quantity} {item.unit}
-                                {item.expiry && (
-                                  <span className="ml-2">• Exp: {new Date(item.expiry).toLocaleDateString()}</span>
-                                )}
-                              </p>
+                              <div className="flex items-center space-x-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => updateQuantity(itemId, -1)}
+                                  className="h-6 w-6 p-0"
+                                  disabled={updateQuantityMutation.isPending}
+                                >
+                                  <Minus className="h-3 w-3" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => updateQuantity(itemId, 1)}
+                                  className="h-6 w-6 p-0"
+                                  disabled={updateQuantityMutation.isPending}
+                                >
+                                  <Plus className="h-3 w-3" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => removeItem(itemId)}
+                                  className="h-6 w-6 p-0 text-destructive"
+                                  disabled={deleteItemMutation.isPending}
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </div>
                             </div>
-                            <div className="flex items-center space-x-1">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => updateQuantity(item.id, -1)}
-                                className="h-6 w-6 p-0"
-                              >
-                                <Minus className="h-3 w-3" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => updateQuantity(item.id, 1)}
-                                className="h-6 w-6 p-0"
-                              >
-                                <Plus className="h-3 w-3" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => removeItem(item.id)}
-                                className="h-6 w-6 p-0 text-destructive"
-                              >
-                                <X className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))
+                          </CardContent>
+                        </Card>
+                      );
+                    })
                   }
                 </div>
               </div>
