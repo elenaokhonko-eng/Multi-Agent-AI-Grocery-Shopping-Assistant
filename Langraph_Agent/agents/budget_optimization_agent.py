@@ -370,7 +370,8 @@ class BudgetOptimizationAgent:
                 for tool_call in response.choices[0].message.tool_calls:
                     if tool_call.function.name == "solve_linear_program":
                         args = json.loads(tool_call.function.arguments)
-                        return self._solve_linear_program_tool(args)
+                        # Call the correct method with proper arguments
+                        return self._solve_linear_program(scored_categories, constraints)
             
             return {"llm_analysis": response.choices[0].message.content}
             
@@ -384,6 +385,11 @@ class BudgetOptimizationAgent:
         constraints: OptimizationConstraints
     ) -> Dict[str, Any]:
         """Solve linear programming problem for optimal selection"""
+        
+        # Check if PuLP is available
+        if not PULP_AVAILABLE:
+            print("⚠️ PuLP not available, using greedy fallback")
+            return self._greedy_fallback_selection(scored_categories, constraints)
         
         try:
             # Create the linear programming problem
@@ -430,14 +436,20 @@ class BudgetOptimizationAgent:
             if constraints.max_delivery_time_hours:
                 for category, items in scored_categories.items():
                     for i, item in enumerate(items):
-                        store_config = self.store_configs[item["website"]]
-                        prob += (
-                            store_config.average_delivery_hours * variables[category][i] 
-                            <= constraints.max_delivery_time_hours
-                        )
+                        store_config = self.store_configs.get(item["website"])
+                        if store_config:
+                            prob += (
+                                store_config.average_delivery_hours * variables[category][i] 
+                                <= constraints.max_delivery_time_hours
+                            )
             
             # Solve the problem
             prob.solve(pulp.PULP_CBC_CMD(msg=0))
+            
+            # Check if solution is optimal
+            if prob.status != pulp.LpStatusOptimal:
+                print(f"⚠️ LP solver status: {pulp.LpStatus[prob.status]}, using greedy fallback")
+                return self._greedy_fallback_selection(scored_categories, constraints)
             
             # Extract solution
             solution = {}
@@ -449,8 +461,9 @@ class BudgetOptimizationAgent:
                     if variables[category][i].varValue == 1:
                         solution[category] = item
                         total_cost += item["price_lkr"]
-                        store_config = self.store_configs[item["website"]]
-                        max_delivery_time = max(max_delivery_time, store_config.average_delivery_hours)
+                        store_config = self.store_configs.get(item["website"])
+                        if store_config:
+                            max_delivery_time = max(max_delivery_time, store_config.average_delivery_hours)
             
             return {
                 "lp_solution": solution,
@@ -460,8 +473,8 @@ class BudgetOptimizationAgent:
             }
             
         except Exception as e:
-            print(f"❌ Linear programming failed: {e}")
-            return {"error": str(e)}
+            print(f"❌ Linear programming failed: {e}, using greedy fallback")
+            return self._greedy_fallback_selection(scored_categories, constraints)
     
     def _combine_solutions(
         self, 
@@ -601,3 +614,51 @@ class BudgetOptimizationAgent:
             )
         
         return suggestions
+    
+    def _greedy_fallback_selection(
+        self, 
+        scored_categories: Dict[str, List[Dict]], 
+        constraints: OptimizationConstraints
+    ) -> Dict[str, Any]:
+        """Greedy fallback selection when linear programming fails"""
+        
+        selection = {}
+        remaining_budget = constraints.max_budget
+        
+        # Sort categories by best item score (highest first)
+        category_scores = []
+        for category, items in scored_categories.items():
+            if items:
+                best_score = items[0]["optimization_score"]  # Items are already sorted
+                category_scores.append((category, best_score))
+        
+        category_scores.sort(key=lambda x: x[1], reverse=True)
+        
+        # Greedy selection: pick best affordable item from each category
+        for category, _ in category_scores:
+            items = scored_categories[category]
+            for item in items:  # Items are already sorted by score
+                # Check budget constraint
+                if item["price_lkr"] <= remaining_budget:
+                    # Check delivery time constraint
+                    store_config = self.store_configs.get(item["website"])
+                    if store_config and constraints.max_delivery_time_hours:
+                        if store_config.average_delivery_hours > constraints.max_delivery_time_hours:
+                            continue
+                    
+                    selection[category] = item
+                    remaining_budget -= item["price_lkr"]
+                    break
+        
+        total_cost = sum(item["price_lkr"] for item in selection.values())
+        max_delivery_time = max(
+            self.store_configs.get(item["website"], self.store_configs["onlinekade.lk"]).average_delivery_hours 
+            for item in selection.values()
+        ) if selection else 0
+        
+        return {
+            "lp_solution": selection,
+            "total_cost": total_cost,
+            "max_delivery_time": max_delivery_time,
+            "optimization_status": "Greedy_Fallback"
+        }
