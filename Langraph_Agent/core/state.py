@@ -12,5 +12,7 @@ class ApplicationState(TypedDict):
     user_input: str
     keywords: List[str]
     product_data: Dict[str, List[Dict[str, Any]]]
+    personalized_data: Dict[str, List[Dict[str, Any]]]
+    personalization_summary: Dict[str, Any]
     formatted_output: str
     processing_stage: str

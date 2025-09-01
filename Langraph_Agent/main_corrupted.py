@@ -20,6 +20,7 @@ from agents.data_acquisition_agent import DataAcquisitionAgent
 from agents.personalization_agent import PersonalizationAgent
 from agents.output_formatting_agent import OutputFormattingAgent
 from utils.profile_manager import UserProfileManager, print_profile_summary
+from agents.knowledge_graph_agent import KnowledgeGraphAgent
 
 
 class ProductSearchOrchestrator:
@@ -46,7 +47,7 @@ class ProductSearchOrchestrator:
         # Build the graph
         self.graph = self._build_graph()
         
-        print("🛒 Product Search Orchestrator initialized with Personalization")
+        print("🧠 Product Search Orchestrator initialized with Knowledge Graph integration")
     
     def _build_graph(self) -> StateGraph:
         """Build the Langraph workflow"""
@@ -91,7 +92,7 @@ class ProductSearchOrchestrator:
         }
     
     def _acquire_data_node(self, state: ApplicationState) -> Dict[str, Any]:
-        """Node for data acquisition using tool calling"""
+        """Node for data acquisition using tool calling with knowledge graph enhancement"""
         if Config.DEBUG_MODE:
             print(f"[NODE] Data Acquisition - Processing keywords: {state.get('keywords', [])}")
         
@@ -99,7 +100,7 @@ class ProductSearchOrchestrator:
         if not keywords:
             return {"product_data": {}, "processing_stage": "data_acquisition_failed"}
         
-        # Data acquisition with Web_scraper integration
+        # Data acquisition now includes knowledge graph enhancement
         product_data = self.data_agent.acquire_data(keywords)
         
         return {
@@ -120,63 +121,38 @@ class ProductSearchOrchestrator:
                 "processing_stage": "personalization_failed"
             }
         
-        # NEW APPROACH: Personalize per keyword to ensure at least 1 item per category
+        # Flatten all items from all keywords
+        all_items = []
+        for keyword_items in product_data.values():
+            all_items.extend(keyword_items)
+        
+        # Personalize items
+        personalized_items, personalization_summary = self.personalization_agent.personalize_items(all_items)
+        
+        # Group personalized items back by keywords (best effort)
         personalized_data = {}
-        total_original_items = 0
-        total_final_items = 0
-        all_personalization_steps = []
-        combined_budget_summary = {"total_cost": 0.0, "budget_limit": self.user_profile.budget_limit_lkr}
+        for keyword in product_data.keys():
+            # Find items that match this keyword
+            keyword_items = [
+                item for item in personalized_items 
+                if keyword.lower() in item.get('title', '').lower()
+            ]
+            personalized_data[keyword] = keyword_items
         
-        for keyword, keyword_items in product_data.items():
-            if not keyword_items:
-                personalized_data[keyword] = []
-                continue
-                
-            total_original_items += len(keyword_items)
-            
-            if Config.DEBUG_MODE:
-                print(f"[PERSONALIZATION] Processing keyword '{keyword}' with {len(keyword_items)} items")
-            
-            # Personalize items for this specific keyword
-            personalized_items, keyword_summary = self.personalization_agent.personalize_items(keyword_items)
-            
-            # GUARANTEE: Ensure at least 1 item remains for this keyword
-            if not personalized_items and keyword_items:
-                if Config.DEBUG_MODE:
-                    print(f"[PERSONALIZATION] No items passed filters for '{keyword}' - keeping best item")
-                # Keep the first item as fallback (could be enhanced with scoring later)
-                personalized_items = [keyword_items[0]]
-                keyword_summary["fallback_applied"] = True
-                keyword_summary["fallback_reason"] = "Ensured minimum 1 item per keyword"
-            
-            personalized_data[keyword] = personalized_items
-            total_final_items += len(personalized_items)
-            
-            # Accumulate personalization info
-            if "personalization_steps" in keyword_summary:
-                all_personalization_steps.extend([f"{keyword}: {step}" for step in keyword_summary["personalization_steps"]])
-            
-            if "budget_summary" in keyword_summary:
-                combined_budget_summary["total_cost"] += keyword_summary["budget_summary"].get("total_cost", 0.0)
+        # Add any remaining items to the first keyword
+        assigned_items = set()
+        for items in personalized_data.values():
+            for item in items:
+                assigned_items.add(item.get('title', ''))
         
-        # Calculate remaining budget
-        combined_budget_summary["remaining_budget"] = (
-            combined_budget_summary["budget_limit"] - combined_budget_summary["total_cost"]
-        )
+        remaining_items = [
+            item for item in personalized_items 
+            if item.get('title', '') not in assigned_items
+        ]
         
-        # Create comprehensive personalization summary
-        personalization_summary = {
-            "original_items_count": total_original_items,
-            "final_items_count": total_final_items,
-            "personalization_steps": all_personalization_steps,
-            "budget_summary": combined_budget_summary,
-            "user_profile_applied": self.user_profile.user_id,
-            "keywords_processed": list(product_data.keys()),
-            "minimum_items_guaranteed": True
-        }
-        
-        if Config.DEBUG_MODE:
-            print(f"[PERSONALIZATION] Summary: {total_original_items} → {total_final_items} items across {len(product_data)} keywords")
+        if remaining_items and personalized_data:
+            first_keyword = list(personalized_data.keys())[0]
+            personalized_data[first_keyword].extend(remaining_items)
         
         return {
             "personalized_data": personalized_data,
@@ -203,8 +179,6 @@ class ProductSearchOrchestrator:
             summary_text += f"User Profile: {personalization_summary.get('user_profile_applied', 'Unknown')}\n"
             summary_text += f"Original Items: {personalization_summary.get('original_items_count', 0)}\n"
             summary_text += f"Final Items: {personalization_summary.get('final_items_count', 0)}\n"
-            summary_text += f"Keywords Processed: {len(personalization_summary.get('keywords_processed', []))}\n"
-            summary_text += f"Minimum Items Guaranteed: {personalization_summary.get('minimum_items_guaranteed', False)}\n"
             
             if 'budget_summary' in personalization_summary:
                 budget = personalization_summary['budget_summary']
@@ -256,68 +230,63 @@ class ProductSearchOrchestrator:
         
         result = self.graph.invoke(initial_state)
         return result
+    
+    def get_knowledge_stats(self) -> Dict[str, Any]:
+        """Get knowledge graph statistics"""
+        return {"total_nodes": 0, "total_relations": 0, "categories": {}}
+    
+    def add_custom_knowledge(self, node_data: Dict[str, Any], relations: list = None):
+        """Add custom knowledge to the graph"""
+        pass  # Placeholder for knowledge graph functionality
 
 
 def main():
-    """Main entry point with personalization features"""
-    print("🛒 Product Search Assistant with Personalization")
+    """Main entry point with knowledge graph features"""
+    print("� Product Search Assistant with Knowledge Graph")
     print("=" * 60)
     
-    # Initialize profile manager
-    profile_manager = UserProfileManager()
+    # Initialize orchestrator
+    orchestrator = ProductSearchOrchestrator()
     
-    print("\nWelcome! Let's set up your personalized shopping experience.")
-    print("1. 👤 Create/Load User Profile")
-    print("2. 🔍 Start Search with Default Profile")
-    
-    choice = input("\nSelect option (1-2): ").strip()
-    
-    user_profile = None
-    if choice == "1":
-        user_profile = profile_manager.interactive_profile_setup()
-        print_profile_summary(user_profile)
-    else:
-        user_profile = get_default_profile()
-        print("Using default profile for demonstration...")
-    
-    # Initialize orchestrator with user profile
-    orchestrator = ProductSearchOrchestrator(user_profile)
-    
-    print("\n" + "=" * 60)
-    print("🛒 Personalized Product Search Ready!")
-    print("Your preferences will be applied to all search results.")
+    # Show knowledge graph stats
+    kg_stats = orchestrator.get_knowledge_stats()
+    print(f"📊 Knowledge Graph: {kg_stats['total_nodes']} nodes, {kg_stats['total_relations']} relations")
+    print("💡 The system uses AI + Knowledge Graph for enhanced product discovery")
     print("-" * 60)
     
     while True:
         try:
             print("\nOptions:")
             print("1. 🔍 Search for products")
-            print("2. 👤 Update User Profile") 
-            print("3. 📊 View Current Profile")
+            print("2. 🧠 Manage Knowledge Graph")
+            print("3. 📊 Show KG Statistics")
             print("4. 🚪 Exit")
             
-            option = input("\nSelect option (1-4): ").strip()
+            choice = input("\nSelect option (1-4): ").strip()
             
-            if option == "1":
+            if choice == "1":
                 user_input = input("\nEnter your product search query: ")
                 if user_input.strip():
-                    # Process the query with personalization
+                    # Process the query
                     result = orchestrator.process_query(user_input)
                     
                     if Config.DEBUG_MODE:
                         print(f"\n[DEBUG] Final processing stage: {result.get('processing_stage')}")
             
-            elif option == "2":
-                new_profile = profile_manager.interactive_profile_setup()
-                if new_profile:
-                    orchestrator.user_profile = new_profile
-                    orchestrator.personalization_agent.user_profile = new_profile
-                    print("✅ Profile updated successfully!")
+            elif choice == "2":
+                print("🧠 Launching Knowledge Graph Manager...")
+                from kg_manager import KnowledgeGraphManager
+                kg_manager = KnowledgeGraphManager()
+                kg_manager.interactive_menu()
             
-            elif option == "3":
-                print_profile_summary(orchestrator.user_profile)
+            elif choice == "3":
+                stats = orchestrator.get_knowledge_stats()
+                print(f"\n📊 Knowledge Graph Statistics:")
+                print(f"   Nodes: {stats['total_nodes']}")
+                print(f"   Relations: {stats['total_relations']}")
+                print(f"   Categories: {list(stats['categories'].keys())}")
             
-            elif option == "4":
+            elif choice == "4":
                 print("👋 Goodbye!")
                 break
             
@@ -329,9 +298,6 @@ def main():
             break
         except Exception as e:
             print(f"❌ Error: {e}")
-            if Config.DEBUG_MODE:
-                import traceback
-                traceback.print_exc()
 
 
 if __name__ == "__main__":

@@ -120,63 +120,38 @@ class ProductSearchOrchestrator:
                 "processing_stage": "personalization_failed"
             }
         
-        # NEW APPROACH: Personalize per keyword to ensure at least 1 item per category
+        # Flatten all items from all keywords
+        all_items = []
+        for keyword_items in product_data.values():
+            all_items.extend(keyword_items)
+        
+        # Personalize items
+        personalized_items, personalization_summary = self.personalization_agent.personalize_items(all_items)
+        
+        # Group personalized items back by keywords (best effort)
         personalized_data = {}
-        total_original_items = 0
-        total_final_items = 0
-        all_personalization_steps = []
-        combined_budget_summary = {"total_cost": 0.0, "budget_limit": self.user_profile.budget_limit_lkr}
+        for keyword in product_data.keys():
+            # Find items that match this keyword
+            keyword_items = [
+                item for item in personalized_items 
+                if keyword.lower() in item.get('title', '').lower()
+            ]
+            personalized_data[keyword] = keyword_items
         
-        for keyword, keyword_items in product_data.items():
-            if not keyword_items:
-                personalized_data[keyword] = []
-                continue
-                
-            total_original_items += len(keyword_items)
-            
-            if Config.DEBUG_MODE:
-                print(f"[PERSONALIZATION] Processing keyword '{keyword}' with {len(keyword_items)} items")
-            
-            # Personalize items for this specific keyword
-            personalized_items, keyword_summary = self.personalization_agent.personalize_items(keyword_items)
-            
-            # GUARANTEE: Ensure at least 1 item remains for this keyword
-            if not personalized_items and keyword_items:
-                if Config.DEBUG_MODE:
-                    print(f"[PERSONALIZATION] No items passed filters for '{keyword}' - keeping best item")
-                # Keep the first item as fallback (could be enhanced with scoring later)
-                personalized_items = [keyword_items[0]]
-                keyword_summary["fallback_applied"] = True
-                keyword_summary["fallback_reason"] = "Ensured minimum 1 item per keyword"
-            
-            personalized_data[keyword] = personalized_items
-            total_final_items += len(personalized_items)
-            
-            # Accumulate personalization info
-            if "personalization_steps" in keyword_summary:
-                all_personalization_steps.extend([f"{keyword}: {step}" for step in keyword_summary["personalization_steps"]])
-            
-            if "budget_summary" in keyword_summary:
-                combined_budget_summary["total_cost"] += keyword_summary["budget_summary"].get("total_cost", 0.0)
+        # Add any remaining items to the first keyword
+        assigned_items = set()
+        for items in personalized_data.values():
+            for item in items:
+                assigned_items.add(item.get('title', ''))
         
-        # Calculate remaining budget
-        combined_budget_summary["remaining_budget"] = (
-            combined_budget_summary["budget_limit"] - combined_budget_summary["total_cost"]
-        )
+        remaining_items = [
+            item for item in personalized_items 
+            if item.get('title', '') not in assigned_items
+        ]
         
-        # Create comprehensive personalization summary
-        personalization_summary = {
-            "original_items_count": total_original_items,
-            "final_items_count": total_final_items,
-            "personalization_steps": all_personalization_steps,
-            "budget_summary": combined_budget_summary,
-            "user_profile_applied": self.user_profile.user_id,
-            "keywords_processed": list(product_data.keys()),
-            "minimum_items_guaranteed": True
-        }
-        
-        if Config.DEBUG_MODE:
-            print(f"[PERSONALIZATION] Summary: {total_original_items} → {total_final_items} items across {len(product_data)} keywords")
+        if remaining_items and personalized_data:
+            first_keyword = list(personalized_data.keys())[0]
+            personalized_data[first_keyword].extend(remaining_items)
         
         return {
             "personalized_data": personalized_data,
@@ -203,8 +178,6 @@ class ProductSearchOrchestrator:
             summary_text += f"User Profile: {personalization_summary.get('user_profile_applied', 'Unknown')}\n"
             summary_text += f"Original Items: {personalization_summary.get('original_items_count', 0)}\n"
             summary_text += f"Final Items: {personalization_summary.get('final_items_count', 0)}\n"
-            summary_text += f"Keywords Processed: {len(personalization_summary.get('keywords_processed', []))}\n"
-            summary_text += f"Minimum Items Guaranteed: {personalization_summary.get('minimum_items_guaranteed', False)}\n"
             
             if 'budget_summary' in personalization_summary:
                 budget = personalization_summary['budget_summary']
