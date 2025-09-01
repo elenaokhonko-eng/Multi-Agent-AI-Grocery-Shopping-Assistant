@@ -360,9 +360,9 @@ class LoyaltyAggregatorAgent:
                 total_original_cost += store_cost
                 total_optimized_cost += store_cost
         
-        # Create LLM-powered recommendation
+        # Create structured LLM-powered recommendation with item selection
         prompt = f"""
-        You are a Loyalty Optimization Expert. Analyze the discount calculations and provide strategic recommendations.
+        You are a Loyalty Optimization Expert. Analyze the discount calculations and provide strategic recommendations in JSON format.
         
         Store Optimizations Summary:
         {json.dumps(store_optimizations, indent=2)}
@@ -372,18 +372,58 @@ class LoyaltyAggregatorAgent:
         Total Savings: LKR {total_savings}
         Savings Percentage: {(total_savings/total_original_cost*100) if total_original_cost > 0 else 0:.1f}%
         
-        Provide:
-        1. Strategic recommendations for maximizing savings
-        2. Alternative shopping strategies if applicable
-        3. Long-term loyalty optimization advice
-        4. Priority ranking of stores based on value
+        Return a JSON object with:
+        {{
+            "strategic_recommendations": [
+                "recommendation 1",
+                "recommendation 2"
+            ],
+            "alternative_strategies": [
+                "strategy 1", 
+                "strategy 2"
+            ],
+            "long_term_advice": [
+                "advice 1",
+                "advice 2"
+            ],
+            "store_ranking": [
+                {{"store": "store_name", "rank": 1, "reason": "explanation"}},
+                {{"store": "store_name", "rank": 2, "reason": "explanation"}}
+            ],
+            "recommended_action": "optimize|proceed",
+            "key_insights": [
+                "insight 1",
+                "insight 2"
+            ]
+        }}
         """
         
         try:
             response = self.llm.invoke(prompt)
-            llm_recommendations = response.content
+            # Try to parse as JSON, fallback to text if needed
+            try:
+                llm_recommendations = json.loads(response.content)
+            except json.JSONDecodeError:
+                llm_recommendations = {
+                    "strategic_recommendations": ["Unable to parse structured recommendations"],
+                    "alternative_strategies": [],
+                    "long_term_advice": [],
+                    "store_ranking": [],
+                    "recommended_action": "proceed",
+                    "key_insights": ["Raw response: " + response.content[:200] + "..."]
+                }
         except Exception as e:
-            llm_recommendations = f"Unable to generate LLM recommendations: {e}"
+            llm_recommendations = {
+                "strategic_recommendations": [f"Unable to generate recommendations: {e}"],
+                "alternative_strategies": [],
+                "long_term_advice": [],
+                "store_ranking": [],
+                "recommended_action": "proceed", 
+                "key_insights": []
+            }
+        
+        # Select best items per category with loyalty optimization
+        optimized_items = self._select_best_items_per_category(items, store_optimizations)
         
         loyalty_summary = {
             "total_original_cost": total_original_cost,
@@ -396,12 +436,90 @@ class LoyaltyAggregatorAgent:
             "optimization_summary": {
                 "best_store_for_savings": max(store_optimizations, key=lambda x: x.get('savings', 0), default={}).get('store_name', 'N/A'),
                 "total_loyalty_points": sum(opt.get('loyalty_points', {}).get('points_earned', 0) for opt in store_optimizations),
-                "recommended_action": "optimize" if total_savings > total_original_cost * 0.05 else "proceed"
+                "recommended_action": "optimize" if total_savings > total_original_cost * 0.05 else "proceed",
+                "items_filtered": {
+                    "original_count": len(items),
+                    "optimized_count": sum(len(category_items) for category_items in optimized_items.values()),
+                    "categories_processed": len(optimized_items),
+                    "filtering_strategy": "loyalty_value_optimization"
+                }
             }
         }
         
         print(f"[AGENT] Loyalty optimization completed: LKR {total_savings} total savings")
-        return items, loyalty_summary
+        return optimized_items, loyalty_summary
+    
+    def _select_best_items_per_category(self, items: List[Dict[str, Any]], store_optimizations: List[Dict]) -> Dict[str, List[Dict]]:
+        """
+        Select best items per category based on loyalty benefits and value
+        
+        Args:
+            items: All available items
+            store_optimizations: Store-wise optimization results
+            
+        Returns:
+            Dictionary with category -> list of best items
+        """
+        # Group items by category
+        items_by_category = {}
+        for item in items:
+            category = item.get('category', 'unknown')
+            if category not in items_by_category:
+                items_by_category[category] = []
+            items_by_category[category].append(item)
+        
+        # Create store savings lookup
+        store_savings = {opt['store_name']: opt.get('savings', 0) for opt in store_optimizations}
+        store_points = {opt['store_name']: opt.get('loyalty_points', {}).get('points_earned', 0) for opt in store_optimizations}
+        
+        optimized_selection = {}
+        for category, category_items in items_by_category.items():
+            # Score items based on: price efficiency + loyalty benefits + store optimization
+            scored_items = []
+            for item in category_items:
+                store = item.get('website', '').lower()
+                price = item.get('price_lkr', float('inf'))
+                
+                # Calculate value score (lower price is better)
+                price_score = 1 / (price / 100) if price > 0 else 0
+                
+                # Loyalty benefits score
+                loyalty_score = store_points.get(store, 0) / 100  # Points per 100 LKR
+                
+                # Store optimization score
+                store_score = store_savings.get(store, 0) / price if price > 0 else 0
+                
+                # Combined score (weighted)
+                total_score = (price_score * 0.5) + (loyalty_score * 0.3) + (store_score * 0.2)
+                
+                scored_items.append({
+                    'item': item,
+                    'score': total_score,
+                    'price_score': price_score,
+                    'loyalty_score': loyalty_score,
+                    'store_score': store_score
+                })
+            
+            # Sort by score and keep top 3 items minimum, but ensure at least 1
+            scored_items.sort(key=lambda x: x['score'], reverse=True)
+            
+            # Keep top performers but ensure at least 1 item per category
+            num_to_keep = min(max(len(scored_items) // 2, 1), 3)
+            best_items = [item['item'] for item in scored_items[:num_to_keep]]
+            
+            # Add loyalty optimization scores to items
+            for i, item in enumerate(best_items):
+                item['loyalty_optimization_rank'] = i + 1
+                item['loyalty_optimization_score'] = scored_items[i]['score']
+                item['optimization_reasoning'] = {
+                    'price_efficiency': scored_items[i]['price_score'],
+                    'loyalty_benefits': scored_items[i]['loyalty_score'],
+                    'store_optimization': scored_items[i]['store_score']
+                }
+            
+            optimized_selection[category] = best_items
+        
+        return optimized_selection
     
     def get_loyalty_summary(self) -> Dict[str, Any]:
         """Get summary of available loyalty programs and discounts"""

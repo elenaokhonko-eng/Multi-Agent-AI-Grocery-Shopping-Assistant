@@ -545,8 +545,35 @@ class ProductSearchOrchestrator:
                     loyalty_text += f"  • {store_name}: {items_count} items, LKR {store_savings:.2f} savings\n"
             
             # Add LLM recommendations if available
-            llm_recommendations = loyalty_summary.get("llm_recommendations", "")
-            if llm_recommendations and not llm_recommendations.startswith("Unable"):
+            llm_recommendations = loyalty_summary.get("llm_recommendations", {})
+            if isinstance(llm_recommendations, dict) and llm_recommendations.get("strategic_recommendations"):
+                loyalty_text += f"\n🎯 AI RECOMMENDATIONS:\n"
+                
+                # Strategic recommendations
+                if llm_recommendations.get("strategic_recommendations"):
+                    loyalty_text += "**Strategic Recommendations:**\n"
+                    for rec in llm_recommendations["strategic_recommendations"]:
+                        loyalty_text += f"• {rec}\n"
+                
+                # Alternative strategies
+                if llm_recommendations.get("alternative_strategies"):
+                    loyalty_text += "\n**Alternative Strategies:**\n"
+                    for strategy in llm_recommendations["alternative_strategies"]:
+                        loyalty_text += f"• {strategy}\n"
+                
+                # Store ranking
+                if llm_recommendations.get("store_ranking"):
+                    loyalty_text += "\n**Store Priority Ranking:**\n"
+                    for store_info in llm_recommendations["store_ranking"]:
+                        loyalty_text += f"{store_info['rank']}. {store_info['store']}: {store_info['reason']}\n"
+                
+                # Key insights
+                if llm_recommendations.get("key_insights"):
+                    loyalty_text += "\n**Key Insights:**\n"
+                    for insight in llm_recommendations["key_insights"]:
+                        loyalty_text += f"• {insight}\n"
+                        
+            elif isinstance(llm_recommendations, str) and llm_recommendations and not llm_recommendations.startswith("Unable"):
                 loyalty_text += f"\n🎯 AI RECOMMENDATIONS:\n{llm_recommendations}\n"
             
             loyalty_text += "="*60 + "\n"
