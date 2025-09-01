@@ -8,7 +8,7 @@ class Config:
     """Application configuration"""
     
     # Groq API Configuration
-    GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "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")
+    GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "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")
     GROQ_MODEL = "llama-3.3-70b-versatile"
     GROQ_TEMPERATURE = 0
     
