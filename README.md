@@ -34,7 +34,7 @@ The Tensor Titans SLAIC 2025 project is an innovative AI-powered product search 
 | Component | Technology | Purpose |
 |-----------|------------|---------|
 | **Langraph Agent** | Langraph + Groq LLaMA 3.3 70B | Multi-agent orchestration |
-| **Web Scraper** | BeautifulSoup + Requests | Real-time product data |
+| **Web Scraper** | Crawl4AI + Requests | Real-time product data |
 | **Frontend** | React/Vue.js | User interface |
 | **Knowledge Graph** | NetworkX | Product relationship mapping |
 
