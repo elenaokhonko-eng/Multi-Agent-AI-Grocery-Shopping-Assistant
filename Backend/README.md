@@ -6,11 +6,13 @@
 # Install dependencies
 npm install
 
-# Start development server
+# Start the server (simple version)
+node server-simple.js
+
+# Alternative: Start development server with auto-restart
 npm run dev
 
-# Start production server
-npm start
+# Note: npm start currently has issues, use the direct node command above
 ```
 
 ## 📁 Project Structure
@@ -196,8 +198,13 @@ Import this collection or create requests manually:
 
 ### Scripts
 ```bash
-npm run dev     # Start with nodemon (auto-restart)
-npm start       # Start production server
+# Start the server directly (recommended)
+node server-simple.js
+
+# Start with nodemon (auto-restart) - for development
+npm run dev     
+
+# Note: npm start has issues with path-to-regexp, use direct node command
 ```
 
 ## 🔄 Database Operations
@@ -324,10 +331,11 @@ Consider adding Redis for caching frequently accessed data.
 
 ## ✅ Current Status
 
-- 🟢 **Server**: Running on port 3001
+- 🟢 **Server**: Running on port 3001 with `node server-simple.js`
 - 🟢 **Database**: Connected to MongoDB
 - 🟢 **CORS**: Configured for frontend
 - 🟢 **API**: All endpoints functional
 - 🟢 **Error Handling**: Comprehensive coverage
+- ⚠️ **Note**: Use `node server-simple.js` instead of `npm start` due to path-to-regexp issues
 
 **Backend is fully operational! 🎉**
