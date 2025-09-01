@@ -18,6 +18,7 @@ from core.user_profile import get_default_profile
 from agents.keyword_extraction_agent import KeywordExtractionAgent
 from agents.data_acquisition_agent import DataAcquisitionAgent
 from agents.personalization_agent import PersonalizationAgent
+from agents.loyalty_aggregator_agent import LoyaltyAggregatorAgent
 from agents.output_formatting_agent import OutputFormattingAgent
 from agents.logistics_agent import LogisticsAgent, UserLocation
 from utils.profile_manager import UserProfileManager, print_profile_summary
@@ -43,13 +44,14 @@ class ProductSearchOrchestrator:
         self.keyword_agent = KeywordExtractionAgent(self.llm)
         self.data_agent = DataAcquisitionAgent(self.llm)
         self.personalization_agent = PersonalizationAgent(self.llm, self.user_profile)
+        self.loyalty_agent = LoyaltyAggregatorAgent(self.llm)
         self.output_agent = OutputFormattingAgent()
         self.logistics_agent = LogisticsAgent(self.llm)
         
         # Build the graph
         self.graph = self._build_graph()
         
-        print("🛒 Product Search Orchestrator initialized with Personalization & Logistics")
+        print("🛒 Product Search Orchestrator initialized with Personalization, Loyalty & Logistics")
     
     def _build_graph(self) -> StateGraph:
         """Build the Langraph workflow"""
@@ -59,6 +61,7 @@ class ProductSearchOrchestrator:
         graph_builder.add_node("extract_keywords", self._extract_keywords_node)
         graph_builder.add_node("acquire_data", self._acquire_data_node)
         graph_builder.add_node("personalize", self._personalize_node)
+        graph_builder.add_node("optimize_loyalty", self._optimize_loyalty_node)
         graph_builder.add_node("optimize_logistics", self._optimize_logistics_node)
         graph_builder.add_node("format_output", self._format_output_node)
         
@@ -67,7 +70,8 @@ class ProductSearchOrchestrator:
         graph_builder.add_edge("extract_keywords", "acquire_data")
         graph_builder.add_edge("acquire_data", "personalize")
         graph_builder.add_edge("personalize", "optimize_logistics")
-        graph_builder.add_edge("optimize_logistics", "format_output")
+        graph_builder.add_edge("optimize_logistics", "optimize_loyalty")
+        graph_builder.add_edge("optimize_loyalty", "format_output")
         graph_builder.add_edge("format_output", END)
         
         return graph_builder.compile()
@@ -189,15 +193,75 @@ class ProductSearchOrchestrator:
             "processing_stage": "personalization_complete"
         }
     
+    def _optimize_loyalty_node(self, state: ApplicationState) -> Dict[str, Any]:
+        """Node for optimizing loyalty benefits and discounts"""
+        if Config.DEBUG_MODE:
+            print(f"[NODE] Loyalty Optimization - Processing discount optimization")
+        
+        # Use logistics optimized data if available, otherwise fall back to personalized data
+        logistics_optimization = state.get("logistics_optimization")
+        if logistics_optimization and hasattr(logistics_optimization, 'optimized_items_by_category'):
+            # Use the logistics-filtered items
+            optimized_items_by_category = logistics_optimization.optimized_items_by_category
+            all_items = []
+            for category, items in optimized_items_by_category.items():
+                all_items.extend(items)
+        else:
+            # Fall back to personalized data
+            personalized_data = state.get("personalized_data", {})
+            if not personalized_data:
+                return {
+                    "loyalty_optimized_data": {},
+                    "loyalty_summary": {"error": "No data available for loyalty optimization"},
+                    "processing_stage": "loyalty_optimization_failed"
+                }
+            
+            all_items = []
+            for keyword, items in personalized_data.items():
+                all_items.extend(items)
+        
+        if not all_items:
+            return {
+                "loyalty_optimized_data": state.get("personalized_data", {}),
+                "loyalty_summary": {"message": "No items to optimize"},
+                "processing_stage": "loyalty_optimization_skipped"
+            }
+        
+        try:
+            # Apply loyalty optimization to logistics-filtered items
+            optimized_items, loyalty_summary = self.loyalty_agent.optimize_loyalty_benefits(all_items)
+            
+            if Config.DEBUG_MODE:
+                total_savings = loyalty_summary.get("total_savings", 0)
+                print(f"[LOYALTY] Optimization complete: LKR {total_savings:.2f} total savings")
+            
+            return {
+                "loyalty_optimized_data": state.get("personalized_data", {}),  # Keep original structure for consistency
+                "loyalty_summary": loyalty_summary,
+                "processing_stage": "loyalty_optimization_complete"
+            }
+            
+        except Exception as e:
+            if Config.DEBUG_MODE:
+                print(f"[LOYALTY] Error during optimization: {str(e)}")
+            
+            return {
+                "loyalty_optimized_data": state.get("personalized_data", {}),
+                "loyalty_summary": {"error": str(e)},
+                "processing_stage": "loyalty_optimization_failed"
+            }
+    
     def _optimize_logistics_node(self, state: ApplicationState) -> Dict[str, Any]:
         """Node for filtering items based on delivery distance"""
         if Config.DEBUG_MODE:
             print(f"[NODE] Logistics Filtering - Processing distance-based filtering")
         
+        # Use personalized data for logistics filtering
         personalized_data = state.get("personalized_data", {})
         if not personalized_data:
             return {
-                "logistics_filtering": {"error": "No personalized data for logistics filtering"},
+                "logistics_optimization": {"error": "No personalized data for logistics filtering"},
+                "logistics_summary": {"error": "No personalized data for logistics filtering"},
                 "processing_stage": "logistics_filtering_failed"
             }
         
@@ -237,8 +301,8 @@ class ProductSearchOrchestrator:
                 print(f"[LOGISTICS] Filtering complete: {summary.get('items_before_filtering', 0)} → {summary.get('items_after_filtering', 0)} items")
             
             return {
-                "filtered_personalized_data": filtering_result.get("filtered_personalized_data", personalized_data),
-                "logistics_filtering_summary": filtering_result.get("filtering_summary", {}),
+                "logistics_optimization": filtering_result.get("logistics_optimization"),
+                "logistics_summary": filtering_result.get("filtering_summary", {}),
                 "user_location": user_location,
                 "processing_stage": "logistics_filtering_complete"
             }
@@ -248,8 +312,8 @@ class ProductSearchOrchestrator:
                 print(f"[LOGISTICS] Error during filtering: {str(e)}")
             
             return {
-                "filtered_personalized_data": personalized_data,  # Return original data on error
-                "logistics_filtering_summary": {"error": str(e)},
+                "logistics_optimization": None,
+                "logistics_summary": {"error": str(e)},
                 "user_location": user_location,
                 "processing_stage": "logistics_filtering_failed"
             }
@@ -257,15 +321,23 @@ class ProductSearchOrchestrator:
     def _format_output_node(self, state: ApplicationState) -> Dict[str, Any]:
         """Node for output formatting"""
         if Config.DEBUG_MODE:
-            print(f"[NODE] Format Output - Processing filtered results")
+            print(f"[NODE] Format Output - Processing results with loyalty optimization")
         
-        # Use filtered data if available, otherwise fall back to personalized data
-        data_to_format = state.get("filtered_personalized_data", state.get("personalized_data", state.get("product_data", {})))
+        # Use the best available data
+        data_to_format = (
+            state.get("loyalty_optimized_data") or 
+            state.get("personalized_data") or 
+            state.get("product_data", {})
+        )
+        
         personalization_summary = state.get("personalization_summary", {})
-        logistics_summary = state.get("logistics_filtering_summary", {})
+        loyalty_summary = state.get("loyalty_summary", {})
+        logistics_summary = state.get("logistics_summary", {})
+        logistics_optimization = state.get("logistics_optimization")
         user_location = state.get("user_location")
         
         formatted_output = self.output_agent.format_results(data_to_format)
+        
         
         # Add personalization summary to output
         if personalization_summary and not personalization_summary.get("error"):
@@ -293,6 +365,67 @@ class ProductSearchOrchestrator:
             formatted_output = summary_text + formatted_output
         elif personalization_summary.get("error"):
             formatted_output = f"⚠️ Personalization failed: {personalization_summary['error']}\n\n" + formatted_output
+
+        # Add logistics filtering summary to output FIRST (since it happens before loyalty)
+        if logistics_optimization and logistics_summary and not logistics_summary.get("error"):
+            logistics_text = "\n" + "="*60 + "\n"
+            logistics_text += "� LOGISTICS OPTIMIZATION SUMMARY\n"
+            logistics_text += "="*60 + "\n"
+            
+            if user_location:
+                logistics_text += f"User Location: {user_location.address}\n"
+                logistics_text += f"City: {user_location.city}, {user_location.district}\n"
+                logistics_text += f"Province: {user_location.province}\n\n"
+            
+            # Add logistics optimization details
+            if hasattr(logistics_optimization, 'optimization_summary'):
+                summary = logistics_optimization.optimization_summary
+                logistics_text += f"🏪 STORE OPTIMIZATION:\n"
+                logistics_text += f"Stores Within Range: {summary.get('stores_within_range', 0)}\n"
+                logistics_text += f"Average Distance: {summary.get('average_distance_km', 0):.1f}km\n"
+                logistics_text += f"Fastest Delivery: {summary.get('fastest_delivery_hours', 0)}h\n"
+                logistics_text += f"Total Delivery Cost: LKR {summary.get('total_delivery_cost', 0):.2f}\n"
+            
+            logistics_text += "="*60 + "\n"
+            formatted_output = formatted_output + logistics_text
+        elif logistics_summary.get("error"):
+            formatted_output = formatted_output + f"\n⚠️ Logistics optimization failed: {logistics_summary['error']}\n"
+
+        # Add loyalty optimization summary AFTER logistics (since loyalty happens after logistics)
+        if loyalty_summary and not loyalty_summary.get("error"):
+            loyalty_text = "\n" + "="*60 + "\n"
+            loyalty_text += "💳 LOYALTY & DISCOUNT OPTIMIZATION\n"
+            loyalty_text += "="*60 + "\n"
+            
+            total_savings = loyalty_summary.get("total_savings", 0)
+            total_original = loyalty_summary.get("total_original_cost", 0)
+            total_optimized = loyalty_summary.get("total_optimized_cost", 0)
+            savings_percentage = loyalty_summary.get("savings_percentage", 0)
+            
+            loyalty_text += f"Original Total Cost: LKR {total_original:.2f}\n"
+            loyalty_text += f"Optimized Total Cost: LKR {total_optimized:.2f}\n"
+            loyalty_text += f"Total Savings: LKR {total_savings:.2f} ({savings_percentage}%)\n"
+            loyalty_text += f"Stores Analyzed: {loyalty_summary.get('stores_analyzed', 0)}\n"
+            
+            # Add store optimizations
+            store_optimizations = loyalty_summary.get("store_optimizations", [])
+            if store_optimizations:
+                loyalty_text += f"\n📊 STORE-BY-STORE BREAKDOWN:\n"
+                for store_opt in store_optimizations:
+                    store_name = store_opt.get("store_name", "Unknown")
+                    store_savings = store_opt.get("savings", 0)
+                    items_count = store_opt.get("items_count", 0)
+                    loyalty_text += f"  • {store_name}: {items_count} items, LKR {store_savings:.2f} savings\n"
+            
+            # Add LLM recommendations if available
+            llm_recommendations = loyalty_summary.get("llm_recommendations", "")
+            if llm_recommendations and not llm_recommendations.startswith("Unable"):
+                loyalty_text += f"\n🎯 AI RECOMMENDATIONS:\n{llm_recommendations}\n"
+            
+            loyalty_text += "="*60 + "\n"
+            formatted_output = formatted_output + loyalty_text
+        elif loyalty_summary.get("error"):
+            formatted_output = formatted_output + f"\n⚠️ Loyalty optimization failed: {loyalty_summary['error']}\n"
         
         # Add logistics filtering summary to output
         if logistics_summary and not logistics_summary.get("error"):
@@ -350,12 +483,16 @@ class ProductSearchOrchestrator:
             "product_data": {},
             "personalized_data": {},
             "personalization_summary": {},
+            "loyalty_optimized_data": {},
+            "loyalty_summary": {},
+            "logistics_optimization": None,
+            "logistics_summary": {},
             "formatted_output": "",
             "processing_stage": "initialized"
         }
         
         if Config.DEBUG_MODE:
-            print(f"[ORCHESTRATOR] Processing query with personalization: '{user_query}'")
+            print(f"[ORCHESTRATOR] Processing query with personalization and loyalty optimization: '{user_query}'")
         
         result = self.graph.invoke(initial_state)
         return result
@@ -363,8 +500,8 @@ class ProductSearchOrchestrator:
 
 def main():
     """Main entry point with personalization features"""
-    print("🛒 Product Search Assistant with Personalization")
-    print("=" * 60)
+    print("🛒 Product Search Assistant with Personalization & Loyalty Optimization")
+    print("=" * 70)
     
     # Initialize profile manager
     profile_manager = UserProfileManager()
@@ -386,10 +523,10 @@ def main():
     # Initialize orchestrator with user profile
     orchestrator = ProductSearchOrchestrator(user_profile)
     
-    print("\n" + "=" * 60)
-    print("🛒 Personalized Product Search Ready!")
-    print("Your preferences will be applied to all search results.")
-    print("-" * 60)
+    print("\n" + "=" * 70)
+    print("🛒 Personalized Product Search with Loyalty Optimization Ready!")
+    print("Your preferences and loyalty benefits will be applied to all search results.")
+    print("-" * 70)
     
     while True:
         try:

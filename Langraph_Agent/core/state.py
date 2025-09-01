@@ -16,6 +16,8 @@ class ApplicationState(TypedDict):
     personalization_summary: Dict[str, Any]
     logistics_optimization: Any  # LogisticsOptimization object
     logistics_summary: Dict[str, Any]
+    loyalty_optimized_data: Dict[str, List[Dict[str, Any]]]
+    loyalty_summary: Dict[str, Any]
     user_location: Any  # UserLocation object
     formatted_output: str
     processing_stage: str
