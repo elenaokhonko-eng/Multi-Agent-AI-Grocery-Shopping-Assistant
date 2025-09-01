@@ -1,5 +1,5 @@
 import os
-os.environ["GROQ_API_KEY"] = "###replace later###"
+os.environ["GROQ_API_KEY"] = "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"
 
 # 1) (Only needed once per runtime)
 # pip install -q langgraph langchain langchain-groq
@@ -39,11 +39,21 @@ def extract_keywords_node(state: State):
 # ----- Node: Retrieve items from Web_scraper -----
 def retrieve_items_node(state: State):
     keywords = state.get("keywords", [])
-    # TODO: Replace with actual import from Web_scraper
-    # from Web_scraper.retrieval.similarity_search import retrieve_similar_items
-    # results = retrieve_similar_items(keywords)
-    # For now, simulate retrieval
-    results = {kw: [f"Item matching {kw}"] for kw in keywords}
+    results = {}
+    try:
+        import importlib.util
+        import os
+        item_retriever_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../Web_scraper/retrieval/item_retriever.py'))
+        spec = importlib.util.spec_from_file_location("item_retriever", item_retriever_path)
+        item_retriever = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(item_retriever)
+        find_best_items_sync = item_retriever.find_best_items_sync
+        results = {}
+        for kw in keywords:
+            items = find_best_items_sync(kw, max_results=5)
+            results[kw] = [item.get("title", str(item)) for item in items]
+    except Exception as e:
+        results = {kw: [f"Error: {e}"] for kw in keywords}
     return {"messages": state["messages"], "results": results}
 
 # ----- Node: Output results -----
