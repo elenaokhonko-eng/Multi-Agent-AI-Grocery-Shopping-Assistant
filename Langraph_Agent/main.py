@@ -105,6 +105,12 @@ class ProductSearchOrchestrator:
         
         keywords = self.keyword_agent.extract_keywords(user_input)
         
+        # Print step details
+        print(f"\n🔍 STEP 1: KEYWORD EXTRACTION")
+        print(f"   User Query: '{user_input}'")
+        print(f"   Extracted Keywords: {keywords}")
+        print(f"   Keywords Count: {len(keywords)}")
+        
         return {
             "user_input": user_input,
             "keywords": keywords,
@@ -122,6 +128,20 @@ class ProductSearchOrchestrator:
         
         # Data acquisition with Web_scraper integration
         product_data = self.data_agent.acquire_data(keywords)
+        
+        # Print step details
+        print(f"\n📦 STEP 2: DATA ACQUISITION")
+        print(f"   Keywords Processed: {keywords}")
+        total_items = sum(len(items) for items in product_data.values())
+        print(f"   Total Items Retrieved: {total_items}")
+        print(f"   Items by Category:")
+        for keyword, items in product_data.items():
+            print(f"     • {keyword}: {len(items)} items")
+            # Show first few items as examples
+            for i, item in enumerate(items[:2]):  # Show first 2 items
+                print(f"       {i+1}. {item.get('title', 'Unknown')} - LKR {item.get('price_lkr', 0)} ({item.get('website', 'Unknown')})")
+            if len(items) > 2:
+                print(f"       ... and {len(items) - 2} more items")
         
         return {
             "product_data": product_data,
@@ -199,6 +219,22 @@ class ProductSearchOrchestrator:
         if Config.DEBUG_MODE:
             print(f"[PERSONALIZATION] Summary: {total_original_items} → {total_final_items} items across {len(product_data)} keywords")
         
+        # Print step details
+        print(f"\n👤 STEP 3: PERSONALIZATION")
+        print(f"   User Profile: {self.user_profile.user_id}")
+        print(f"   Budget Limit: LKR {self.user_profile.budget_limit_lkr}")
+        print(f"   Original Items: {total_original_items}")
+        print(f"   Final Items: {total_final_items}")
+        print(f"   Items Removed: {total_original_items - total_final_items}")
+        print(f"   Personalized Items by Category:")
+        for keyword, items in personalized_data.items():
+            print(f"     • {keyword}: {len(items)} items")
+            # Show selected items
+            for i, item in enumerate(items[:3]):  # Show first 3 items
+                print(f"       {i+1}. {item.get('title', 'Unknown')} - LKR {item.get('price_lkr', 0)} ({item.get('website', 'Unknown')})")
+            if len(items) > 3:
+                print(f"       ... and {len(items) - 3} more items")
+        
         return {
             "personalized_data": personalized_data,
             "personalization_summary": personalization_summary,
@@ -246,6 +282,25 @@ class ProductSearchOrchestrator:
             if Config.DEBUG_MODE:
                 total_savings = loyalty_summary.get("total_savings", 0)
                 print(f"[LOYALTY] Optimization complete: LKR {total_savings:.2f} total savings")
+            
+            # Print step details
+            print(f"\n💳 STEP 5: LOYALTY OPTIMIZATION")
+            print(f"   Items Processed: {len(all_items)}")
+            print(f"   Stores Analyzed: {loyalty_summary.get('stores_analyzed', 0)}")
+            print(f"   Total Original Cost: LKR {loyalty_summary.get('total_original_cost', 0):.2f}")
+            print(f"   Total Optimized Cost: LKR {loyalty_summary.get('total_optimized_cost', 0):.2f}")
+            print(f"   Total Savings: LKR {loyalty_summary.get('total_savings', 0):.2f}")
+            print(f"   Savings Percentage: {loyalty_summary.get('savings_percentage', 0)}%")
+            
+            # Show store-by-store breakdown
+            store_optimizations = loyalty_summary.get("store_optimizations", [])
+            if store_optimizations:
+                print(f"   Store Breakdown:")
+                for store_opt in store_optimizations:
+                    store_name = store_opt.get("store_name", "Unknown")
+                    store_savings = store_opt.get("savings", 0)
+                    items_count = store_opt.get("items_count", 0)
+                    print(f"     • {store_name}: {items_count} items, LKR {store_savings:.2f} savings")
             
             return {
                 "loyalty_optimized_data": state.get("personalized_data", {}),  # Keep original structure for consistency
@@ -311,6 +366,27 @@ class ProductSearchOrchestrator:
             if Config.DEBUG_MODE:
                 summary = filtering_result.get("filtering_summary", {})
                 print(f"[LOGISTICS] Filtering complete: {summary.get('items_before_filtering', 0)} → {summary.get('items_after_filtering', 0)} items")
+            
+            # Print step details
+            logistics_optimization = filtering_result.get("logistics_optimization")
+            logistics_summary = filtering_result.get("filtering_summary", {})
+            
+            print(f"\n🚚 STEP 4: LOGISTICS FILTERING")
+            print(f"   User Location: {user_location.address}")
+            print(f"   Distance Threshold: {max_distance_km}km")
+            print(f"   Items Before: {logistics_summary.get('items_before_filtering', 0)}")
+            print(f"   Items After: {logistics_summary.get('items_after_filtering', 0)}")
+            print(f"   Items Removed: {logistics_summary.get('items_removed', 0)}")
+            
+            if logistics_optimization and hasattr(logistics_optimization, 'optimized_items_by_category'):
+                print(f"   Logistics Filtered Items by Category:")
+                for category, items in logistics_optimization.optimized_items_by_category.items():
+                    print(f"     • {category}: {len(items)} items")
+                    # Show selected items
+                    for i, item in enumerate(items[:2]):  # Show first 2 items
+                        print(f"       {i+1}. {item.get('title', 'Unknown')} - LKR {item.get('price_lkr', 0)} ({item.get('website', 'Unknown')})")
+                    if len(items) > 2:
+                        print(f"       ... and {len(items) - 2} more items")
             
             return {
                 "logistics_optimization": filtering_result.get("logistics_optimization"),
@@ -390,6 +466,19 @@ class ProductSearchOrchestrator:
                 print(f"[BUDGET] Total cost: LKR {optimization_result.get('total_cost', 0):.2f}")
                 print(f"[BUDGET] Delivery time: {optimization_result.get('total_delivery_time', 0):.1f}h")
             
+            # Print step details
+            print(f"\n🎯 STEP 6: BUDGET OPTIMIZATION")
+            print(f"   Optimization Method: Linear Programming + Multi-Criteria")
+            print(f"   Categories Input: {len(loyalty_optimized_data)}")
+            print(f"   Categories Optimized: {len(optimized_selection)}")
+            print(f"   Final Selection (One per category):")
+            for category, item in optimized_selection.items():
+                print(f"     • {category}: {item.get('title', 'Unknown')} - LKR {item.get('price_lkr', 0)} ({item.get('website', 'Unknown')})")
+            print(f"   Total Cost: LKR {optimization_result.get('total_cost', 0):.2f}")
+            print(f"   Budget Limit: LKR {constraints.max_budget:.2f}")
+            print(f"   Budget Used: {(optimization_result.get('total_cost', 0) / constraints.max_budget * 100):.1f}%")
+            print(f"   Estimated Delivery: {optimization_result.get('total_delivery_time', 0):.1f} hours")
+            
             return {
                 "budget_optimized_data": budget_optimized_data,
                 "budget_optimization_summary": optimization_summary,
@@ -425,6 +514,28 @@ class ProductSearchOrchestrator:
         user_location = state.get("user_location")
         
         formatted_output = self.output_agent.format_results(data_to_format)
+        
+        # Print step details
+        print(f"\n📋 STEP 7: OUTPUT FORMATTING")
+        print(f"   Data Source: {type(data_to_format).__name__ if hasattr(type(data_to_format), '__name__') else 'Dictionary'}")
+        print(f"   Categories in Final Output: {len(data_to_format) if data_to_format else 0}")
+        if data_to_format:
+            total_final_items = sum(len(items) if isinstance(items, list) else 1 for items in data_to_format.values())
+            total_final_cost = 0
+            print(f"   Final Items Summary:")
+            for category, items in data_to_format.items():
+                if isinstance(items, list):
+                    if items:  # Non-empty list
+                        item = items[0]  # Budget optimization should give single item per category
+                        cost = item.get('price_lkr', 0)
+                        total_final_cost += cost
+                        print(f"     • {category}: {item.get('title', 'Unknown')} - LKR {cost}")
+                else:  # Single item
+                    cost = items.get('price_lkr', 0) if items else 0
+                    total_final_cost += cost
+                    print(f"     • {category}: {items.get('title', 'Unknown') if items else 'None'} - LKR {cost}")
+            print(f"   Total Final Cost: LKR {total_final_cost:.2f}")
+            print(f"   Total Final Items: {total_final_items}")
         
         # Add budget optimization final recommendations if available
         if state.get("budget_optimized_data"):

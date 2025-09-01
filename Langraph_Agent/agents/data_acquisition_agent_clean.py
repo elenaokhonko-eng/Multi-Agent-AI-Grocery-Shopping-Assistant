@@ -360,12 +360,6 @@ class DataAcquisitionAgent:
         # Fallback - call tool directly
         return retrieve_product_data.invoke({"keywords": keywords})
 
-    def acquire_data(self, keywords: List[str]) -> Dict[str, List[Dict[str, Any]]]:
-        """
-        Legacy method name for compatibility with main.py
-        """
-        return self.process(keywords)
-
 
 # Test the agent if run directly
 if __name__ == "__main__":
