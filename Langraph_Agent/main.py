@@ -9,6 +9,7 @@ from typing import Dict, Any
 from core.config import Config
 os.environ["GROQ_API_KEY"] = Config.GROQ_API_KEY
 
+from langchain_groq import ChatGroq
 from langgraph.graph import StateGraph, START, END
 from langchain_groq import ChatGroq
 
@@ -19,6 +20,7 @@ from agents.keyword_extraction_agent import KeywordExtractionAgent
 from agents.data_acquisition_agent import DataAcquisitionAgent
 from agents.personalization_agent import PersonalizationAgent
 from agents.loyalty_aggregator_agent import LoyaltyAggregatorAgent
+from agents.budget_optimization_agent import BudgetOptimizationAgent, OptimizationConstraints
 from agents.output_formatting_agent import OutputFormattingAgent
 from agents.logistics_agent import LogisticsAgent, UserLocation
 from utils.profile_manager import UserProfileManager, print_profile_summary, interactive_profile_setup
@@ -40,13 +42,21 @@ class ProductSearchOrchestrator:
         self.user_profile = user_profile or get_default_profile()
         self.profile_manager = UserProfileManager()
         
+                # Initialize LLM
+        self.llm = ChatGroq(
+            api_key=Config.GROQ_API_KEY,
+            model_name=Config.GROQ_MODEL,
+            temperature=0.1
+        )
+        
         # Initialize agents
         self.keyword_agent = KeywordExtractionAgent(self.llm)
         self.data_agent = DataAcquisitionAgent(self.llm)
-        self.personalization_agent = PersonalizationAgent(self.llm, self.user_profile)
-        self.loyalty_agent = LoyaltyAggregatorAgent(self.llm)
-        self.output_agent = OutputFormattingAgent()
+        self.personalization_agent = PersonalizationAgent(self.llm, user_profile)
         self.logistics_agent = LogisticsAgent(self.llm)
+        self.loyalty_agent = LoyaltyAggregatorAgent(self.llm)
+        self.budget_optimization_agent = BudgetOptimizationAgent()
+        self.output_agent = OutputFormattingAgent()
         
         # Build the graph
         self.graph = self._build_graph()
@@ -63,6 +73,7 @@ class ProductSearchOrchestrator:
         graph_builder.add_node("personalize", self._personalize_node)
         graph_builder.add_node("optimize_loyalty", self._optimize_loyalty_node)
         graph_builder.add_node("optimize_logistics", self._optimize_logistics_node)
+        graph_builder.add_node("optimize_budget", self._optimize_budget_node)
         graph_builder.add_node("format_output", self._format_output_node)
         
         # Add edges
@@ -71,7 +82,8 @@ class ProductSearchOrchestrator:
         graph_builder.add_edge("acquire_data", "personalize")
         graph_builder.add_edge("personalize", "optimize_logistics")
         graph_builder.add_edge("optimize_logistics", "optimize_loyalty")
-        graph_builder.add_edge("optimize_loyalty", "format_output")
+        graph_builder.add_edge("optimize_loyalty", "optimize_budget")
+        graph_builder.add_edge("optimize_budget", "format_output")
         graph_builder.add_edge("format_output", END)
         
         return graph_builder.compile()
@@ -318,13 +330,88 @@ class ProductSearchOrchestrator:
                 "processing_stage": "logistics_filtering_failed"
             }
     
+    def _optimize_budget_node(self, state: ApplicationState) -> Dict[str, Any]:
+        """Node for budget optimization - selects best item per category"""
+        if Config.DEBUG_MODE:
+            print(f"[NODE] Budget Optimization - Selecting optimal items per category")
+        
+        loyalty_optimized_data = state.get("loyalty_optimized_data", {})
+        
+        if not loyalty_optimized_data:
+            print("⚠️ No loyalty optimized data to process")
+            return {
+                "budget_optimized_data": {},
+                "budget_optimization_summary": {"error": "No data to optimize"},
+                "processing_stage": "budget_optimization_failed"
+            }
+        
+        # Create optimization constraints from user profile
+        user_profile = state.get('user_profile', {})
+        constraints = OptimizationConstraints(
+            max_budget=user_profile.get('budget_limit', 5000.0),
+            max_delivery_time_hours=48.0,  # 2 days max
+            preferred_stores=None,
+            avoid_stores=None,
+            priority_weights={
+                "price": 0.4,
+                "delivery_time": 0.25,
+                "quality": 0.20,
+                "loyalty_savings": 0.15
+            }
+        )
+        
+        # Get original user query for context
+        user_query = state.get("user_input", "")
+        
+        try:
+            # Run budget optimization
+            optimization_result = self.budget_optimization_agent.optimize_item_selection(
+                loyalty_optimized_data, constraints, user_query
+            )
+            
+            if "error" in optimization_result:
+                print(f"❌ Budget optimization failed: {optimization_result['error']}")
+                return {
+                    "budget_optimized_data": {},
+                    "budget_optimization_summary": optimization_result,
+                    "processing_stage": "budget_optimization_failed"
+                }
+            
+            optimized_selection = optimization_result.get("optimized_selection", {})
+            optimization_summary = optimization_result.get("optimization_summary", {})
+            
+            # Convert format: {category: item} -> {category: [item]} for output formatter
+            budget_optimized_data = {}
+            for category, item in optimized_selection.items():
+                budget_optimized_data[category] = [item]  # Wrap single item in list
+            
+            if Config.DEBUG_MODE:
+                print(f"[BUDGET] Optimization complete: {len(optimized_selection)} items selected")
+                print(f"[BUDGET] Total cost: LKR {optimization_result.get('total_cost', 0):.2f}")
+                print(f"[BUDGET] Delivery time: {optimization_result.get('total_delivery_time', 0):.1f}h")
+            
+            return {
+                "budget_optimized_data": budget_optimized_data,
+                "budget_optimization_summary": optimization_summary,
+                "processing_stage": "budget_optimization_complete"
+            }
+            
+        except Exception as e:
+            print(f"❌ Budget optimization failed: {e}")
+            return {
+                "budget_optimized_data": {},
+                "budget_optimization_summary": {"error": str(e)},
+                "processing_stage": "budget_optimization_failed"
+            }
+
     def _format_output_node(self, state: ApplicationState) -> Dict[str, Any]:
         """Node for output formatting"""
         if Config.DEBUG_MODE:
             print(f"[NODE] Format Output - Processing results with loyalty optimization")
         
-        # Use the best available data
+        # Use the best available data - prioritize budget optimized
         data_to_format = (
+            state.get("budget_optimized_data") or
             state.get("loyalty_optimized_data") or 
             state.get("personalized_data") or 
             state.get("product_data", {})
@@ -332,11 +419,51 @@ class ProductSearchOrchestrator:
         
         personalization_summary = state.get("personalization_summary", {})
         loyalty_summary = state.get("loyalty_summary", {})
+        budget_optimization_summary = state.get("budget_optimization_summary", {})
         logistics_summary = state.get("logistics_summary", {})
         logistics_optimization = state.get("logistics_optimization")
         user_location = state.get("user_location")
         
         formatted_output = self.output_agent.format_results(data_to_format)
+        
+        # Add budget optimization final recommendations if available
+        if state.get("budget_optimized_data"):
+            budget_data = state.get("budget_optimized_data", {})
+            budget_summary = state.get("budget_optimization_summary", {})
+            
+            recommendations_text = "\n" + "="*70 + "\n"
+            recommendations_text += "🎯 FINAL RECOMMENDATIONS - OPTIMIZED SELECTION\n"
+            recommendations_text += "="*70 + "\n"
+            recommendations_text += "✅ **ORDER THESE ITEMS** (One optimal item per category):\n\n"
+            
+            total_cost = 0
+            recommendation_count = 0
+            
+            for category, items in budget_data.items():
+                if items:  # items is a list with one item
+                    item = items[0]  # Get the single recommended item
+                    recommendation_count += 1
+                    total_cost += item.get('price_lkr', 0)
+                    
+                    recommendations_text += f"📦 **{category.upper()}**:\n"
+                    recommendations_text += f"   🏆 {item.get('title', 'Unknown Item')}\n"
+                    recommendations_text += f"   💰 Price: LKR {item.get('price_lkr', 0):.2f}\n"
+                    recommendations_text += f"   🌐 Store: {item.get('website', 'Unknown')}\n"
+                    recommendations_text += f"   🔗 URL: {item.get('url', 'N/A')}\n"
+                    if item.get('kg_enhanced'):
+                        recommendations_text += f"   🧠 Enhanced via Knowledge Graph\n"
+                    recommendations_text += "\n"
+            
+            recommendations_text += "-" * 70 + "\n"
+            recommendations_text += f"🛒 **TOTAL ORDER SUMMARY**:\n"
+            recommendations_text += f"   • Items to Order: {recommendation_count}\n"
+            recommendations_text += f"   • Total Cost: LKR {total_cost:.2f}\n"
+            recommendations_text += f"   • Optimization Method: Linear Programming + Multi-Criteria\n"
+            if budget_summary.get('total_delivery_time'):
+                recommendations_text += f"   • Estimated Delivery: {budget_summary.get('total_delivery_time', 0):.1f} hours\n"
+            recommendations_text += "="*70 + "\n"
+            
+            formatted_output = recommendations_text + formatted_output
         
         
         # Add personalization summary to output
@@ -426,6 +553,54 @@ class ProductSearchOrchestrator:
             formatted_output = formatted_output + loyalty_text
         elif loyalty_summary.get("error"):
             formatted_output = formatted_output + f"\n⚠️ Loyalty optimization failed: {loyalty_summary['error']}\n"
+
+        # 4. Add budget optimization summary LAST (final selection)
+        if budget_optimization_summary and not budget_optimization_summary.get("error"):
+            budget_text = "\n" + "="*60 + "\n"
+            budget_text += "🎯 FINAL BUDGET OPTIMIZATION\n"
+            budget_text += "="*60 + "\n"
+            
+            selection_summary = budget_optimization_summary.get("selection_summary", {})
+            optimization_metrics = budget_optimization_summary.get("optimization_metrics", {})
+            
+            budget_text += f"Categories Optimized: {selection_summary.get('categories_optimized', 0)}\n"
+            budget_text += f"Final Total Cost: LKR {selection_summary.get('total_cost', 0):.2f}\n"
+            budget_text += f"Budget Utilization: {selection_summary.get('budget_utilization', 0):.1f}%\n"
+            budget_text += f"Estimated Delivery: {selection_summary.get('estimated_delivery_time', 0):.1f} hours\n"
+            
+            if selection_summary.get('total_loyalty_savings', 0) > 0:
+                budget_text += f"Total Loyalty Savings: LKR {selection_summary['total_loyalty_savings']:.2f}\n"
+            
+            # Store distribution
+            store_distribution = budget_optimization_summary.get("store_distribution", {})
+            if store_distribution:
+                budget_text += f"\n📊 FINAL STORE SELECTION:\n"
+                for store, count in store_distribution.items():
+                    budget_text += f"  • {store}: {count} item(s)\n"
+            
+            # Optimization metrics
+            if optimization_metrics:
+                budget_text += f"\n⚡ OPTIMIZATION PERFORMANCE:\n"
+                budget_text += f"Alternatives Considered: {optimization_metrics.get('alternatives_considered', 0)}\n"
+                budget_text += f"Average Score: {optimization_metrics.get('average_optimization_score', 0):.3f}\n"
+                
+                constraints_satisfied = optimization_metrics.get('constraints_satisfied', {})
+                if constraints_satisfied:
+                    budget_text += f"Budget Constraint: {'✅' if constraints_satisfied.get('budget_satisfied') else '❌'}\n"
+                    budget_text += f"Delivery Time: {'✅' if constraints_satisfied.get('delivery_time_satisfied') else '❌'}\n"
+            
+            # Recommendations
+            recommendations = budget_optimization_summary.get("recommendations", [])
+            if recommendations:
+                budget_text += f"\n💡 OPTIMIZATION SUGGESTIONS:\n"
+                for rec in recommendations:
+                    budget_text += f"  • {rec}\n"
+            
+            budget_text += "="*60 + "\n"
+            formatted_output = formatted_output + budget_text
+        elif budget_optimization_summary.get("error"):
+            formatted_output = formatted_output + f"\n⚠️ Budget optimization failed: {budget_optimization_summary['error']}\n"
+
         
         # Add logistics filtering summary to output
         if logistics_summary and not logistics_summary.get("error"):
@@ -475,10 +650,17 @@ class ProductSearchOrchestrator:
             "personalization_summary": {},
             "loyalty_optimized_data": {},
             "loyalty_summary": {},
+            "budget_optimized_data": {},
+            "budget_optimization_summary": {},
             "logistics_optimization": None,
             "logistics_summary": {},
             "formatted_output": "",
-            "processing_stage": "initialized"
+            "processing_stage": "initialized",
+            "user_profile": {
+                "budget_limit": self.user_profile.budget_limit_lkr,
+                "max_delivery_time": 48.0,
+                "preferred_stores": getattr(self.user_profile.delivery_preferences, 'preferred_stores', [])
+            }
         }
         
         if Config.DEBUG_MODE:

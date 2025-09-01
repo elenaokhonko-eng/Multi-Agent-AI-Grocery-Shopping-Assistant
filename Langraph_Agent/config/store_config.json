@@ -1,0 +1,102 @@
+{
+  "stores": {
+    "kapruka.com": {
+      "name": "Kapruka",
+      "average_delivery_hours": 24.0,
+      "reliability_score": 0.92,
+      "quality_rating": 4.2,
+      "processing_time_hours": 2.0,
+      "delivery_fee": 200.0,
+      "minimum_order": 500.0,
+      "peak_hours_delay": 6.0,
+      "weekend_delivery": true,
+      "express_delivery_available": true,
+      "express_delivery_hours": 12.0,
+      "express_delivery_fee": 400.0,
+      "coverage_areas": ["Colombo", "Gampaha", "Kalutara", "Kandy", "Galle"],
+      "specialties": ["electronics", "books", "toys", "home"],
+      "customer_rating": 4.3,
+      "on_time_delivery_rate": 0.89
+    },
+    "glowmark.lk": {
+      "name": "Glowmark",
+      "average_delivery_hours": 18.0,
+      "reliability_score": 0.88,
+      "quality_rating": 4.0,
+      "processing_time_hours": 1.5,
+      "delivery_fee": 150.0,
+      "minimum_order": 300.0,
+      "peak_hours_delay": 4.0,
+      "weekend_delivery": true,
+      "express_delivery_available": true,
+      "express_delivery_hours": 8.0,
+      "express_delivery_fee": 350.0,
+      "coverage_areas": ["Colombo", "Gampaha", "Kalutara", "Negombo"],
+      "specialties": ["fashion", "electronics", "beauty", "lifestyle"],
+      "customer_rating": 4.1,
+      "on_time_delivery_rate": 0.85
+    },
+    "onlinekade.lk": {
+      "name": "Online Kade",
+      "average_delivery_hours": 12.0,
+      "reliability_score": 0.85,
+      "quality_rating": 3.8,
+      "processing_time_hours": 1.0,
+      "delivery_fee": 100.0,
+      "minimum_order": 200.0,
+      "peak_hours_delay": 2.0,
+      "weekend_delivery": false,
+      "express_delivery_available": true,
+      "express_delivery_hours": 4.0,
+      "express_delivery_fee": 250.0,
+      "coverage_areas": ["Colombo", "Mount Lavinia", "Dehiwala", "Moratuwa"],
+      "specialties": ["groceries", "food", "beverages", "daily_essentials"],
+      "customer_rating": 3.9,
+      "on_time_delivery_rate": 0.91
+    }
+  },
+  "delivery_zones": {
+    "colombo_city": {
+      "zone_multiplier": 1.0,
+      "same_day_available": true
+    },
+    "colombo_suburbs": {
+      "zone_multiplier": 1.2,
+      "same_day_available": false
+    },
+    "western_province": {
+      "zone_multiplier": 1.5,
+      "same_day_available": false
+    },
+    "other_provinces": {
+      "zone_multiplier": 2.0,
+      "same_day_available": false
+    }
+  },
+  "optimization_weights": {
+    "default": {
+      "price": 0.4,
+      "delivery_time": 0.25,
+      "quality": 0.20,
+      "loyalty_savings": 0.15
+    },
+    "budget_conscious": {
+      "price": 0.6,
+      "delivery_time": 0.15,
+      "quality": 0.15,
+      "loyalty_savings": 0.10
+    },
+    "time_sensitive": {
+      "price": 0.2,
+      "delivery_time": 0.5,
+      "quality": 0.20,
+      "loyalty_savings": 0.10
+    },
+    "quality_focused": {
+      "price": 0.25,
+      "delivery_time": 0.15,
+      "quality": 0.5,
+      "loyalty_savings": 0.10
+    }
+  }
+}

@@ -18,6 +18,8 @@ class ApplicationState(TypedDict):
     logistics_summary: Dict[str, Any]
     loyalty_optimized_data: Dict[str, List[Dict[str, Any]]]
     loyalty_summary: Dict[str, Any]
+    budget_optimized_data: Dict[str, Dict[str, Any]]  # One item per category
+    budget_optimization_summary: Dict[str, Any]
     user_location: Any  # UserLocation object
     formatted_output: str
     processing_stage: str
