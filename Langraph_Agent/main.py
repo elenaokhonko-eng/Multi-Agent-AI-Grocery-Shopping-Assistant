@@ -1,6 +1,6 @@
 """
 Refactored Langraph Application for Product Search
-with Agent-based Architecture and Tool Calling
+with Agent-based Architecture, Tool Calling, and Knowledge Graph Integration
 """
 import os
 from typing import Dict, Any
@@ -17,10 +17,11 @@ from core.state import ApplicationState
 from agents.keyword_extraction_agent import KeywordExtractionAgent
 from agents.data_acquisition_agent import DataAcquisitionAgent
 from agents.output_formatting_agent import OutputFormattingAgent
+from agents.knowledge_graph_agent import KnowledgeGraphAgent
 
 
 class ProductSearchOrchestrator:
-    """Main orchestrator for the product search application"""
+    """Main orchestrator for the product search application with knowledge graph integration"""
     
     def __init__(self):
         """Initialize the orchestrator with LLM and agents"""
@@ -34,9 +35,12 @@ class ProductSearchOrchestrator:
         self.keyword_agent = KeywordExtractionAgent(self.llm)
         self.data_agent = DataAcquisitionAgent(self.llm)
         self.output_agent = OutputFormattingAgent()
+        self.kg_agent = KnowledgeGraphAgent()
         
         # Build the graph
         self.graph = self._build_graph()
+        
+        print("🧠 Product Search Orchestrator initialized with Knowledge Graph integration")
     
     def _build_graph(self) -> StateGraph:
         """Build the Langraph workflow"""
@@ -79,7 +83,7 @@ class ProductSearchOrchestrator:
         }
     
     def _acquire_data_node(self, state: ApplicationState) -> Dict[str, Any]:
-        """Node for data acquisition using tool calling"""
+        """Node for data acquisition using tool calling with knowledge graph enhancement"""
         if Config.DEBUG_MODE:
             print(f"[NODE] Data Acquisition - Processing keywords: {state.get('keywords', [])}")
         
@@ -87,6 +91,7 @@ class ProductSearchOrchestrator:
         if not keywords:
             return {"product_data": {}, "processing_stage": "data_acquisition_failed"}
         
+        # Data acquisition now includes knowledge graph enhancement
         product_data = self.data_agent.acquire_data(keywords)
         
         return {
@@ -95,7 +100,7 @@ class ProductSearchOrchestrator:
         }
     
     def _format_output_node(self, state: ApplicationState) -> Dict[str, Any]:
-        """Node for output formatting"""
+        """Node for output formatting with knowledge graph awareness"""
         if Config.DEBUG_MODE:
             print(f"[NODE] Format Output - Processing {len(state.get('product_data', {}))} keyword results")
         
@@ -112,7 +117,7 @@ class ProductSearchOrchestrator:
     
     def process_query(self, user_query: str) -> ApplicationState:
         """
-        Process a user query through the entire pipeline
+        Process a user query through the entire pipeline with knowledge graph enhancement
         
         Args:
             user_query: User's natural language query
@@ -130,34 +135,72 @@ class ProductSearchOrchestrator:
         }
         
         if Config.DEBUG_MODE:
-            print(f"[ORCHESTRATOR] Processing query: '{user_query}'")
+            print(f"[ORCHESTRATOR] Processing query with KG enhancement: '{user_query}'")
         
         result = self.graph.invoke(initial_state)
         return result
+    
+    def get_knowledge_stats(self) -> Dict[str, Any]:
+        """Get knowledge graph statistics"""
+        return self.kg_agent.get_knowledge_stats()
+    
+    def add_custom_knowledge(self, node_data: Dict[str, Any], relations: list = None):
+        """Add custom knowledge to the graph"""
+        self.data_agent.add_knowledge(node_data, relations)
 
 
 def main():
-    """Main entry point"""
-    print("🤖 Product Search Assistant with Langraph")
-    print("=" * 50)
+    """Main entry point with knowledge graph features"""
+    print("� Product Search Assistant with Knowledge Graph")
+    print("=" * 60)
     
     # Initialize orchestrator
     orchestrator = ProductSearchOrchestrator()
     
+    # Show knowledge graph stats
+    kg_stats = orchestrator.get_knowledge_stats()
+    print(f"📊 Knowledge Graph: {kg_stats['total_nodes']} nodes, {kg_stats['total_relations']} relations")
+    print("💡 The system uses AI + Knowledge Graph for enhanced product discovery")
+    print("-" * 60)
+    
     while True:
         try:
-            user_input = input("\nEnter your product search query (or 'quit' to exit): ")
+            print("\nOptions:")
+            print("1. 🔍 Search for products")
+            print("2. 🧠 Manage Knowledge Graph")
+            print("3. 📊 Show KG Statistics")
+            print("4. 🚪 Exit")
             
-            if user_input.lower() in ['quit', 'exit', 'q']:
+            choice = input("\nSelect option (1-4): ").strip()
+            
+            if choice == "1":
+                user_input = input("\nEnter your product search query: ")
+                if user_input.strip():
+                    # Process the query
+                    result = orchestrator.process_query(user_input)
+                    
+                    if Config.DEBUG_MODE:
+                        print(f"\n[DEBUG] Final processing stage: {result.get('processing_stage')}")
+            
+            elif choice == "2":
+                print("🧠 Launching Knowledge Graph Manager...")
+                from kg_manager import KnowledgeGraphManager
+                kg_manager = KnowledgeGraphManager()
+                kg_manager.interactive_menu()
+            
+            elif choice == "3":
+                stats = orchestrator.get_knowledge_stats()
+                print(f"\n📊 Knowledge Graph Statistics:")
+                print(f"   Nodes: {stats['total_nodes']}")
+                print(f"   Relations: {stats['total_relations']}")
+                print(f"   Categories: {list(stats['categories'].keys())}")
+            
+            elif choice == "4":
                 print("👋 Goodbye!")
                 break
             
-            if user_input.strip():
-                # Process the query
-                result = orchestrator.process_query(user_input)
-                
-                if Config.DEBUG_MODE:
-                    print(f"\n[DEBUG] Final processing stage: {result.get('processing_stage')}")
+            else:
+                print("❌ Invalid option. Please select 1-4.")
         
         except KeyboardInterrupt:
             print("\n👋 Goodbye!")
