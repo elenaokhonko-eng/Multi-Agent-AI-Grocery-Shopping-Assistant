@@ -21,7 +21,7 @@ from agents.personalization_agent import PersonalizationAgent
 from agents.loyalty_aggregator_agent import LoyaltyAggregatorAgent
 from agents.output_formatting_agent import OutputFormattingAgent
 from agents.logistics_agent import LogisticsAgent, UserLocation
-from utils.profile_manager import UserProfileManager, print_profile_summary
+from utils.profile_manager import UserProfileManager, print_profile_summary, interactive_profile_setup
 from utils.location_utils import parse_user_location
 
 
@@ -446,17 +446,7 @@ class ProductSearchOrchestrator:
             logistics_text += f"Distance Threshold: {logistics_summary.get('distance_threshold_km', 100)}km\n"
             logistics_text += f"Single-Item Categories Kept: {logistics_summary.get('single_item_categories_kept', 0)}\n"
             logistics_text += f"Categories with Filtering Applied: {logistics_summary.get('categories_filtered', 0)}\n"
-            
-            if logistics_summary.get('items_removed', 0) > 0:
-                logistics_text += f"\n✂️  Removed {logistics_summary['items_removed']} items from distant stores\n"
-                logistics_text += f"💡 Items from nearby stores prioritized for faster delivery\n"
-            else:
-                logistics_text += f"\n✅ All items are from nearby stores (within {logistics_summary.get('distance_threshold_km', 100)}km)\n"
-            
-            logistics_text += "="*60 + "\n"
-            formatted_output = formatted_output + logistics_text
-        elif logistics_summary.get("error"):
-            formatted_output = formatted_output + f"\n⚠️ Logistics filtering failed: {logistics_summary['error']}\n"
+
         
         # Print the output
         print(formatted_output)
@@ -514,7 +504,7 @@ def main():
     
     user_profile = None
     if choice == "1":
-        user_profile = profile_manager.interactive_profile_setup()
+        user_profile = interactive_profile_setup()
         print_profile_summary(user_profile)
     else:
         user_profile = get_default_profile()
