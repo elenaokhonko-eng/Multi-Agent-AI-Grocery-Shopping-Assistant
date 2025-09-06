@@ -103,6 +103,7 @@ class MongoDBTextSearcher:
                                 "price_lkr": self._extract_price(product),
                                 "website": self.collection_mapping.get(collection_name, collection_name.lower()),
                                 "source_url": product.get('source_url', product.get('url', '')),
+                                "image_url": product.get('image_url', ''),
                                 "collection": collection_name.lower(),
                                 "similarity_score": similarity_score,
                                 "kg_enhanced": False,
