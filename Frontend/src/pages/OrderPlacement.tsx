@@ -15,7 +15,6 @@ import {
   Trash2,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Header } from '@/components/Header';
 
 interface OptimizedItem {
   title: string;
@@ -27,6 +26,12 @@ interface OptimizedItem {
   kg_enhanced: boolean;
   original_query: string;
   image_url?: string;
+  // Optional fields your backend can accept if present
+  item_id?: string;
+  brand?: string;
+  category?: string;
+  delivery_hours?: number;
+  tags?: string[];
 }
 
 interface SearchResults {
@@ -51,6 +56,10 @@ interface SearchResults {
 
 const STORAGE_KEY = 'op_cache';
 type OPCache = { searchResults: SearchResults; originalQuery: string };
+
+// === NEW: config helpers ===
+const FEEDBACK_URL = 'http://127.0.0.1:3004/api/feedback'; // or 'http://127.0.0.1:3004/api/feedback' without a dev proxy
+const getUserId = () => localStorage.getItem('user_id') || 'default_user';
 
 const OrderPlacement = () => {
   const location = useLocation();
@@ -112,7 +121,7 @@ const OrderPlacement = () => {
 
   const getStoreColor = (domain: string) => {
     const colors: Record<string, string> = {
-      'glowmark.lk': 'bg-blue-100 text-blue-800',
+      'glomark.lk': 'bg-blue-100 text-blue-800',
       'kapruka.com': 'bg-green-100 text-green-800',
       'onlinekade.lk': 'bg-purple-100 text-purple-800',
       'lassanaflora.com': 'bg-pink-100 text-pink-800',
@@ -127,8 +136,63 @@ const OrderPlacement = () => {
       `<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><rect width="100%" height="100%" fill="#eee"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-size="10" fill="#666">No Image</text></svg>`
     );
 
-  const removeItemAt = (idx: number) => {
+  // === NEW: send dislike feedback ===
+  const sendDislikeFeedback = async (item: OptimizedItem, position: number) => {
+    const payload = {
+      user_id: getUserId(),
+      action: 'dislike',
+      query: query || item.original_query || '',
+      impression_id: (window.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`),
+      position, // 1-based
+      // rating is optional; omit for dislike
+      item: {
+        // Provide whatever you have; backend treats many as optional
+        item_id: item.item_id || item.source_url || item.title,
+        title: item.title,
+        brand: item.brand, // may be undefined
+        store: storeDomain(item) || item.website,
+        category: item.category, // may be undefined
+        price_lkr: item.price_lkr,
+        delivery_hours: item.delivery_hours, // may be undefined
+        tags: item.tags ?? [
+          item.collection ? `collection:${item.collection}` : undefined,
+          item.kg_enhanced ? 'ai-enhanced' : undefined,
+          item.website ? `site:${item.website}` : undefined,
+        ].filter(Boolean) as string[],
+      },
+    };
+
+    const res = await fetch(FEEDBACK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err?.message || `Feedback failed with ${res.status}`);
+    }
+  };
+
+  // === UPDATED: remove + feedback ===
+  const removeItemAt = async (idx: number, item: OptimizedItem) => {
+    // optimistic UI update
     setItems((prev) => prev.filter((_, i) => i !== idx));
+
+    try {
+      await sendDislikeFeedback(item, idx + 1);
+      toast({
+        title: 'Removed',
+        description: 'Thanks! We’ll learn from this and improve future picks.',
+      });
+    } catch (e: any) {
+      // non-fatal; keep item removed
+      toast({
+        title: 'Feedback failed',
+        description: e?.message || 'Could not record your feedback.',
+        variant: 'destructive',
+      });
+    }
   };
 
   if (!data) {
@@ -157,16 +221,9 @@ const OrderPlacement = () => {
 
   return (
     <div className="min-h-screen bg-background">
-
       <div className="container mx-auto px-4 py-8">
         {/* Header Section */}
         <div className="flex items-center space-x-4 mb-8">
-          {/*<Link to="/">*/}
-          {/*  <Button variant="outline" size="sm">*/}
-          {/*    <ArrowLeft className="h-4 w-4 mr-2" />*/}
-          {/*    Back to Search*/}
-          {/*  </Button>*/}
-          {/*</Link>*/}
           <div>
             <h1 className="text-3xl font-bold">Order Placement</h1>
             <p className="text-muted-foreground">Review your AI-optimized product selection</p>
@@ -308,7 +365,7 @@ const OrderPlacement = () => {
                                       size="sm"
                                       variant="outline"
                                       className="rounded-full"
-                                      onClick={() => removeItemAt(index)}
+                                      onClick={() => removeItemAt(index, item)}
                                     >
                                       <Trash2 className="h-4 w-4 mr-1" />
                                       Remove
