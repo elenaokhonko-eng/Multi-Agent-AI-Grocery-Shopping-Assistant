@@ -1,6 +1,5 @@
 """
-Refactored Langraph Application for Product Search
-with Agent-based Architecture, Tool Calling, and Personalization
+Langraph Application for Product Search with Multi Agent-based Architecture, Tool Calling, and Personalization
 """
 import os
 from typing import Dict, Any

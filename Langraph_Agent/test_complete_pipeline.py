@@ -4,9 +4,6 @@ Test script for the complete Langraph pipeline with Logistics Agent
 import sys
 import os
 
-# Add the parent directory to Python path
-sys.path.append('/Users/yasiru/Documents/GitHub/Tensor-Titans-SLAIC-2025-Working/Langraph_Agent')
-
 from main import ProductSearchOrchestrator
 from core.user_profile import UserProfile
 from utils.location_utils import parse_user_location

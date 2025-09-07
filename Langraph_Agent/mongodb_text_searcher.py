@@ -12,11 +12,10 @@ class MongoDBTextSearcher:
     def __init__(self):
         self.client = None
         self.db = None
-        self.collections = ["Glowmark", "Kapuruka", "Lassana_Flora", "OnlineKade"]
+        self.collections = ["Glowmark", "Kapuruka", "OnlineKade"]
         self.collection_mapping = {
             "Glowmark": "glowmark.lk",
-            "Kapuruka": "kapruka.com", 
-            "Lassana_Flora": "lassanaflora.com",
+            "Kapuruka": "kapruka.com",
             "OnlineKade": "onlinekade.lk"
         }
         
