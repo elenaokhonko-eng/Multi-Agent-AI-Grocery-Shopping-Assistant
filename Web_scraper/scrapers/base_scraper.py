@@ -24,6 +24,8 @@ from utils.helpers import (
     validate_price, save_json_data, deduplicate_items, 
     calculate_stats
 )
+import re
+from urllib.parse import urlparse
 
 nest_asyncio.apply()
 
@@ -50,20 +52,24 @@ class BaseScraper(ABC):
         
         # System prompt for LLM
         self.system_prompt = """You are a precise extraction assistant.
-Given raw markdown from an e-commerce search page, extract a list of items with:
-- title (concise, remove promo text)
-- price_value (numeric, no currency symbols)
-- currency ("LKR")
+        Given raw markdown from an e-commerce search page, extract a list of items with:
+        - title (concise, remove promo text)
+        - price_value (numeric, no currency symbols)
+        - currency ("LKR")
+        - image_url (absolute URL if present; else null)
 
-Return STRICT JSON only in this format:
-{"items":[{"title":"Product Name","price_value":123.45,"currency":"LKR"}]}
+        The markdown often encodes images as: ![alt](https://.../image.jpg)
 
-Rules:
-1. Extract only actual products with valid prices
-2. Remove promotional text from titles
-3. If duplicates exist, keep the lowest price per unique title
-4. Return empty items array if no products found
-5. No commentary or explanation"""
+        Return STRICT JSON only in this format:
+        {"items":[{"title":"Product Name","price_value":123.45,"currency":"LKR","image_url":"https://example.com/img.jpg","currency":"LKR"}]}
+
+        Rules:
+        1. Extract only actual products with valid prices.
+        2. Remove promotional text from titles.
+        3. If duplicates exist, keep the lowest price per unique title.
+        4. image_url must be the main product image closest to the product title/price block. If no image is clearly associated, set image_url to null.
+        5. Return empty items array if no products found.
+        6. No commentary or explanation."""
 
         # Track last request time for rate limiting
         self._last_request_time = 0
@@ -190,42 +196,74 @@ Rules:
             raise
 
     def parse_llm_response(self, response: str) -> List[Dict[str, Any]]:
-        """Parse and validate LLM response."""
+        """Parse and validate LLM response (now captures image_url)."""
+
+        def _fix_url_whitespace(u: Optional[str]) -> Optional[str]:
+            if not u or not isinstance(u, str):
+                return None
+            # Remove spaces/newlines/tabs and stray parens that sometimes leak from markdown
+            u = re.sub(r"\s+", "", u)
+            u = u.replace("(", "").replace(")", "")
+            return u or None
+
+        def _is_valid_img_url(u: Optional[str]) -> bool:
+            if not u:
+                return False
+            try:
+                p = urlparse(u)
+                if not (p.scheme and p.netloc):
+                    return False
+                # Heuristic: common image extensions; relax if your sources vary
+                return p.path.lower().endswith((".jpg", ".jpeg", ".png", ".webp", ".gif", ".jfif"))
+            except Exception:
+                return False
+
         try:
             # Extract JSON from response
             json_str = extract_json_from_response(response)
-            
+
             # Parse JSON
             data = json.loads(json_str)
             items = data.get("items", [])
-            
+
             if not isinstance(items, list):
                 self.logger.warning("LLM response items is not a list")
                 return []
-            
-            # Validate and clean items
-            valid_items = []
+
+            # Validate, clean, and collect
+            cleaned: List[Dict[str, Any]] = []
             for item in items:
                 if not isinstance(item, dict):
                     continue
-                    
+
                 title = clean_title(item.get("title", ""))
                 price = validate_price(item.get("price_value") or item.get("price_LKR"))
                 currency = item.get("currency", "LKR")
-                
+                image_url = _fix_url_whitespace(item.get("image_url"))
+
                 if title and price is not None:
-                    valid_items.append({
+                    if image_url and not _is_valid_img_url(image_url):
+                        image_url = None  # drop bad/partial urls
+
+                    cleaned.append({
                         "title": title,
                         "price_value": price,
-                        "currency": currency
+                        "currency": currency,
+                        "image_url": image_url,
                     })
-            
-            # Remove duplicates
-            valid_items = deduplicate_items(valid_items)
-            
+
+            # Deduplicate by normalized title, keeping the lowest price (and its image_url)
+            by_title: Dict[str, Dict[str, Any]] = {}
+            for it in cleaned:
+                key = re.sub(r"\s+", " ", it["title"].lower()).strip()
+                if key not in by_title or it["price_value"] < by_title[key]["price_value"]:
+                    by_title[key] = it
+
+            valid_items = list(by_title.values())
+
             self.logger.info(f"Parsed {len(valid_items)} valid items from LLM response")
             return valid_items
-            
+
         except json.JSONDecodeError as e:
             self.logger.error(f"JSON decode error: {e}")
             self.logger.debug(f"Raw response: {response[:500]}...")
@@ -235,20 +273,20 @@ Rules:
             return []
 
     def normalize_items(self, items: List[Dict], url: str) -> List[Dict]:
-        """Normalize extracted items and add metadata."""
+        """Normalize extracted items and add metadata (incl. image_url)."""
         source_domain = urlparse(url).netloc or url
         now_utc = datetime.utcnow()
-        
         docs = []
         for item in items:
             title = item.get("title", "")
             price_val = item.get("price_value")
             currency = item.get("currency", "LKR")
-            
+            image_url = item.get("image_url")
             doc = {
                 "title": title,
                 "price_LKR": price_val,
                 "currency": currency,
+                "image_url": image_url,
                 "source_url": url,
                 "source_domain": source_domain,
                 "website": self.get_website_name(),
@@ -355,11 +393,11 @@ Rules:
             
             markdown_text = self.trim_markdown(markdown_text)
             self.logger.info(f"Processed markdown length: {len(markdown_text):,} characters")
-            
+
             # Get LLM response and parse items
             llm_response = await self.get_llm_response(markdown_text)
             items = self.parse_llm_response(llm_response)
-            
+            self.logger.info(items)
             if not items:
                 self.logger.warning("No items extracted from LLM response")
                 return {

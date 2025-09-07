@@ -1,4 +1,4 @@
-import { useLocation, Link, useNavigate } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +16,7 @@ interface OptimizedItem {
   similarity_score: number;
   kg_enhanced: boolean;
   original_query: string;
+  image_url?: string;
 }
 
 interface SearchResults {
@@ -40,11 +41,10 @@ interface SearchResults {
 
 const OrderPlacement = () => {
   const location = useLocation();
-  const navigate = useNavigate();
   const { toast } = useToast();
-  
-  const searchResults = location.state?.searchResults as SearchResults;
-  const originalQuery = location.state?.originalQuery as string;
+
+  const searchResults = location.state?.searchResults as SearchResults | undefined;
+  const originalQuery = location.state?.originalQuery as string | undefined;
 
   if (!searchResults) {
     return (
@@ -69,33 +69,49 @@ const OrderPlacement = () => {
 
   const handleConfirmOrder = () => {
     toast({
-      title: "Order functionality coming soon!",
-      description: "The order confirmation feature will be implemented next.",
+      title: 'Order functionality coming soon!',
+      description: 'The order confirmation feature will be implemented next.',
     });
   };
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-LK', {
+  const formatPrice = (price: number) =>
+    new Intl.NumberFormat('en-LK', {
       style: 'currency',
       currency: 'LKR',
       minimumFractionDigits: 2,
     }).format(price);
+
+  // Derive a stable domain from the source_url; fallback to website string
+  const storeDomain = (item: OptimizedItem) => {
+    try {
+      return new URL(item.source_url).hostname.replace(/^www\./, '').toLowerCase();
+    } catch {
+      return (item.website || '').toLowerCase();
+    }
   };
 
-  const getStoreColor = (website: string) => {
-    const colors: { [key: string]: string } = {
+  // Color map by domain
+  const getStoreColor = (domain: string) => {
+    const colors: Record<string, string> = {
       'glowmark.lk': 'bg-blue-100 text-blue-800',
       'kapruka.com': 'bg-green-100 text-green-800',
       'onlinekade.lk': 'bg-purple-100 text-purple-800',
       'lassanaflora.com': 'bg-pink-100 text-pink-800',
     };
-    return colors[website] || 'bg-gray-100 text-gray-800';
+    return colors[domain] || 'bg-gray-100 text-gray-800';
   };
+
+  // ✅ Local, loop-safe fallback (inline SVG data URI)
+  const FALLBACK_IMG =
+    'data:image/svg+xml;utf8,' +
+    encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><rect width="100%" height="100%" fill="#eee"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-size="10" fill="#666">No Image</text></svg>`
+    );
 
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      
+
       <div className="container mx-auto px-4 py-8">
         {/* Header Section */}
         <div className="flex items-center space-x-4 mb-8">
@@ -118,7 +134,7 @@ const OrderPlacement = () => {
               <Badge variant="outline" className="bg-gradient-primary text-white">
                 AI Search Query
               </Badge>
-              <span className="font-medium">"{originalQuery}"</span>
+              <span className="font-medium">"{originalQuery || ''}"</span>
             </div>
           </CardContent>
         </Card>
@@ -149,7 +165,9 @@ const OrderPlacement = () => {
                     <div className="text-sm text-muted-foreground">Stores</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-purple-600">{Math.round(searchResults.estimated_delivery_hours)}h</div>
+                    <div className="text-2xl font-bold text-purple-600">
+                      {Math.round(searchResults.estimated_delivery_hours)}h
+                    </div>
                     <div className="text-sm text-muted-foreground">Delivery</div>
                   </div>
                 </div>
@@ -167,48 +185,92 @@ const OrderPlacement = () => {
               <CardContent>
                 {searchResults.optimized_items.length > 0 ? (
                   <div className="space-y-4">
-                    {searchResults.optimized_items.map((item, index) => (
-                      <div key={index} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-2 mb-2">
-                              <h3 className="font-semibold text-lg">{item.title}</h3>
-                              {item.kg_enhanced && (
-                                <Badge variant="secondary" className="bg-green-100 text-green-800">
-                                  🧠 AI Enhanced
-                                </Badge>
-                              )}
-                            </div>
-                            <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                              <div className="flex items-center space-x-1">
-                                <Store className="h-4 w-4" />
-                                <Badge className={getStoreColor(item.website)}>
-                                  {item.website}
-                                </Badge>
+                    {searchResults.optimized_items.map((item) => {
+                      const domain = storeDomain(item);
+                      const imgSrc = item.image_url || FALLBACK_IMG;
+                      const key = item.source_url || `${item.collection}-${item.title}`;
+                      return (
+                        <div
+                          key={key} // ✅ stable key
+                          className="border rounded-lg p-4 hover:shadow-md transition-shadow"
+                        >
+                          <div className="flex gap-4">
+                            {/* Thumbnail */}
+                            <a
+                              href={item.source_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="block w-20 h-20 flex-shrink-0"
+                              title="Open product page"
+                            >
+                              <img
+                                src={imgSrc}
+                                alt={item.title}
+                                loading="lazy"
+                                className="w-20 h-20 object-contain rounded-md bg-muted"
+                                onError={(e) => {
+                                  const img = e.currentTarget;
+                                  // ✅ stop infinite loop
+                                  img.onerror = null;
+                                  img.src = FALLBACK_IMG;
+                                }}
+                              />
+                            </a>
+
+                            {/* Details */}
+                            <div className="flex-1">
+                              <div className="flex justify-between items-start">
+                                <div className="flex-1">
+                                  <div className="flex items-center space-x-2 mb-2">
+                                    <h3 className="font-semibold text-lg">{item.title}</h3>
+                                    {item.kg_enhanced && (
+                                      <Badge variant="secondary" className="bg-green-100 text-green-800">
+                                        🧠 AI Enhanced
+                                      </Badge>
+                                    )}
+                                  </div>
+
+                                  <div className="flex items-center flex-wrap gap-3 text-sm text-muted-foreground">
+                                    <div className="flex items-center gap-1">
+                                      <Store className="h-4 w-4" />
+                                      <Badge className={getStoreColor(domain)}>{domain}</Badge>
+                                    </div>
+
+                                    <a
+                                      href={item.source_url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="underline hover:no-underline"
+                                    >
+                                      View product
+                                    </a>
+
+                                    <div className="flex items-center gap-1">
+                                      <CheckCircle className="h-4 w-4" />
+                                      <span>Match: {Math.round(item.similarity_score * 100)}%</span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="text-right">
+                                  <div className="text-2xl font-bold text-primary">
+                                    {formatPrice(item.price_lkr)}
+                                  </div>
+                                  <div className="text-sm text-muted-foreground">per item</div>
+                                </div>
                               </div>
-                              <div className="flex items-center space-x-1">
-                                <CheckCircle className="h-4 w-4" />
-                                <span>Match: {Math.round(item.similarity_score * 100)}%</span>
-                              </div>
                             </div>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-2xl font-bold text-primary">
-                              {formatPrice(item.price_lkr)}
-                            </div>
-                            <div className="text-sm text-muted-foreground">per item</div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="text-center py-8">
                     <Package className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
                     <h3 className="text-lg font-semibold mb-2">No Items Found</h3>
                     <p className="text-muted-foreground">
-                      The AI couldn't find suitable products matching your criteria. 
-                      Try adjusting your search query.
+                      The AI couldn't find suitable products matching your criteria. Try adjusting your search query.
                     </p>
                   </div>
                 )}
@@ -218,7 +280,6 @@ const OrderPlacement = () => {
 
           {/* Sidebar - Order Summary */}
           <div className="space-y-6">
-            {/* Order Summary */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
@@ -256,15 +317,15 @@ const OrderPlacement = () => {
                     <Clock className="h-4 w-4 text-muted-foreground" />
                     <span>Estimated delivery: {Math.round(searchResults.estimated_delivery_hours)} hours</span>
                   </div>
-                  
-                  <Button 
+
+                  <Button
                     onClick={handleConfirmOrder}
                     className="w-full bg-gradient-primary hover:opacity-90"
                     disabled={searchResults.items_count === 0}
                   >
                     Confirm Order
                   </Button>
-                  
+
                   <p className="text-xs text-muted-foreground text-center">
                     By confirming, you agree to our terms and conditions
                   </p>
@@ -272,7 +333,6 @@ const OrderPlacement = () => {
               </CardContent>
             </Card>
 
-            {/* Pipeline Summary */}
             <Card>
               <CardHeader>
                 <CardTitle>AI Processing Summary</CardTitle>
