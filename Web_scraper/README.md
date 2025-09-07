@@ -23,6 +23,29 @@ A sophisticated web scraping system with semantic search capabilities and automa
 - **Scraping**: crawl4ai with LLM processing via Groq API
 - **Concurrency**: asyncio and threading for parallel execution
 
+## Project Structure
+
+```
+Web_scraper/
+├── scrapers/           # Scraper implementations
+│   ├── base_scraper.py     # Base scraper class
+│   ├── glowmark_scraper.py # Glowmark implementation
+│   ├── kapruka_scraper.py  # Kapruka implementation
+│   └── onlinekade_scraper.py # OnlineKade implementation
+├── retrieval/          # Item retrieval and similarity search
+│   ├── similarity_search.py   # Semantic search engine
+│   └── item_retriever.py      # Advanced retrieval system
+├── config/             # Configuration management
+│   └── settings.py         # Settings and configuration
+├── utils/              # Utility functions
+│   └── helpers.py          # Helper functions
+├── data/               # Data storage directory
+├── app.py              # Flask web application
+├── cli.py              # Command-line interface
+├── requirements.txt    # Python dependencies
+└── .env.example        # Environment variables template
+```
+
 ## 📋 Requirements
 
 ### System Requirements
@@ -31,7 +54,7 @@ A sophisticated web scraping system with semantic search capabilities and automa
 - Internet connection for scraping and AI processing
 
 ### API Keys
-- Groq API key for LLM processing
+- Groq API key
 
 ## 🚀 Installation
 
@@ -63,7 +86,7 @@ Edit `config/settings.py`:
 class Config:
     # Database configuration
     MONGODB_URI = "mongodb://localhost:27017"
-    DATABASE_NAME = "tensor_titans_scraper"
+    DATABASE_NAME = "ecommerce_db"
     
     # API configuration
     GROQ_API_KEY = "your_groq_api_key_here"
@@ -317,26 +340,3 @@ tail -f data/scraper.log
 - **Query executor logs**: `query_executor.log`
 - **Log levels**: DEBUG, INFO, WARNING, ERROR
 - **Configurable** via `config/settings.py`
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests for new functionality
-5. Submit a pull request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 🎯 Future Enhancements
-
-- [ ] Price tracking and alerts
-- [ ] Product image extraction
-- [ ] Advanced filtering options
-- [ ] Real-time notifications
-- [ ] Machine learning price predictions
-- [ ] Additional e-commerce platforms
-- [ ] API rate limiting and authentication
-- [ ] Distributed processing capabilities

@@ -146,12 +146,16 @@ def main():
     user_input = input("Press Enter to test API endpoints (or 's' to skip): ")
     if user_input.lower() != 's':
         test_api_endpoints()
+    else:
+        print("Skipping API endpoint tests.\n")
     
     # Test 3: Query Executor
     print("📝 Note: Query executor test will run for 30 seconds")
     user_input = input("Press Enter to test query executor (or 's' to skip): ")
     if user_input.lower() != 's':
         asyncio.run(test_query_executor())
+    else:
+        print("Skipping Query Executor tests.\n")
     
     print("🎉 All tests completed!")
 
