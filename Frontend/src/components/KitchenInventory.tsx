@@ -69,7 +69,9 @@ export const KitchenInventory = () => {
   // Show loading state
   if (isLoading) {
     return (
-      <div className={`transition-all duration-300 ${isExpanded ? 'w-80' : 'w-16'} bg-white border-l shadow-soft`}>
+      <aside
+        className={`sticky top-24 h-[calc(100vh-6rem)] flex flex-col transition-all duration-300 ${isExpanded ? 'w-80' : 'w-16'} bg-white border-l shadow-soft shrink-0 z-40`}
+      >
         <div className="p-4 border-b">
           <Button
             variant="ghost"
@@ -91,14 +93,16 @@ export const KitchenInventory = () => {
             <p className="text-muted-foreground">Loading inventory...</p>
           </div>
         )}
-      </div>
+      </aside>
     );
   }
 
   // Show error state
   if (error) {
     return (
-      <div className={`transition-all duration-300 ${isExpanded ? 'w-80' : 'w-16'} bg-white border-l shadow-soft`}>
+      <aside
+        className={`sticky top-24 h-[calc(100vh-6rem)] flex flex-col transition-all duration-300 ${isExpanded ? 'w-80' : 'w-16'} bg-white border-l shadow-soft shrink-0 z-40`}
+      >
         <div className="p-4 border-b">
           <Button
             variant="ghost"
@@ -121,7 +125,7 @@ export const KitchenInventory = () => {
             <p className="text-sm text-muted-foreground">Check if the backend server is running</p>
           </div>
         )}
-      </div>
+      </aside>
     );
   }
 
@@ -144,7 +148,9 @@ export const KitchenInventory = () => {
   };
 
   return (
-    <div className={`transition-all duration-300 ${isExpanded ? 'w-80' : 'w-16'} bg-white border-l shadow-soft`}>
+    <aside
+        className={`sticky top-24 h-[calc(100vh-6rem)] flex flex-col transition-all duration-300 ${isExpanded ? 'w-80' : 'w-16'} bg-white border-l shadow-soft shrink-0 z-40`}
+      >
       {/* Toggle Button */}
       <div className="p-4 border-b">
         <Button
@@ -164,7 +170,7 @@ export const KitchenInventory = () => {
       </div>
 
       {isExpanded && (
-        <div className="p-4 space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto">
+        <div className="p-4 space-y-4 flex-1 overflow-y-auto overscroll-y-contain">
           {/* Header */}
           <div className="space-y-2">
             <h3 className="font-semibold text-lg flex items-center">
@@ -334,6 +340,6 @@ export const KitchenInventory = () => {
           </Card>
         </div>
       )}
-    </div>
+    </aside>
   );
 };
