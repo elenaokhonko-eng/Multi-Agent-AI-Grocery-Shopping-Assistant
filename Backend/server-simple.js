@@ -84,15 +84,26 @@ app.patch('/api/inventory/:id/quantity', async (req, res) => {
 });
 
 app.delete('/api/inventory/:id', async (req, res) => {
+  const { id } = req.params;
+
+  // 1) Validate ID early
+  if (!mongoose.isValidObjectId(id)) {
+    return res.status(400).json({ error: 'Invalid item id' });
+  }
+
   try {
-    const item = await InventoryItem.findByIdAndDelete(req.params.id);
-    if (!item) {
+    // 2) Use deleteOne and check deletedCount
+    const result = await InventoryItem.deleteOne({ _id: id });
+
+    if (result.deletedCount === 0) {
       return res.status(404).json({ error: 'Item not found' });
     }
-    res.status(204).send();
+
+    // 3) Return 200 with a body; many UIs dislike 204 No Content
+    return res.status(200).json({ ok: true, deletedId: id });
   } catch (error) {
     console.error('Error deleting inventory item:', error);
-    res.status(500).json({ error: 'Failed to delete inventory item' });
+    return res.status(500).json({ error: 'Failed to delete inventory item' });
   }
 });
 
