@@ -8,7 +8,11 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <Header />
       
-      <div className="flex">
+      <div className="flex items-start gap-6 overflow-visible">
+
+        {/* Kitchen Inventory Sidebar */}
+        <KitchenInventory />
+
         {/* Main Content */}
         <div className="flex-1">
           <div className="container mx-auto px-4 py-6 space-y-8">
@@ -76,9 +80,6 @@ const Index = () => {
             </div>
           </div>
         </div>
-        
-        {/* Kitchen Inventory Sidebar */}
-        <KitchenInventory />
       </div>
     </div>
   );
