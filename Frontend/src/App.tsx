@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import Orders from "./pages/Orders";
 import OrderPlacement from "./pages/OrderPlacement";
 import NotFound from "./pages/NotFound";
+import KitchenInventoryPage from "./pages/KitchenInventoryPage"; // 👈 add this
 
 const queryClient = new QueryClient();
 
@@ -18,6 +19,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/inventory" element={<KitchenInventoryPage />} /> {/* 👈 new */}
           <Route path="/orders" element={<Orders />} />
           <Route path="/order-placement" element={<OrderPlacement />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
