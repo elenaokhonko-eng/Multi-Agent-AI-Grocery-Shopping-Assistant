@@ -129,23 +129,21 @@ const getStatusInfo = (status: Order['status']) => {
 
 const Orders = () => {
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="bg-white shadow-soft border-b">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center space-x-4">
-            <Link to="/">
-              <Button variant="ghost" size="sm">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Store
-              </Button>
-            </Link>
-            <div>
-              <h1 className="text-3xl font-bold">Order Tracking</h1>
-              <p className="text-muted-foreground">Track all your orders in one place</p>
-            </div>
+    <div className="min-h-screen ">
+      {/* Header (soft card on tinted bg) */}
+      <div className="container mx-auto px-4 pt-6">
+        {/*<div className="flex items-center gap-4 rounded-2xl bg-white/70 backdrop-blur-sm border border-white/60 shadow-soft px-4 py-3">*/}
+          <Link to="/">
+            {/*<Button variant="ghost" size="sm" className="rounded-full">*/}
+            {/*  <ArrowLeft className="h-4 w-4 mr-2" />*/}
+            {/*  Back to Store*/}
+            {/*</Button>*/}
+          </Link>
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Order Tracking</h1>
+            <p className="text-sm md:text-base text-muted-foreground">Track all your orders in one place</p>
           </div>
-        </div>
+        {/*</div>*/}
       </div>
 
       {/* Orders List */}
@@ -156,42 +154,47 @@ const Orders = () => {
             const StatusIcon = statusInfo.icon;
 
             return (
-              <Card key={order.id} className="shadow-soft border-0">
-                <CardHeader>
+              <Card
+                key={order.id}
+                className="rounded-2xl border border-black/5 bg-white/90 backdrop-blur-sm shadow-soft"
+              >
+                <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
                     <div className="space-y-1">
-                      <CardTitle className="text-lg">Order #{order.id}</CardTitle>
+                      <CardTitle className="text-xl md:text-2xl font-semibold tracking-tight">
+                        Order #{order.id}
+                      </CardTitle>
                       <p className="text-sm text-muted-foreground">
                         Ordered on {new Date(order.orderDate).toLocaleDateString()}
                       </p>
                     </div>
-                    <Badge className={statusInfo.color}>
-                      <StatusIcon className="h-3 w-3 mr-1" />
+                    <Badge className={`${statusInfo.color} rounded-full px-3 py-1 text-xs md:text-sm`}>
+                      <StatusIcon className="h-3.5 w-3.5 mr-1" />
                       {statusInfo.label}
                     </Badge>
                   </div>
                 </CardHeader>
-                
+
                 <CardContent className="space-y-4">
                   {/* Product Info */}
-                  <div className="flex items-center space-x-4">
+                  <div className="flex items-center gap-4">
                     <img
                       src={order.productImage}
                       alt={order.productName}
-                      className="w-16 h-16 object-cover rounded-lg shadow-soft"
+                      className="w-16 h-16 md:w-20 md:h-20 object-cover rounded-xl shadow-soft"
                     />
                     <div className="flex-1">
-                      <h3 className="font-medium">{order.productName}</h3>
+                      <h3 className="font-medium text-base md:text-lg">{order.productName}</h3>
                       <p className="text-sm text-muted-foreground">
                         Quantity: {order.quantity} • ${order.price}
                       </p>
-                      <p className="text-sm font-medium">
+                      <p className="text-sm md:text-base font-semibold">
                         Total: ${(order.price * order.quantity).toFixed(2)}
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm text-muted-foreground">Tracking Number</p>
-                      <p className="font-mono text-sm font-medium">{order.trackingNumber}</p>
+                      <p className="text-xs md:text-sm text-muted-foreground">Tracking Number</p>
+                      <p className="font-mono text-sm md:text-base font-medium">{order.trackingNumber}</p>
                     </div>
                   </div>
 
@@ -200,8 +203,8 @@ const Orders = () => {
                   {/* Progress */}
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium">Order Progress</p>
-                      <p className="text-sm text-muted-foreground">{order.progress}%</p>
+                      <p className="text-sm md:text-base font-medium">Order Progress</p>
+                      <p className="text-sm md:text-base text-muted-foreground">{order.progress}%</p>
                     </div>
                     <Progress value={order.progress} className="h-2" />
                     <p className="text-sm text-muted-foreground">
@@ -212,37 +215,37 @@ const Orders = () => {
                     </p>
                   </div>
 
-                  {/* Action Buttons */}
-                  <div className="flex items-center space-x-2 pt-2">
+                  {/* Actions */}
+                  <div className="flex flex-wrap items-center gap-2 pt-2">
                     {order.status === 'delivered' && (
                       <>
-                        <Button variant="outline" size="sm">
+                        <Button variant="outline" size="sm" className="rounded-full">
                           Rate Product
                         </Button>
-                        <Button variant="outline" size="sm">
+                        <Button variant="outline" size="sm" className="rounded-full">
                           Buy Again
                         </Button>
                       </>
                     )}
                     {order.status === 'in-dispute' && (
-                      <Button variant="outline" size="sm">
+                      <Button variant="outline" size="sm" className="rounded-full">
                         <MessageSquare className="h-4 w-4 mr-2" />
                         View Dispute
                       </Button>
                     )}
                     {order.status === 'in-review' && (
-                      <Button variant="outline" size="sm">
+                      <Button variant="outline" size="sm" className="rounded-full">
                         <Clock className="h-4 w-4 mr-2" />
                         Review Details
                       </Button>
                     )}
                     {(order.status === 'in-transit' || order.status === 'delivery') && (
-                      <Button variant="outline" size="sm">
+                      <Button variant="outline" size="sm" className="rounded-full">
                         <Truck className="h-4 w-4 mr-2" />
                         Track Live
                       </Button>
                     )}
-                    <Button variant="ghost" size="sm">
+                    <Button variant="ghost" size="sm" className="rounded-full">
                       Order Details
                     </Button>
                   </div>
@@ -252,31 +255,41 @@ const Orders = () => {
           })}
         </div>
 
-        {/* Summary */}
-        <Card className="mt-8 bg-gradient-secondary border-0">
+        {/* Summary (pill-style like your status bar) */}
+        <Card className="mt-8 rounded-3xl border-0 bg-[#F2FBFD] shadow-soft">
           <CardContent className="p-6">
-            <div className="text-center space-y-2">
-              <h3 className="text-lg font-semibold">Order Summary</h3>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
-                <div>
-                  <p className="font-medium text-info">{orders.filter(o => o.status === 'in-transit').length}</p>
-                  <p className="text-muted-foreground">In Transit</p>
+            <div className="text-center space-y-3">
+              <h3 className="text-lg md:text-xl font-semibold tracking-tight">Order Summary</h3>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-6 text-center">
+                <div className="space-y-1">
+                  <div className="text-2xl md:text-3xl font-bold leading-none">
+                    {orders.filter(o => o.status === 'in-transit').length}
+                  </div>
+                  <p className="text-sm md:text-base text-muted-foreground">In Transit</p>
                 </div>
-                <div>
-                  <p className="font-medium text-accent">{orders.filter(o => o.status === 'delivery').length}</p>
-                  <p className="text-muted-foreground">Out for Delivery</p>
+                <div className="space-y-1">
+                  <div className="text-2xl md:text-3xl font-bold leading-none">
+                    {orders.filter(o => o.status === 'delivery').length}
+                  </div>
+                  <p className="text-sm md:text-base text-muted-foreground">Out for Delivery</p>
                 </div>
-                <div>
-                  <p className="font-medium text-success">{orders.filter(o => o.status === 'delivered').length}</p>
-                  <p className="text-muted-foreground">Delivered</p>
+                <div className="space-y-1">
+                  <div className="text-2xl md:text-3xl font-bold leading-none">
+                    {orders.filter(o => o.status === 'delivered').length}
+                  </div>
+                  <p className="text-sm md:text-base text-muted-foreground">Delivered</p>
                 </div>
-                <div>
-                  <p className="font-medium text-warning">{orders.filter(o => o.status === 'in-review').length}</p>
-                  <p className="text-muted-foreground">In Review</p>
+                <div className="space-y-1">
+                  <div className="text-2xl md:text-3xl font-bold leading-none">
+                    {orders.filter(o => o.status === 'in-review').length}
+                  </div>
+                  <p className="text-sm md:text-base text-muted-foreground">In Review</p>
                 </div>
-                <div>
-                  <p className="font-medium text-destructive">{orders.filter(o => o.status === 'in-dispute').length}</p>
-                  <p className="text-muted-foreground">In Dispute</p>
+                <div className="space-y-1">
+                  <div className="text-2xl md:text-3xl font-bold leading-none">
+                    {orders.filter(o => o.status === 'in-dispute').length}
+                  </div>
+                  <p className="text-sm md:text-base text-muted-foreground">In Dispute</p>
                 </div>
               </div>
             </div>
