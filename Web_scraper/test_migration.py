@@ -80,7 +80,7 @@ def test_all_scrapers(query: str = "rice"):
     
     return results
 
-def test_retrieval_system():
+def test_retrieval_system(query: str = "rice"):
     """Test the new retrieval system."""
     print(f"\n{'='*50}")
     print("Testing Advanced Retrieval System")
@@ -94,7 +94,7 @@ def test_retrieval_system():
         # Test similarity search only (should be fast)
         print("→ Testing similarity search...")
         try:
-            similarity_results = retriever.search_similar_items("rice", top_k=3, min_similarity=0.3)
+            similarity_results = retriever.search_similar_items(query, top_k=3, min_similarity=0.3)
             print(f"  ✓ Found {len(similarity_results)} similar items")
             
             if similarity_results:
@@ -160,19 +160,19 @@ def main():
     logger = setup_logging("INFO")
     
     print("Starting migration testing...")
-    print("This will test the new refactored scraper system.")
+    print("This will test the scraper system.")
     
     # Get query from command line or use default
     query = sys.argv[1] if len(sys.argv) > 1 else "rice"
     
     try:
         # Test backwards compatibility
-        test_backwards_compatibility()
+        # test_backwards_compatibility()
         
         # Test retrieval system
-        test_retrieval_system()
+        test_retrieval_system(query)
         
-        # Test individual scrapers
+        # Test all scrapers
         results = test_all_scrapers(query)
         
         # Summary

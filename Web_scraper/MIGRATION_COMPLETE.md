@@ -4,7 +4,7 @@
 
 You now have a **comprehensive e-commerce scraping and retrieval system** that combines:
 
-### 🏗️ **Refactored Architecture**
+### 🏗️ **Architecture**
 - **Base Scraper Class**: Eliminates code duplication
 - **Modular Design**: Easy to maintain and extend
 - **Proper Error Handling**: Retry logic, timeouts, graceful failures
@@ -29,7 +29,7 @@ You now have a **comprehensive e-commerce scraping and retrieval system** that c
 
 1. **Install dependencies**:
    ```bash
-   cd refactored
+   cd Web_scraper
    pip install -r requirements.txt
    ```
 

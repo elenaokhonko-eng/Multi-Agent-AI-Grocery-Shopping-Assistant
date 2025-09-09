@@ -2,13 +2,16 @@
 Configuration settings for the Langraph application
 """
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 class Config:
     """Application configuration"""
     
     # Groq API Configuration
-    GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "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")
+    GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
     GROQ_MODEL = "llama-3.3-70b-versatile"
     GROQ_TEMPERATURE = 0
     

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Setup script for the refactored e-commerce scraper.
+Setup script for the e-commerce scraper.
 """
 
 import os
@@ -51,13 +51,13 @@ def check_mongodb():
 
 def install_dependencies():
     """Install Python dependencies."""
-    requirements_file = Path(__file__).parent / "requirements.txt"
-    if not requirements_file.exists():
+    requirements_file = "requirements.txt"
+    if not Path(requirements_file).exists():
         print("✗ requirements.txt not found")
         return False
     
     return run_command(
-        f"{sys.executable} -m pip install -r {requirements_file}",
+        f"pip install -r {requirements_file}",
         "Installing Python dependencies"
     )
 
@@ -106,7 +106,7 @@ def run_test():
 
 def main():
     """Main setup function."""
-    print("Enhanced E-commerce Scraper Setup")
+    print("E-commerce Scraper Setup")
     print("="*40)
     
     success = True
