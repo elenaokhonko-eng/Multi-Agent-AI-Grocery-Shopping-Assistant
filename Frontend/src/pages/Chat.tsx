@@ -3,15 +3,24 @@ import { useEffect, useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { Send, Bot, User, Loader2 } from "lucide-react";
 
 type Role = "user" | "assistant";
+
 interface ChatMessage {
   role: Role;
   content: string;
   ts: number; // unix ms
 }
+
+interface RagResponse {
+  reply: string;
+  query?: string;
+}
+
+// If you have a dev proxy: keep this as "/api/rag/chat".
+// If not, use "http://127.0.0.1:3004/api/rag/chat".
+const API_URL = "http://127.0.0.1:3004/api/rag/chat";
 
 const fmtTime = (ts: number) =>
   new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -33,8 +42,7 @@ const Chat = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: "assistant",
-      content:
-        "Hi 👋, I’m your AI shopping assistant. Ask me anything!",
+      content: "Hi 👋, I’m your AI shopping assistant. Ask me anything!",
       ts: Date.now(),
     },
   ]);
@@ -57,29 +65,35 @@ const Chat = () => {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/chat", {
+      const res = await fetch(API_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: [...messages, userMsg] }),
+        body: JSON.stringify({ message: text }), // backend expects { message }
       });
-      const data = await res.json();
+
+      const data: RagResponse = await res.json();
+
       const botMsg: ChatMessage = {
         role: "assistant",
-        content: data?.answer ?? "Hmm, I couldn’t get a response right now.",
+        content: data?.reply ?? "Hmm, I couldn’t get a response right now.",
         ts: Date.now(),
       };
       setMessages((prev) => [...prev, botMsg]);
     } catch {
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: "⚠️ Error: could not connect to chatbot service.", ts: Date.now() },
+        {
+          role: "assistant",
+          content: "⚠️ Error: could not connect to chatbot service.",
+          ts: Date.now(),
+        },
       ]);
     } finally {
       setLoading(false);
     }
   };
 
-  // Send on Enter; Shift+Enter inserts a newline (future-proof if you switch to Textarea)
+  // Send on Enter; Shift+Enter is ignored here (using Input)
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -103,9 +117,7 @@ const Chat = () => {
               className="flex-1 overflow-y-auto p-4 space-y-6 bg-gradient-to-b from-muted/40 to-background"
             >
               {messages.map((m, i) => {
-                // date separators like the screenshot
-                const showDate =
-                  i === 0 || !sameDay(messages[i - 1].ts, m.ts);
+                const showDate = i === 0 || !sameDay(messages[i - 1].ts, m.ts);
                 const isUser = m.role === "user";
 
                 return (
@@ -142,6 +154,7 @@ const Chat = () => {
                         >
                           {m.content}
                         </div>
+
                         <div className={`mt-1 text-xs text-muted-foreground ${isUser ? "" : "pl-1"}`}>
                           {fmtTime(m.ts)}
                         </div>
@@ -167,7 +180,7 @@ const Chat = () => {
               )}
             </div>
 
-            {/* Sticky composer (always visible, no page scrolling required) */}
+            {/* Sticky composer */}
             <div className="sticky bottom-0 bg-background border-t">
               <div className="p-3 flex gap-2">
                 <Input

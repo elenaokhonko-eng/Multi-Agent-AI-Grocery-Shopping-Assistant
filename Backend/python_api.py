@@ -10,6 +10,8 @@ import json
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import logging
+from pathlib import Path
+
 
 # Add the Langraph_Agent directory to Python path
 langraph_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'Langraph_Agent')
@@ -22,9 +24,54 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
-# Import the Langraph pipeline
+BASE_DIR = Path(__file__).resolve().parent
+CORPUS_DIR = os.getenv(
+    "RAG_CORPUS_DIR",
+    str(BASE_DIR / "Langraph_Agent" / "agents" / "data" / "rag_corpus")
+)
+
+# Build/load FAISS once (lazy)
+_rag = None
+def get_rag():
+    global _rag
+    if _rag is None:
+        _rag = get_rag_agent(RAGConfig(
+            index_dir=os.getenv("RAG_INDEX_DIR", str(BASE_DIR / "Langraph_Agent" / "vectorstore" / "faiss_index")),
+            corpus_dir=CORPUS_DIR,
+            top_k=int(os.getenv("RAG_TOP_K", "6")),
+            score_threshold=float(os.getenv("RAG_SCORE_THRESHOLD", "0.35")),
+        ))
+    return _rag
+
+def normalize_citations(raw):
+    """Strip disk paths, dedupe by file+page, and build a public URL to serve the PDF page."""
+    seen = set()
+    refs = []
+    for c in (raw or []):
+        meta = c.get("metadata", {})
+        src = c.get("source") or meta.get("source") or ""
+        file = os.path.basename(src) if src else "unknown"
+        page = meta.get("page")
+        page_label = meta.get("page_label") or (str((page or 0) + 1) if page is not None else None)
+
+        key = (file, page_label or page)
+        if key in seen:
+            continue
+        seen.add(key)
+
+        display_page = page_label or (page + 1 if page is not None else 1)
+        refs.append({
+            "id": f"{file}:p{display_page}",
+            "file": file,
+            "title": file,
+            "page": page,
+            "page_label": str(display_page),
+            "page_url": f"/api/rag/source/{file}#page={display_page}",
+        })
+    return refs
 try:
     from main import ProductSearchOrchestrator
+    from agents.rag_agent import get_rag_agent, RAGConfig
     orchestrator = ProductSearchOrchestrator()
     logger.info("✅ Langraph pipeline initialized successfully")
 except Exception as e:
@@ -340,6 +387,25 @@ def test_search():
             'status': 'error',
             'message': f'Test failed: {str(e)}'
         }), 500
+
+@app.post("/api/rag/chat")
+def rag_chat():
+    data = request.get_json(force=True) or {}
+    q = (data.get("message") or data.get("q") or "").strip()
+    if not q:
+        return jsonify({"error": "message is required"}), 400
+    try:
+        res = get_rag().answer(q)  # { answer, citations, documents }
+        references = normalize_citations(res.get("citations"))
+        return jsonify({
+            "query": q,
+            "reply": res.get("answer", ""),
+            "references": references
+        }), 200
+    except Exception as e:
+        logger.exception("RAG chat failed")
+        return jsonify({"error": str(e)}), 500
+
 
 if __name__ == '__main__':
     # Change to the Langraph_Agent directory to ensure proper imports
