@@ -26,7 +26,7 @@ graph TD
     D1[5 Personalization Tools<br/>Budget/Dietary/Brand<br/>Inventory/Loyalty Filters]
     E1[Distance Calculation<br/>Delivery Optimization<br/>Store Location Database]
     F1[Loyalty Points Calculator<br/>Bank Discount Analysis<br/>Promotion Optimizer]
-    G1[Cost Analysis<br/>Category Balancing<br/>Value Optimization]
+    G1[Hybrid LLM + Linear Programming<br/>Multi-Criteria Optimization<br/>Constraint Satisfaction]
     H1[Result Formatting<br/>Summary Generation<br/>User-Friendly Output]
 
     B -.-> B1
@@ -68,7 +68,7 @@ graph TD
 ### **1. Keyword Extraction Agent**
 - **Purpose**: Extract food items and products from natural language queries
 - **LLM Model**: Groq Llama-3.3-70b-versatile
-- **Tools**: None (Direct LLM processing)
+- **Tools**: None (Direct LLM processing with JSON response mode)
 - **Capabilities**:
   - JSON-structured response parsing
   - Complete product name extraction (e.g., "organic rice" not "organic" + "rice")
@@ -208,26 +208,64 @@ Items → Dietary Filter → Brand Filter → Inventory Filter → Loyalty Prior
 ---
 
 ### **6. Budget Optimization Agent**
-- **Purpose**: Final cost optimization and category balancing
-- **LLM Model**: None (Rule-based optimization)
-- **Tools**: Internal optimization algorithms
-- **Capabilities**:
-  - Category-wise budget allocation
-  - Value-for-money analysis
-  - Alternative product suggestions
-  - Cost breakdown analysis
+- **Purpose**: Optimal item selection per category with cost optimization
+- **LLM Model**: Groq Llama-3.3-70b-versatile
+- **Tools** (3 specialized optimization tools):
+
+#### 🔧 **Tool 1: `calculate_optimization_score`**
+- Multi-criteria scoring system (price, delivery time, quality, loyalty)
+- Weighted scoring with user preference priorities
+- Normalization for fair comparison across items
+
+#### 🔧 **Tool 2: `solve_linear_program`**
+- Mathematical optimization using PuLP linear programming solver
+- Constraint satisfaction (budget, delivery time, store preferences)
+- Binary variable selection (exactly one item per category)
+
+#### 🔧 **Tool 3: `generate_recommendation_reasoning`**
+- AI-powered explanation of optimization decisions
+- Trade-off analysis and alternative suggestions
+- Human-readable optimization justifications
+
+**Hybrid Approach**:
+- **LLM Analysis**: Contextual understanding and strategic recommendations
+- **Mathematical Optimization**: Linear programming for constraint satisfaction
+- **Greedy Fallback**: When LP solver fails, intelligent greedy selection
+- **Multi-Criteria Scoring**: Price (40%), Delivery (25%), Quality (20%), Loyalty (15%)
+
+**Advanced Features**:
+- Store configuration database with reliability scores
+- Constraint validation and satisfaction checking
+- Budget utilization optimization
+- Alternative recommendation generation
+
+---
+
+## 📊 **TOOL COUNT BREAKDOWN**
+
+**Total Specialized Tools: 18**
+
+- **Data Acquisition**: 1 tool (`retrieve_product_data`)
+- **Personalization**: 5 tools (budget, dietary, brand, inventory, loyalty filters)
+- **Logistics**: 4 tools (distance calculation, delivery optimization, multi-store, filtering)
+- **Loyalty Optimization**: 4 tools (points, discounts, promotions, strategy)
+- **Budget Optimization**: 3 tools (scoring, linear programming, reasoning)
+- **Knowledge Graph**: 1 tool (built into data acquisition)
+
+**LLM Usage Distribution**: 6 out of 7 agents use Groq Llama-3.3-70b-versatile
 
 ---
 
 ### **7. Output Formatting Agent**
 - **Purpose**: Format final results for user presentation
 - **LLM Model**: None (Template-based formatting)
-- **Tools**: None (Formatting logic)
+- **Tools**: None (Pure formatting logic)
 - **Capabilities**:
   - User-friendly result structuring
-  - Summary generation
-  - Cost breakdown formatting
-  - Delivery information presentation
+  - Knowledge Graph enhancement indicators
+  - Price and delivery information formatting
+  - Direct matches vs. enhanced results separation
+  - Error handling and display
 
 ---
 
@@ -239,6 +277,8 @@ Items → Dietary Filter → Brand Filter → Inventory Filter → Loyalty Prior
 - **Framework**: LangChain (Tool integration and management)
 - **Database**: MongoDB (Product data storage)
 - **Search**: Vector similarity search (Product matching)
+- **Optimization**: PuLP Linear Programming solver
+- **Mathematics**: NumPy for advanced calculations
 
 ### **Data Sources**
 - **Web Scraper**: Custom MongoDB integration (3 Sri Lankan stores)
@@ -249,7 +289,8 @@ Items → Dietary Filter → Brand Filter → Inventory Filter → Loyalty Prior
 ### **Mathematical Algorithms**
 - **Distance Calculation**: Haversine formula (GPS coordinates)
 - **Vector Search**: Cosine similarity for product matching
-- **Optimization**: Multi-criteria decision analysis
+- **Linear Programming**: PuLP solver for optimization constraints
+- **Multi-Criteria Decision Analysis**: Weighted scoring systems
 
 ---
 
@@ -305,13 +346,15 @@ Step 7: Output → Formatted results with delivery info and savings summary
 
 ### **Advanced Capabilities**
 - ✅ **Multi-Agent Coordination**: 7 specialized agents working in pipeline
-- ✅ **Tool-Based Architecture**: 16 specialized tools across agents
-- ✅ **LLM Integration**: Groq Llama-3.3-70b for intelligent processing
+- ✅ **Tool-Based Architecture**: 18 specialized tools across agents
+- ✅ **LLM Integration**: Groq Llama-3.3-70b for intelligent processing (6 agents use LLM)
+- ✅ **Hybrid Optimization**: LLM + Linear Programming for budget optimization
 - ✅ **Real-World Data**: 27 Sri Lankan stores, 3 loyalty programs, 4 banks
 - ✅ **Personalization**: Budget, dietary, brand, inventory, loyalty filtering
 - ✅ **Logistics Optimization**: GPS-based delivery cost and time calculation
 - ✅ **Loyalty Maximization**: Points, discounts, and promotion optimization
 - ✅ **Minimum Guarantees**: At least 1 item per category maintained
+- ✅ **Mathematical Rigor**: Linear programming with constraint satisfaction
 
 ### **Performance Metrics**
 - **Processing Time**: ~5-10 seconds for complete pipeline
