@@ -1,0 +1,58 @@
+{
+  "success": true,
+  "products": [
+    {
+      "price": 5500.0,
+      "line": "**Rs 5,500.00**",
+      "title": "### [ New Rathna Rice White Raw 5Kg ](/new-rathna-rice-white-raw-5kg/p/9199)"
+    },
+    {
+      "price": 1100.0,
+      "line": "**Rs 1,100.00**",
+      "title": "### [ Suduru Samba Rice - Bulk ](/suduru-samba-rice---bulk/p/13232)"
+    },
+    {
+      "price": 43.5,
+      "line": "**Rs 43.50**",
+      "title": "### [ Sandun Red Raw Rice 5Kg ](/sandun-red-raw-rice-5kg/p/131400)"
+    },
+    {
+      "price": 1050.0,
+      "line": "**Rs 1,050.00**",
+      "title": "### [ Sandun White Nadu Rice 5Kg ](/sandun-white-nadu-rice-5kg/p/131402)"
+    },
+    {
+      "price": 1150.0,
+      "line": "**Rs 1,150.00**",
+      "title": "### [ Sandun White Raw Rice 5Kg ](/sandun-white-raw-rice-5kg/p/131403)"
+    },
+    {
+      "price": 330.0,
+      "line": "**Rs 330.00**",
+      "title": "### [ Falak Premium Basmati Rice 5Kg ](/falak-premium-basmati-rice-5kg/p/126876)"
+    },
+    {
+      "price": 6300.0,
+      "line": "**Rs 6,300.00**",
+      "title": "### [ Akshata Suwandel Rice 4kg ](/akshata-suwandel-rice-4kg/p/36667)"
+    },
+    {
+      "price": 2800.0,
+      "line": "**Rs 2,800.00**",
+      "title": "### [ Turkey Basmathi Rice 5Kg ](/turkey-basmathi-rice-5kg/p/7264)"
+    },
+    {
+      "price": 6500.0,
+      "line": "**Rs 6,500.00**",
+      "title": "### [ Akshata Kuruluthuda Rice 800G ](/akshata-kuruluthuda-rice-800g/p/6085)"
+    },
+    {
+      "price": 480.0,
+      "line": "**Rs 480.00**",
+      "title": "### [ Sobako Kalu Heenati Rice 800G ](/sobako-kalu-heenati-rice-800g/p/126148)"
+    }
+  ],
+  "count": 10,
+  "url": "https://glomark.lk/search?search-text=rice",
+  "execution_time": 1.146086
+}

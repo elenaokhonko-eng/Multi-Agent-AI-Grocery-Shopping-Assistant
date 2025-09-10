@@ -37,7 +37,7 @@ def check_mongodb():
     print("→ Checking MongoDB connection...")
     try:
         import pymongo
-        client = pymongo.MongoClient("mongodb://localhost:27017/", serverSelectionTimeoutMS=5000)
+        client = pymongo.MongoClient("mongodb+srv://yasirunipunbasnayake2_db_user:hFIS1XVxBmbaC5Ro@techtitans0.c5azljc.mongodb.net/", serverSelectionTimeoutMS=5000)
         client.server_info()  # Force connection
         print("  ✓ MongoDB is accessible")
         client.close()

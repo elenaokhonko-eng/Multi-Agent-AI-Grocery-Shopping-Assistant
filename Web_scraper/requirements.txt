@@ -1,26 +1,47 @@
-# Core dependencies
-flask==2.3.3
-flask-cors==4.0.0
-groq==0.9.0
-crawl4ai==0.3.74
-pymongo==4.8.0
-pandas==2.1.4
-nest-asyncio==1.5.8
+# Core dependencies for web scraping
+crawl4ai>=0.3.74
+groq>=0.31.1
+pymongo>=4.11.2
+python-dotenv>=1.0.0
+requests>=2.32.3
+nest-asyncio>=1.6.0
 
-# Similarity search dependencies
-sentence-transformers==2.2.2
-faiss-cpu==1.7.4
-numpy==1.24.3
+# Data processing and analysis
+pandas>=2.2.3
+numpy>=1.26.4
 
-# Optional dependencies for enhanced functionality
-requests==2.31.0
-python-dotenv==1.0.0
+# AI/ML dependencies for similarity search
+sentence-transformers>=3.4.1
+torch>=2.3.1
+torchvision>=0.18.1
+transformers>=4.49.0
+huggingface-hub>=0.29.2
+safetensors>=0.5.3
+tokenizers>=0.21.0
 
-# Development dependencies (optional)
-pytest==7.4.3
-pytest-asyncio==0.21.1
-black==23.12.1
-flake8==6.1.0
+# Web framework (optional for API)
+flask>=2.3.3
+flask-cors>=4.0.0
 
-# Performance dependencies (optional)
-uvloop==0.19.0; sys_platform != "win32"
+# Development and testing dependencies
+pytest>=7.4.3
+pytest-asyncio>=0.21.1
+black>=23.12.1
+flake8>=6.1.0
+
+# Data science and utilities
+beautifulsoup4>=4.13.3
+bs4>=0.0.2
+scikit-learn>=1.6.1
+scipy>=1.15.2
+joblib>=1.4.2
+tqdm>=4.66.5
+
+# System and environment
+setuptools>=75.1.0
+wheel>=0.44.0
+pyyaml>=6.0.2
+packaging>=24.1
+
+# Optional performance dependencies
+uvloop>=0.19.0; sys_platform != "win32"

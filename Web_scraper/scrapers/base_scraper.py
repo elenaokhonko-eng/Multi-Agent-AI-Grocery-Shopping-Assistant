@@ -12,9 +12,7 @@ from typing import Dict, List, Optional, Any
 from urllib.parse import urlparse
 
 import nest_asyncio
-from crawl4ai import AsyncWebCrawler, CrawlerRunConfig, CacheMode
-from crawl4ai.content_filter_strategy import PruningContentFilter
-from crawl4ai.markdown_generation_strategy import DefaultMarkdownGenerator
+from crawl4ai import AsyncWebCrawler, CacheMode
 from groq import Groq
 from pymongo import MongoClient, UpdateOne
 
@@ -116,21 +114,15 @@ class BaseScraper(ABC):
                 self.logger.debug(f"Fetching markdown from {url} (attempt {attempt + 1})")
                 
                 async with AsyncWebCrawler(verbose=False) as crawler:
-                    cfg = CrawlerRunConfig(
+                    result = await crawler.arun(
+                        url=url,
                         cache_mode=CacheMode.ENABLED,
-                        excluded_tags=["nav", "footer", "aside", "script", "style"],
-                        remove_overlay_elements=True,
-                        markdown_generator=DefaultMarkdownGenerator(
-                            content_filter=PruningContentFilter(
-                                threshold=Config.PRUNING_THRESHOLD, 
-                                threshold_type="fixed", 
-                                min_word_threshold=0
-                            ),
-                            options={"ignore_links": True},
-                        ),
+                        word_count_threshold=Config.PRUNING_THRESHOLD,
+                        verbose=False
                     )
-                    result = await crawler.arun(url=url, config=cfg)
-                    md = (result.markdown.raw_markdown or result.markdown.fit_markdown or "").strip()
+                    
+                    md = result.markdown or ""
+                    md = md.strip()
                     
                     if md:
                         self.logger.debug(f"Successfully fetched markdown ({len(md)} chars)")
