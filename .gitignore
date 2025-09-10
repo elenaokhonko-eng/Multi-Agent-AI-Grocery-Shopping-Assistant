@@ -1,6 +1,54 @@
+# Environment files with secrets
+.env
+.env.local
+.env.*.local
+.env.production
+.env.staging
+
+# API Keys and secrets
+*.key
+*.pem
+secrets/
+config/secrets/
+
 # Dependency directories
 Frontend/node_modules/
 Backend/node_modules/
+node_modules/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+*.pyc
+
+# Virtual environments
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.conda/
 
 # Logs
 logs
@@ -23,11 +71,6 @@ build/
 .next/
 out/
 
-# Environment files
-.env
-.env.local
-.env.*.local
-
 # Editor directories and files
 .vscode/
 .idea/
@@ -36,7 +79,43 @@ out/
 
 # OS files
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
 
-__pycache__
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Cache
+.pytest_cache/
+.coverage
+htmlcov/
+
+# RAG indices and corpus
+rag/index/
+rag/corpus/
+
+# Model files
+*.model
+*.bin
+models/
+
+# Data files (keep structure but exclude content)
 **/data/**
+!**/data/.gitkeep
+!**/data/examples/
+
+# MongoDB dumps
+*.dump
+dumps/

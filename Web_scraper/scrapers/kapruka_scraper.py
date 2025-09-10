@@ -14,7 +14,7 @@ class KaprukaScraper(BaseScraper):
     
     def get_collection_name(self) -> str:
         """Return MongoDB collection name."""
-        return "Kapuruka"  # Keeping original spelling from your code
+        return "Kapruka"  # Keeping original spelling from your code
     
     def get_markdown_start_marker(self) -> Optional[str]:
         """Return marker where product content starts."""

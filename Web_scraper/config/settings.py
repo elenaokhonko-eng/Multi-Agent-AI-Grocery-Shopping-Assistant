@@ -48,7 +48,7 @@ class ScraperConfig:
             "name": "Kapruka", 
             "base_url": "https://www.kapruka.com",
             "search_path": "/srilanka_online_search.jsp?d=",
-            "collection": "Kapuruka",
+            "collection": "Kapruka",
             "markdown_marker": "in Kapruka",
             "rate_limit": 1.0,
         },

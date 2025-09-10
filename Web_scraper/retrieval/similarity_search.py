@@ -44,7 +44,7 @@ class SimilaritySearchEngine:
         self.db = self.client[Config.DATABASE_NAME]
         
         # Collections to search
-        self.collections = ["Glowmark", "Kapuruka", "Lassana_Flora", "OnlineKade"]
+        self.collections = ["Glowmark", "Kapruka", "Lassana_Flora", "OnlineKade"]
         
         # Model and index (loaded lazily)
         self.model: Optional[SentenceTransformer] = None

@@ -4,9 +4,10 @@ const cors = require('cors');
 require('dotenv').config();
 
 const inventoryRoutes = require('./routes/inventory');
+const orderRoutes = require('./routes/orders');
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3005;
 
 // Middleware
 app.use(cors());
@@ -25,10 +26,16 @@ mongoose.connect(MONGODB_URI)
 
 // Routes
 app.use('/api/inventory', inventoryRoutes);
+app.use('/api/orders', orderRoutes);
 
 // Health check route
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', message: 'Kitchen Inventory API is running' });
+  res.json({ 
+    status: 'OK', 
+    message: 'Kitchen Inventory & Order API is running',
+    timestamp: new Date().toISOString(),
+    port: PORT
+  });
 });
 
 // Error handling middleware
@@ -43,6 +50,9 @@ app.use((req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-  console.log(`Health check: http://localhost:${PORT}/api/health`);
+  console.log(`🚀 Server is running on port ${PORT}`);
+  console.log(`📋 Health check: http://localhost:${PORT}/api/health`);
+  console.log(`📦 Inventory API: http://localhost:${PORT}/api/inventory`);
+  console.log(`🛒 Orders API: http://localhost:${PORT}/api/orders`);
+  console.log(`🏪 Available stores: http://localhost:${PORT}/api/orders/stores`);
 });

@@ -25,7 +25,7 @@ try:
     
     # Test querying each collection
     total_products = 0
-    for collection_name in ["Glowmark", "Kapuruka", "Lassana_Flora", "OnlineKade"]:
+    for collection_name in ["Glowmark", "Kapruka", "Lassana_Flora", "OnlineKade"]:
         if collection_name in collections:
             collection = db[collection_name]
             count = collection.count_documents({})
