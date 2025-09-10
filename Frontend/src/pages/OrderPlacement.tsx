@@ -130,7 +130,7 @@ const OrderPlacement = () => {
     for (const [store, storeItems] of Object.entries(itemsByStore)) {
       try {
         const orderData = {
-          userId: `demo-user-${Date.now()}`, // Generate unique user ID
+          userId: `test-user-123`, // Generate unique user ID
           items: storeItems.map((item, index) => {
             // If price is 0, use default price of 500
             const price = item.price_lkr === 0 ? 500 : item.price_lkr;
