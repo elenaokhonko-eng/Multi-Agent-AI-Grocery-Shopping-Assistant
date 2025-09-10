@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
-import { Home, ChefHat, ShoppingCart, ChevronLeft, ChevronRight, Package, MessageSquare } from "lucide-react";
+import { Home, ChefHat, ShoppingCart, ChevronLeft, ChevronRight, Package } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 
 const nav = [
   { to: "/", label: "Home", icon: Home },
   { to: "/inventory", label: "Inventory", icon: ChefHat },
   { to: "/orders", label: "Orders", icon: ShoppingCart },
-  { to: "/chat", label: "Chat", icon: MessageSquare },
 ];
 
 export default function Sidebar() {
