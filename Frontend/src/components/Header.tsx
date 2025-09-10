@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, ShoppingCart, User, Menu, Image, Mic, Camera, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -13,8 +13,60 @@ export const Header = () => {
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   
+  // Scroll-based header visibility
+  const [isHeaderVisible, setIsHeaderVisible] = useState(true);
+  const [lastScrollY, setLastScrollY] = useState(0);
+  
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Scroll detection effect
+  useEffect(() => {
+    const controlHeaderVisibility = () => {
+      const currentScrollY = window.scrollY;
+      const scrollThreshold = 80; // Minimum scroll distance to trigger hide/show
+      const scrollDelta = Math.abs(currentScrollY - lastScrollY);
+      
+      // Only react to significant scroll movements
+      if (scrollDelta < 10) return;
+      
+      if (currentScrollY > lastScrollY && currentScrollY > scrollThreshold) {
+        // Scrolling down - hide header
+        setIsHeaderVisible(false);
+      } else if (currentScrollY < lastScrollY || currentScrollY <= scrollThreshold) {
+        // Scrolling up or near top - show header
+        setIsHeaderVisible(true);
+      }
+      
+      setLastScrollY(currentScrollY);
+    };
+
+    const throttledScrollHandler = throttle(controlHeaderVisibility, 50);
+    
+    window.addEventListener('scroll', throttledScrollHandler, { passive: true });
+    return () => window.removeEventListener('scroll', throttledScrollHandler);
+  }, [lastScrollY]);
+
+  // Throttle function to limit scroll event firing
+  const throttle = (func: Function, delay: number) => {
+    let timeoutId: NodeJS.Timeout | null = null;
+    let lastExecTime = 0;
+    
+    return function (...args: any[]) {
+      const currentTime = Date.now();
+      
+      if (currentTime - lastExecTime > delay) {
+        func(...args);
+        lastExecTime = currentTime;
+      } else {
+        if (timeoutId) clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => {
+          func(...args);
+          lastExecTime = Date.now();
+        }, delay - (currentTime - lastExecTime));
+      }
+    };
+  };
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
@@ -92,7 +144,7 @@ export const Header = () => {
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-white shadow-soft border-b">
+    <header className={`header-auto-hide ${isHeaderVisible ? 'visible' : 'hidden'}`}>
       <div className="container mx-auto px-4">
         {/* Top Bar */}
         <div className="flex items-center justify-between py-2 text-sm border-b border-border">
