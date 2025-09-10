@@ -7,6 +7,10 @@ const nav = [
   { to: "/", label: "Home", icon: Home },
   { to: "/inventory", label: "Inventory", icon: ChefHat },
   { to: "/orders", label: "Orders", icon: ShoppingCart },
+<<<<<<< HEAD
+=======
+  { to: "/chat", label: "Chat", icon: MessageSquare },
+>>>>>>> d20be6dc91fe1e1d7b3bd0147ea71bc5591ca73b
   { to: "/profile", label: "User Profile", icon: User },
 ];
 
