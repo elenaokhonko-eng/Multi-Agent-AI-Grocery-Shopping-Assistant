@@ -91,7 +91,6 @@ const OrderPlacement = () => {
   // Additional search functionality state
   const [additionalQuery, setAdditionalQuery] = useState('');
   const [isSearchingMore, setIsSearchingMore] = useState(false);
-  const [showAddMoreSection, setShowAddMoreSection] = useState(false);
 
   // Cache/restore results & seed items list
   useEffect(() => {
@@ -454,9 +453,8 @@ const OrderPlacement = () => {
           description: `Added ${searchData.results.optimized_items.length} new items to your order`,
         });
 
-        // Clear the search input and hide the section
+        // Clear the search input
         setAdditionalQuery('');
-        setShowAddMoreSection(false);
       } else {
         console.error('❌ API returned error:', searchData.message);
         toast({
@@ -532,41 +530,31 @@ const OrderPlacement = () => {
             {/* Add More Items Section */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Search className="h-5 w-5" />
-                    <span>Add More Items</span>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowAddMoreSection(!showAddMoreSection)}
-                  >
-                    {showAddMoreSection ? 'Hide' : 'Show'}
-                  </Button>
+                <CardTitle className="flex items-center space-x-2">
+                  <Search className="h-5 w-5" />
+                  <span>Add More Items</span>
                 </CardTitle>
               </CardHeader>
-              {showAddMoreSection && (
-                <CardContent>
-                  <div className="space-y-4">
-                    <p className="text-sm text-muted-foreground">
-                      Search for additional items to add to your order. The AI will find and optimize more products for you.
-                    </p>
-                    <div className="flex space-x-2">
-                      <Input
-                        placeholder="Search for more items (e.g., 'organic vegetables', 'dairy products')..."
-                        value={additionalQuery}
-                        onChange={(e) => setAdditionalQuery(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault();
-                            searchAdditionalItems();
-                          }
-                        }}
-                        className="flex-1"
-                        disabled={isSearchingMore}
-                      />
-                      <Button 
+              <CardContent>
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Search for additional items to add to your order. The AI will find and optimize more products for you.
+                  </p>
+                  <div className="flex space-x-2">
+                    <Input
+                      placeholder="Search for more items (e.g., 'organic vegetables', 'dairy products')..."
+                      value={additionalQuery}
+                      onChange={(e) => setAdditionalQuery(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          searchAdditionalItems();
+                        }
+                      }}
+                      className="flex-1"
+                      disabled={isSearchingMore}
+                    />
+                    <Button 
                         onClick={searchAdditionalItems}
                         disabled={isSearchingMore || !additionalQuery.trim()}
                         className="bg-gradient-primary"
@@ -586,7 +574,6 @@ const OrderPlacement = () => {
                     </div>
                   </div>
                 </CardContent>
-              )}
             </Card>
 
             {/* Results Summary */}
