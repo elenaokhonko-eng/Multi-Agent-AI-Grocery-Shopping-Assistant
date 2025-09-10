@@ -6,66 +6,262 @@ import { Badge } from '@/components/ui/badge';
 const products = [
   {
     id: 1,
-    name: "Wireless Bluetooth Headphones",
-    price: 79.99,
-    originalPrice: 120.00,
+    name: "Fresh Organic Carrots - 1kg",
+    price: 4.99,
+    originalPrice: 6.99,
     rating: 4.5,
     reviews: 128,
-    image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=300&h=300&fit=crop",
-    discount: "33% OFF",
-    badge: "Bestseller"
+    image: "https://images.unsplash.com/photo-1445282768818-728615cc910a?w=300&h=300&fit=crop",
+    discount: "29% OFF",
+    badge: "Organic"
   },
   {
     id: 2,
-    name: "Smart Watch Pro",
-    price: 199.99,
-    originalPrice: 299.99,
+    name: "Fresh Milk - 1 Liter",
+    price: 2.99,
+    originalPrice: 3.49,
     rating: 4.7,
     reviews: 86,
-    image: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=300&h=300&fit=crop",
-    discount: "33% OFF",
-    badge: "New"
+    image: "https://images.unsplash.com/photo-1563636619-e9143da7973b?w=300&h=300&fit=crop",
+    discount: "14% OFF",
+    badge: "Fresh"
   },
   {
     id: 3,
-    name: "Portable Power Bank 20000mAh",
-    price: 45.99,
-    originalPrice: 69.99,
+    name: "Organic Tomatoes - 500g",
+    price: 3.99,
+    originalPrice: 4.99,
     rating: 4.3,
     reviews: 234,
-    image: "https://images.unsplash.com/photo-1609592282443-6d5c09f8ad3a?w=300&h=300&fit=crop",
-    discount: "34% OFF"
+    image: "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&h=300&fit=crop",
+    discount: "20% OFF"
   },
   {
     id: 4,
-    name: "Wireless Gaming Mouse",
-    price: 59.99,
-    originalPrice: 89.99,
+    name: "Brown Bread Loaf",
+    price: 2.49,
+    originalPrice: 2.99,
     rating: 4.6,
     reviews: 156,
-    image: "https://images.unsplash.com/photo-1527814050087-3793815479db?w=300&h=300&fit=crop",
-    discount: "33% OFF"
+    image: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=300&h=300&fit=crop",
+    discount: "17% OFF"
   },
   {
     id: 5,
-    name: "USB-C Fast Charging Cable",
-    price: 19.99,
-    originalPrice: 29.99,
+    name: "Free Range Eggs - 12 Pack",
+    price: 4.99,
+    originalPrice: 5.99,
     rating: 4.4,
     reviews: 312,
-    image: "https://images.unsplash.com/photo-1558618047-3c8c76ca7d13?w=300&h=300&fit=crop",
-    discount: "33% OFF"
+    image: "https://images.unsplash.com/photo-1518569656558-1f25e69d93d7?w=300&h=300&fit=crop",
+    discount: "17% OFF"
   },
   {
     id: 6,
-    name: "Bluetooth Speaker Waterproof",
-    price: 89.99,
-    originalPrice: 129.99,
+    name: "Fresh Bananas - 1kg",
+    price: 1.99,
+    originalPrice: 2.49,
     rating: 4.5,
     reviews: 89,
-    image: "https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=300&h=300&fit=crop",
-    discount: "31% OFF",
-    badge: "Limited"
+    image: "https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=300&h=300&fit=crop",
+    discount: "20% OFF",
+    badge: "Popular"
+  },
+  {
+    id: 7,
+    name: "Basmati Rice - 2kg",
+    price: 8.99,
+    originalPrice: 10.99,
+    rating: 4.8,
+    reviews: 201,
+    image: "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=300&h=300&fit=crop",
+    discount: "18% OFF",
+    badge: "Premium"
+  },
+  {
+    id: 8,
+    name: "Greek Yogurt - 500g",
+    price: 3.49,
+    originalPrice: 3.99,
+    rating: 4.6,
+    reviews: 145,
+    image: "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=300&h=300&fit=crop",
+    discount: "13% OFF"
+  },
+  {
+    id: 9,
+    name: "Fresh Spinach - 250g",
+    price: 2.99,
+    originalPrice: 3.49,
+    rating: 4.4,
+    reviews: 98,
+    image: "https://images.unsplash.com/photo-1576045057995-568f588f82fb?w=300&h=300&fit=crop",
+    discount: "14% OFF",
+    badge: "Organic"
+  },
+  {
+    id: 10,
+    name: "Coconut Oil - 500ml",
+    price: 6.99,
+    originalPrice: 8.49,
+    rating: 4.7,
+    reviews: 167,
+    image: "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=300&h=300&fit=crop",
+    discount: "18% OFF"
+  },
+  {
+    id: 11,
+    name: "Fresh Apples - 1kg",
+    price: 4.49,
+    originalPrice: 5.49,
+    rating: 4.5,
+    reviews: 223,
+    image: "https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?w=300&h=300&fit=crop",
+    discount: "18% OFF"
+  },
+  {
+    id: 12,
+    name: "Whole Wheat Pasta - 500g",
+    price: 2.99,
+    originalPrice: 3.49,
+    rating: 4.3,
+    reviews: 134,
+    image: "https://images.unsplash.com/photo-1551892374-ecf8754cf8b0?w=300&h=300&fit=crop",
+    discount: "14% OFF"
+  },
+  {
+    id: 13,
+    name: "Red Onions - 1kg",
+    price: 2.49,
+    originalPrice: 2.99,
+    rating: 4.2,
+    reviews: 176,
+    image: "https://images.unsplash.com/photo-1518977676601-b53f82aba655?w=300&h=300&fit=crop",
+    discount: "17% OFF"
+  },
+  {
+    id: 14,
+    name: "Green Tea Bags - 50 Pack",
+    price: 4.99,
+    originalPrice: 5.99,
+    rating: 4.6,
+    reviews: 189,
+    image: "https://images.unsplash.com/photo-1544787219-7f47ccb76574?w=300&h=300&fit=crop",
+    discount: "17% OFF",
+    badge: "Bestseller"
+  },
+  {
+    id: 15,
+    name: "Fresh Broccoli - 500g",
+    price: 3.49,
+    originalPrice: 3.99,
+    rating: 4.4,
+    reviews: 112,
+    image: "https://images.unsplash.com/photo-1459411552884-841db9b3cc2a?w=300&h=300&fit=crop",
+    discount: "13% OFF"
+  },
+  {
+    id: 16,
+    name: "Olive Oil Extra Virgin - 500ml",
+    price: 9.99,
+    originalPrice: 11.99,
+    rating: 4.8,
+    reviews: 256,
+    image: "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=300&h=300&fit=crop",
+    discount: "17% OFF",
+    badge: "Premium"
+  },
+  {
+    id: 17,
+    name: "Fresh Potatoes - 2kg",
+    price: 3.99,
+    originalPrice: 4.99,
+    rating: 4.3,
+    reviews: 198,
+    image: "https://images.unsplash.com/photo-1518977676601-b53f82aba655?w=300&h=300&fit=crop",
+    discount: "20% OFF"
+  },
+  {
+    id: 18,
+    name: "Cheddar Cheese - 200g",
+    price: 4.49,
+    originalPrice: 5.49,
+    rating: 4.7,
+    reviews: 143,
+    image: "https://d2j6dbq0eux0bg.cloudfront.net/images/31151001/3933781796.jpg?w=300&h=300&fit=crop",
+    discount: "18% OFF"
+  },
+  {
+    id: 19,
+    name: "Whole Grain Oats - 1kg",
+    price: 3.99,
+    originalPrice: 4.99,
+    rating: 4.5,
+    reviews: 167,
+    image: "https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=300&h=300&fit=crop",
+    discount: "20% OFF"
+  },
+  {
+    id: 20,
+    name: "Fresh Bell Peppers - 500g",
+    price: 2.99,
+    originalPrice: 3.49,
+    rating: 4.4,
+    reviews: 134,
+    image: "https://images.unsplash.com/photo-1525607551316-4a8e16d1b9c5?w=300&h=300&fit=crop",
+    discount: "14% OFF"
+  },
+  {
+    id: 21,
+    name: "Honey - 250ml",
+    price: 6.99,
+    originalPrice: 7.99,
+    rating: 4.6,
+    reviews: 189,
+    image: "https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=300&h=300&fit=crop",
+    discount: "13% OFF",
+    badge: "Natural"
+  },
+  {
+    id: 22,
+    name: "Fresh Cucumber - 500g",
+    price: 1.99,
+    originalPrice: 2.49,
+    rating: 4.2,
+    reviews: 123,
+    image: "https://images.unsplash.com/photo-1449300079323-02e209d9d3a6?w=300&h=300&fit=crop",
+    discount: "20% OFF"
+  },
+  {
+    id: 23,
+    name: "Almonds - 250g",
+    price: 7.99,
+    originalPrice: 9.49,
+    rating: 4.7,
+    reviews: 156,
+    image: "https://images.unsplash.com/photo-1508747703725-719777637510?w=300&h=300&fit=crop",
+    discount: "16% OFF"
+  },
+  {
+    id: 24,
+    name: "Fresh Lemon - 500g",
+    price: 2.49,
+    originalPrice: 2.99,
+    rating: 4.3,
+    reviews: 145,
+    image: "https://images.unsplash.com/photo-1590502593747-42a996133562?w=300&h=300&fit=crop",
+    discount: "17% OFF"
+  },
+  {
+    id: 25,
+    name: "Chicken Breast - 500g",
+    price: 8.99,
+    originalPrice: 10.99,
+    rating: 4.8,
+    reviews: 234,
+    image: "https://images.unsplash.com/photo-1604503468506-a8da13d82791?w=300&h=300&fit=crop",
+    discount: "18% OFF",
+    badge: "Fresh"
   }
 ];
 
@@ -73,7 +269,7 @@ export const ProductGrid = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">On Sale Now</h2>
+        <h2 className="text-2xl font-bold">Fresh Groceries & Daily Essentials</h2>
         <Button variant="outline" className="border-accent text-accent hover:bg-accent hover:text-white">
           Shop All Products
         </Button>
