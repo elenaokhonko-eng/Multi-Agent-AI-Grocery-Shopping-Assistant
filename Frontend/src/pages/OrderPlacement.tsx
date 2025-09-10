@@ -14,6 +14,8 @@ import {
   AlertCircle,
   Trash2,
   Loader2,
+  Plus,
+  Minus,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -27,6 +29,7 @@ interface OptimizedItem {
   kg_enhanced: boolean;
   original_query: string;
   image_url?: string;
+  quantity?: number; // Add quantity field
   // Optional fields your backend can accept if present
   item_id?: string;
   brand?: string;
@@ -74,7 +77,10 @@ const OrderPlacement = () => {
   const [query, setQuery] = useState<string>(inbound?.originalQuery ?? '');
   // Mutable list for remove action
   const [items, setItems] = useState<OptimizedItem[]>(
-    inbound?.searchResults?.optimized_items ?? []
+    (inbound?.searchResults?.optimized_items ?? []).map(item => ({
+      ...item,
+      quantity: item.quantity || 1
+    }))
   );
   
   // Loading state for order processing
@@ -89,14 +95,20 @@ const OrderPlacement = () => {
       );
       setData(inbound.searchResults);
       setQuery(inbound.originalQuery);
-      setItems(inbound.searchResults.optimized_items);
+      setItems(inbound.searchResults.optimized_items.map(item => ({
+        ...item,
+        quantity: item.quantity || 1
+      })));
     } else if (!data) {
       const raw = sessionStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as OPCache;
         setData(parsed.searchResults);
         setQuery(parsed.originalQuery);
-        setItems(parsed.searchResults.optimized_items);
+        setItems(parsed.searchResults.optimized_items.map(item => ({
+          ...item,
+          quantity: item.quantity || 1
+        })));
       }
     }
   }, [location.key]); // run on route entry changes
@@ -148,7 +160,7 @@ const OrderPlacement = () => {
               productId: `${getStorePrefix(store)}${String(index + 1).padStart(3, '0')}`,
               title: item.title,
               price: price, // Use corrected price
-              quantity: 1,
+              quantity: item.quantity || 1, // Use actual quantity from item
               // Additional fields for reference
               source_url: item.source_url,
               collection: item.collection,
@@ -355,6 +367,28 @@ const OrderPlacement = () => {
     }
   };
 
+  // Quantity control functions
+  const increaseQuantity = (index: number) => {
+    setItems(prev => prev.map((item, i) => 
+      i === index ? { ...item, quantity: (item.quantity || 1) + 1 } : item
+    ));
+  };
+
+  const decreaseQuantity = (index: number) => {
+    setItems(prev => prev.map((item, i) => 
+      i === index && (item.quantity || 1) > 1 
+        ? { ...item, quantity: (item.quantity || 1) - 1 } 
+        : item
+    ));
+  };
+
+  const updateQuantity = (index: number, newQuantity: number) => {
+    if (newQuantity < 1) return;
+    setItems(prev => prev.map((item, i) => 
+      i === index ? { ...item, quantity: newQuantity } : item
+    ));
+  };
+
   if (!data) {
     return (
       <div className="min-h-screen bg-background">
@@ -377,8 +411,9 @@ const OrderPlacement = () => {
 
   // Summary reflects current (possibly reduced) list
   const subtotalCount = items.length;
-  // Calculate totals with corrected prices (0 -> 500)
-  const subtotalTotal = items.reduce((sum, it) => sum + (it.price_lkr === 0 ? 500 : it.price_lkr), 0);
+  const totalQuantity = items.reduce((sum, it) => sum + (it.quantity || 1), 0);
+  // Calculate totals with corrected prices (0 -> 500) and quantities
+  const subtotalTotal = items.reduce((sum, it) => sum + ((it.price_lkr === 0 ? 500 : it.price_lkr) * (it.quantity || 1)), 0);
 
   return (
     <div className="min-h-screen bg-background">
@@ -421,7 +456,7 @@ const OrderPlacement = () => {
                     <div className="text-sm text-muted-foreground">Optimized Items</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-green-600">{data.total_items_found}</div>
+                    <div className="text-2xl font-bold text-green-600">{data.pipeline_summary.items_acquired}</div>
                     <div className="text-sm text-muted-foreground">Items Found</div>
                   </div>
                   <div className="text-center">
@@ -523,6 +558,51 @@ const OrderPlacement = () => {
                                     )}
                                   </div>
                                   <div className="text-sm text-muted-foreground">per item</div>
+                                  
+                                  {/* Total price if quantity > 1 */}
+                                  {(item.quantity || 1) > 1 && (
+                                    <div className="text-lg font-semibold text-green-600 mt-1">
+                                      Total: {formatPrice((item.price_lkr === 0 ? 500 : item.price_lkr) * (item.quantity || 1))}
+                                    </div>
+                                  )}
+
+                                  {/* Quantity Controls */}
+                                  <div className="mt-3 flex items-center justify-center gap-2">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-8 w-8 p-0"
+                                      onClick={() => decreaseQuantity(index)}
+                                      disabled={(item.quantity || 1) <= 1}
+                                    >
+                                      <Minus className="h-4 w-4" />
+                                    </Button>
+                                    
+                                    <div className="flex items-center gap-1 min-w-[60px] justify-center">
+                                      <input
+                                        type="number"
+                                        min="1"
+                                        max="99"
+                                        value={item.quantity || 1}
+                                        onChange={(e) => {
+                                          const newQty = parseInt(e.target.value) || 1;
+                                          updateQuantity(index, newQty);
+                                        }}
+                                        className="w-12 text-center text-sm border rounded px-1 py-1"
+                                      />
+                                      <span className="text-xs text-muted-foreground">qty</span>
+                                    </div>
+                                    
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-8 w-8 p-0"
+                                      onClick={() => increaseQuantity(index)}
+                                      disabled={(item.quantity || 1) >= 99}
+                                    >
+                                      <Plus className="h-4 w-4" />
+                                    </Button>
+                                  </div>
 
                                   <div className="mt-3 flex items-center justify-end">
                                     <Button
@@ -569,7 +649,7 @@ const OrderPlacement = () => {
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <span>
-                      Subtotal ({subtotalCount} {subtotalCount === 1 ? 'item' : 'items'})
+                      Subtotal ({subtotalCount} {subtotalCount === 1 ? 'item' : 'items'}{totalQuantity > subtotalCount ? `, ${totalQuantity} total` : ''})
                     </span>
                     <span>{formatPrice(subtotalTotal)}</span>
                   </div>
