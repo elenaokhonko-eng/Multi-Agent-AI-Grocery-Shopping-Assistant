@@ -1,11 +1,11 @@
 {
   "user_id": "default_user",
-  "budget_limit_lkr": 5000.0,
+  "budget_limit_lkr": 5000,
   "location": "Colombo, Sri Lanka",
   "dietary_needs": {
-    "vegetarian": false,
+    "vegetarian": true,
     "vegan": false,
-    "gluten_free": false,
+    "gluten_free": true,
     "dairy_free": false,
     "organic_only": false,
     "low_sodium": false,
@@ -39,5 +39,5 @@
     ],
     "avoid_weekends": false
   },
-  "_saved_at": 1757502929.381137
+  "_saved_at": 1757504628.959643
 }

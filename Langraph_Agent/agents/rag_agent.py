@@ -117,7 +117,7 @@ class RAGAgent:
     def _build_llm(self, provider: str, name: str):
         p = provider.lower()
         if p == "groq":
-            return ChatGroq(api_key="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", model=name, temperature=0)
+            return ChatGroq(api_key="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", model=name, temperature=0)
         if p == "openai" and os.getenv("OPENAI_API_KEY"):
             return ChatOpenAI(model=name, temperature=0)
         # fallback to local ollama

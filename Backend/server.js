@@ -5,6 +5,7 @@ require('dotenv').config();
 
 const inventoryRoutes = require('./routes/inventory');
 const orderRoutes = require('./routes/orders');
+const profileRoutes = require('./routes/profile');
 
 const app = express();
 const PORT = process.env.PORT || 3005;
@@ -27,6 +28,7 @@ mongoose.connect(MONGODB_URI)
 // Routes
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/profile', profileRoutes);
 
 // Health check route
 app.get('/api/health', (req, res) => {
@@ -54,5 +56,6 @@ app.listen(PORT, () => {
   console.log(`📋 Health check: http://localhost:${PORT}/api/health`);
   console.log(`📦 Inventory API: http://localhost:${PORT}/api/inventory`);
   console.log(`🛒 Orders API: http://localhost:${PORT}/api/orders`);
+  console.log(`👤 Profile API: http://localhost:${PORT}/api/profile`);
   console.log(`🏪 Available stores: http://localhost:${PORT}/api/orders/stores`);
 });

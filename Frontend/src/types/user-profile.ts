@@ -1,6 +1,7 @@
 export type UserProfile = {
   user_id: string;
   budget_limit_lkr: number;
+  location?: string;
 
   dietary_needs: {
     vegetarian: boolean;
@@ -45,6 +46,7 @@ export type UserProfile = {
 export const DEFAULT_USER_PROFILE: UserProfile = {
   user_id: "default_user",
   budget_limit_lkr: 5000,
+  location: "Colombo, Sri Lanka",
   dietary_needs: {
     vegetarian: false,
     vegan: false,

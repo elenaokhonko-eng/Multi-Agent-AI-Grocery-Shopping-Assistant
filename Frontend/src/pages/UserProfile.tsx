@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Save, Undo2, Settings2, Tags } from "lucide-react";
+import { ArrowLeft, Save, Undo2, Settings2, Tags, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { loadUserProfile, saveUserProfile } from "@/lib/user-profile";
+import { loadUserProfile, saveUserProfile, loadUserProfileFromBackend } from "@/lib/user-profile";
 import { DEFAULT_USER_PROFILE, UserProfile } from "@/types/user-profile";
 
 const toList = (arr: string[]) => arr.join(", ");
@@ -21,18 +21,52 @@ export default function UserProfilePage() {
   const { toast } = useToast();
   const [profile, setProfile] = useState<UserProfile>(loadUserProfile());
   const [dirty, setDirty] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => { setDirty(true); }, [profile]);
+
+  // Load profile from backend on component mount
+  useEffect(() => {
+    const loadFromBackend = async () => {
+      setLoading(true);
+      try {
+        const backendProfile = await loadUserProfileFromBackend();
+        setProfile(backendProfile);
+        setDirty(false);
+      } catch (error) {
+        console.warn("Failed to load from backend, using localStorage");
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadFromBackend();
+  }, []);
 
   const totalDietFlags = useMemo(
     () => Object.values(profile.dietary_needs).filter(v => v === true).length,
     [profile.dietary_needs]
   );
 
-  const save = () => {
-    saveUserProfile(profile);
-    setDirty(false);
-    toast({ title: "Profile saved", description: "Your preferences are updated." });
+  const save = async () => {
+    setSaving(true);
+    try {
+      await saveUserProfile(profile);
+      setDirty(false);
+      toast({ 
+        title: "Profile saved", 
+        description: "Your preferences are updated and sent to the backend pipeline." 
+      });
+    } catch (error) {
+      toast({ 
+        title: "Save failed", 
+        description: "Failed to save profile. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const reset = () => {
@@ -53,27 +87,43 @@ export default function UserProfilePage() {
             <div>
               <h1 className="text-3xl font-bold">User Profile</h1>
               <p className="text-muted-foreground">Tell the AI how to shop & deliver for you</p>
+              {loading && (
+                <p className="text-sm text-blue-600 flex items-center gap-2 mt-1">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Loading profile from backend...
+                </p>
+              )}
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <Button variant="ghost" onClick={reset} disabled={!dirty}>
+            <Button variant="ghost" onClick={reset} disabled={!dirty || saving}>
               <Undo2 className="mr-2 h-4 w-4" /> Revert
             </Button>
-            <Button onClick={save} className="bg-gradient-primary hover:opacity-90">
-              <Save className="mr-2 h-4 w-4" /> Save Changes
+            <Button onClick={save} disabled={saving} className="bg-gradient-primary hover:opacity-90">
+              {saving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" />
+                  Save Changes
+                </>
+              )}
             </Button>
           </div>
         </div>
 
-        {/* Budget */}
+        {/* Budget & Location */}
         <Card className="mb-6">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Settings2 className="h-5 w-5" /> Budget
+              <Settings2 className="h-5 w-5" /> Budget & Location
             </CardTitle>
           </CardHeader>
-          <CardContent className="grid md:grid-cols-3 gap-4">
+          <CardContent className="grid md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Budget Limit (LKR)</Label>
               <Input
@@ -81,6 +131,17 @@ export default function UserProfilePage() {
                 value={profile.budget_limit_lkr}
                 onChange={(e) =>
                   setProfile({ ...profile, budget_limit_lkr: Number(e.target.value || 0) })
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Location</Label>
+              <Input
+                type="text"
+                placeholder="e.g., Colombo, Sri Lanka"
+                value={profile.location || ""}
+                onChange={(e) =>
+                  setProfile({ ...profile, location: e.target.value })
                 }
               />
             </div>
@@ -330,11 +391,21 @@ export default function UserProfilePage() {
         </Card>
 
         <div className="flex items-center justify-end gap-2">
-          <Button variant="ghost" onClick={resetToDefaults}>
+          <Button variant="ghost" onClick={resetToDefaults} disabled={saving}>
             Reset to defaults
           </Button>
-          <Button onClick={save} className="bg-gradient-primary hover:opacity-90">
-            <Save className="mr-2 h-4 w-4" /> Save Changes
+          <Button onClick={save} disabled={saving} className="bg-gradient-primary hover:opacity-90">
+            {saving ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="mr-2 h-4 w-4" />
+                Save Changes
+              </>
+            )}
           </Button>
         </div>
       </div>

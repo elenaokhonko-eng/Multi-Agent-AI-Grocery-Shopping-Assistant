@@ -1,6 +1,7 @@
 import { UserProfile, DEFAULT_USER_PROFILE } from "@/types/user-profile";
 
 const STORAGE_KEY = "user_profile";
+const API_BASE_URL = "http://localhost:3001/api/profile";
 
 /**
  * Load user profile from localStorage, fallback to default profile
@@ -44,14 +45,53 @@ export function loadUserProfile(): UserProfile {
 }
 
 /**
- * Save user profile to localStorage
+ * Load user profile from backend API
  */
-export function saveUserProfile(profile: UserProfile): void {
+export async function loadUserProfileFromBackend(userId: string = "default_user"): Promise<UserProfile> {
   try {
+    const response = await fetch(`${API_BASE_URL}/user/${userId}`);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const profile = await response.json();
+    
+    // Also save to localStorage as backup
     localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
+    
+    return profile;
   } catch (error) {
-    console.error("Failed to save user profile to localStorage:", error);
-    throw new Error("Failed to save profile");
+    console.warn("Failed to load user profile from backend, falling back to localStorage:", error);
+    return loadUserProfile();
+  }
+}
+
+/**
+ * Save user profile to localStorage and backend
+ */
+export async function saveUserProfile(profile: UserProfile): Promise<void> {
+  try {
+    // Save to localStorage first (immediate)
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
+    
+    // Then save to backend (for pipeline usage)
+    const response = await fetch(`${API_BASE_URL}/user/${profile.user_id}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(profile),
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const result = await response.json();
+    console.log("Profile saved to backend:", result);
+  } catch (error) {
+    console.error("Failed to save user profile to backend:", error);
+    // Don't throw error here - localStorage save already succeeded
+    // This ensures the UI doesn't break if backend is down
   }
 }
 
