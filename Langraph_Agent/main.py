@@ -7,7 +7,7 @@ from typing import Dict, Any
 # Set up environment
 from core.config import Config
 os.environ["GROQ_API_KEY"] = Config.GROQ_API_KEY
-
+os.environ["LANGSMITH_API_KEY"] = Config.LANGSMITH_API_KEY
 from langchain_groq import ChatGroq
 from langgraph.graph import StateGraph, START, END
 from langchain_groq import ChatGroq
@@ -25,6 +25,8 @@ from agents.logistics_agent import LogisticsAgent, UserLocation
 from utils.profile_manager import UserProfileManager, print_profile_summary, interactive_profile_setup
 from utils.location_utils import parse_user_location
 
+from langsmith import traceable
+os.environ.setdefault("LANGCHAIN_TRACING_V2", "true")  # ok to keep
 
 class ProductSearchOrchestrator:
     """Main orchestrator for the product search application"""
@@ -86,7 +88,8 @@ class ProductSearchOrchestrator:
         graph_builder.add_edge("format_output", END)
         
         return graph_builder.compile()
-    
+
+    @traceable(name="extract_keywords", tags=["titanstore", "node"])
     def _extract_keywords_node(self, state: ApplicationState) -> Dict[str, Any]:
         """Node for keyword extraction"""
         if Config.DEBUG_MODE:
@@ -115,7 +118,8 @@ class ProductSearchOrchestrator:
             "keywords": keywords,
             "processing_stage": "keyword_extraction_complete"
         }
-    
+
+    @traceable(name="acquire_data", tags=["titanstore", "node"])
     def _acquire_data_node(self, state: ApplicationState) -> Dict[str, Any]:
         """Node for data acquisition using tool calling"""
         if Config.DEBUG_MODE:
@@ -146,7 +150,8 @@ class ProductSearchOrchestrator:
             "product_data": product_data,
             "processing_stage": "data_acquisition_complete"
         }
-    
+
+    @traceable(name="personalize", tags=["titanstore", "node"])
     def _personalize_node(self, state: ApplicationState) -> Dict[str, Any]:
         """Node for personalizing items based on user preferences"""
         if Config.DEBUG_MODE:
@@ -239,7 +244,8 @@ class ProductSearchOrchestrator:
             "personalization_summary": personalization_summary,
             "processing_stage": "personalization_complete"
         }
-    
+
+    @traceable(name="optimize_loyalty", tags=["titanstore", "node"])
     def _optimize_loyalty_node(self, state: ApplicationState) -> Dict[str, Any]:
         """Node for optimizing loyalty benefits and discounts"""
         if Config.DEBUG_MODE:
@@ -316,7 +322,8 @@ class ProductSearchOrchestrator:
                 "loyalty_summary": {"error": str(e)},
                 "processing_stage": "loyalty_optimization_failed"
             }
-    
+
+    @traceable(name="optimize_logistics", tags=["titanstore", "node"])
     def _optimize_logistics_node(self, state: ApplicationState) -> Dict[str, Any]:
         """Node for filtering items based on delivery distance"""
         if Config.DEBUG_MODE:
@@ -404,7 +411,8 @@ class ProductSearchOrchestrator:
                 "user_location": user_location,
                 "processing_stage": "logistics_filtering_failed"
             }
-    
+
+    @traceable(name="optimize_budget", tags=["titanstore", "node"])
     def _optimize_budget_node(self, state: ApplicationState) -> Dict[str, Any]:
         """Node for budget optimization - selects best item per category"""
         if Config.DEBUG_MODE:
@@ -492,6 +500,7 @@ class ProductSearchOrchestrator:
                 "processing_stage": "budget_optimization_failed"
             }
 
+    @traceable(name="format_output", tags=["titanstore", "node"])
     def _format_output_node(self, state: ApplicationState) -> Dict[str, Any]:
         """Node for output formatting"""
         if Config.DEBUG_MODE:
