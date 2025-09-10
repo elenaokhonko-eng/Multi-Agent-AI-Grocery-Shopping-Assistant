@@ -127,7 +127,18 @@ export const Header = () => {
 
           {/* AI Chat Bar */}
           <div className="flex-1 max-w-2xl mx-8">
-            <div className="relative">
+            <div className={`relative ai-search-container ${isSearchFocused || isSearchExpanded || searchQuery ? 'active' : ''}`}>
+              {/* Neural network background pattern */}
+              <div className="ai-neural-bg"></div>
+              
+              {/* Floating sparkles */}
+              <div className="ai-sparkle"></div>
+              <div className="ai-sparkle"></div>
+              <div className="ai-sparkle"></div>
+              <div className="ai-sparkle"></div>
+              <div className="ai-sparkle"></div>
+              <div className="ai-sparkle"></div>
+              
               <div className={`absolute left-3 z-10 transition-all duration-200 ${isSearchFocused || searchQuery ? 'top-4' : 'top-1/2 transform -translate-y-1/2'}`}>
                 <Search className="h-5 w-5 text-muted-foreground" />
               </div>
@@ -142,7 +153,7 @@ export const Header = () => {
                 onBlur={() => setIsSearchFocused(false)}
                 onKeyPress={handleKeyPress}
                 disabled={isSearching}
-                className={`pl-10 pr-32 py-3 text-base border-2 border-accent/20 focus:border-accent rounded-xl shadow-soft resize-none transition-all duration-300 ${
+                className={`ai-search-input ${isSearchFocused || isSearchExpanded || searchQuery ? 'active' : ''} pl-10 pr-32 py-3 text-base border-2 border-accent/20 focus:border-accent rounded-xl shadow-soft resize-none transition-all duration-300 ${
                   isSearchFocused || isSearchExpanded || searchQuery 
                     ? 'min-h-[80px]' 
                     : 'min-h-[48px] overflow-hidden'
@@ -174,7 +185,15 @@ export const Header = () => {
               </div>
             </div>
             <div className={`transition-all duration-200 text-xs text-muted-foreground ml-10 ${isSearchFocused || searchQuery ? 'mt-2 opacity-100' : 'mt-1 opacity-70'}`}>
-              ✨ AI will help you find exactly what you're looking for {isSearching && '(Searching...)'}
+              <span className={`${isSearchFocused ? 'text-accent font-medium' : ''} transition-all duration-300`}>
+                ✨ {isSearching ? (
+                  <span className="animate-pulse">🤖 AI is analyzing your request...</span>
+                ) : isSearchFocused ? (
+                  <span>🧠 Advanced AI ready to find your perfect items</span>
+                ) : (
+                  'AI will help you find exactly what you\'re looking for'
+                )}
+              </span>
             </div>
           </div>
 
