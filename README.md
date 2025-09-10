@@ -202,8 +202,7 @@ python test_query_system.py
 ### **Scalability Features**
 - **Modular Architecture:** Independent agent scaling
 - **API Integration:** RESTful service endpoints
-- **Database Ready:** PostgreSQL/MongoDB support
-- **Cloud Deployment:** Docker containerization ready
+- **Database Ready:** MongoDB support
 
 ### **Development Setup**
 1. Fork the repository
