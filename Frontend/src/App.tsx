@@ -11,6 +11,7 @@ import OrderPlacement from "./pages/OrderPlacement";
 import KitchenInventoryPage from "./pages/KitchenInventoryPage";
 import Chat from "./pages/Chat";
 import NotFound from "./pages/NotFound";
+import UserProfilePage from "./pages/UserProfile";
 
 const queryClient = new QueryClient();
 
@@ -28,6 +29,7 @@ const App = () => (
             <Route path="/orders" element={<Orders />} />
             <Route path="/chat" element={<Chat />} />
             <Route path="/order-placement" element={<OrderPlacement />} />
+            <Route path="/profile" element={<UserProfilePage />} />
             <Route path="*" element={<NotFound />} />
           </Route>
         </Routes>
