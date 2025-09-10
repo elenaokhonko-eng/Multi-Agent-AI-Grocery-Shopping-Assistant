@@ -24,9 +24,7 @@ The Tensor Titans SLAIC 2025 project is an innovative AI-powered product search 
 
 ### **Multi-Agent Pipeline Flow**
 ```
-📝 User Query → 🔍 Keyword Extraction → 📊 Data Acquisition → 
-👤 Personalization → 🚛 Logistics Filtering → 💳 Loyalty Optimization → 
-📋 Output Formatting
+📝 User Query → 🔍 Keyword Extraction → 📊 Data Acquisition → 👤 Personalization → 🚛 Logistics Filtering → 💳 Loyalty Optimization → 💰 Budget Optimization → 📋 Output Formatting
 ```
 ![Multi Agent Pipeline](086_TensorTitans_Architecture.png)
 
