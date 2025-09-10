@@ -1,27 +1,17 @@
-import { Package, Truck, CheckCircle, Clock, AlertCircle, Loader2, ExternalLink, HelpCircle, Calendar, X } from 'lucide-react';
+import { ArrowLeft, Package, Truck, CheckCircle, Clock, AlertCircle, MessageSquare, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
+import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 
 // API response interfaces
 interface OrderItem {
   productId: string;
-  name: string;
+  title: string;
   price: number;
   quantity: number;
   subtotal: number;
@@ -39,22 +29,26 @@ interface ApiOrder {
   _id: string;
   orderId: string;
   userId: string;
+  store: string;
   items: OrderItem[];
   totalAmount: number;
   status: string;
-  createdAt: string;
-  estimatedDelivery?: string;
+  estimatedDelivery: string;
+  nextStatusUpdate: string;
   statusHistory: StatusHistoryItem[];
-  __v: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface StoreOrdersResponse {
   success: boolean;
-  data: ApiOrder[];
+  message: string;
   store: string;
+  data: ApiOrder[];
+  count: number;
 }
 
-// UI interfaces
+// UI Order interface
 interface Order {
   id: string;
   orderId: string;
@@ -62,7 +56,7 @@ interface Order {
   items: OrderItem[];
   totalAmount: number;
   orderDate: string;
-  status: 'pending' | 'in_transit' | 'store_pickup' | 'completed' | 'cancelled';
+  status: 'pending' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'cancelled' | 'processing';
   estimatedDelivery?: string;
   progress: number;
 }
@@ -77,38 +71,46 @@ const getStatusInfo = (status: string) => {
         icon: Clock,
         label: 'Pending',
         color: 'bg-yellow-500 text-white',
-        description: 'Order created successfully',
+        description: 'Order is being processed',
         progress: 25
+      };
+    case 'processing':
+      return {
+        icon: Package,
+        label: 'Processing',
+        color: 'bg-blue-500 text-white',
+        description: 'Order is being prepared',
+        progress: 40
       };
     case 'in_transit':
       return {
         icon: Truck,
         label: 'In Transit',
-        color: 'bg-blue-500 text-white',
+        color: 'bg-info text-white',
         description: 'Your order is on the way',
-        progress: 50
+        progress: 70
       };
-    case 'store_pickup':
+    case 'out_for_delivery':
       return {
         icon: Package,
-        label: 'Ready for Pickup',
-        color: 'bg-orange-500 text-white',
-        description: 'Order ready for store pickup',
-        progress: 75
+        label: 'Out for Delivery',
+        color: 'bg-accent text-white',
+        description: 'Order will be delivered today',
+        progress: 90
       };
-    case 'completed':
+    case 'delivered':
       return {
         icon: CheckCircle,
-        label: 'Completed',
-        color: 'bg-green-500 text-white',
-        description: 'Order completed successfully',
+        label: 'Delivered',
+        color: 'bg-success text-white',
+        description: 'Successfully delivered',
         progress: 100
       };
     case 'cancelled':
       return {
         icon: AlertCircle,
         label: 'Cancelled',
-        color: 'bg-red-500 text-white',
+        color: 'bg-destructive text-white',
         description: 'Order was cancelled',
         progress: 0
       };
@@ -221,94 +223,27 @@ const Orders = () => {
       </div>
     );
   }
-
-  if (orders.length === 0) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50/50 to-white flex items-center justify-center">
-        <Card className="max-w-md mx-auto p-8 text-center">
-          <Package className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-xl font-semibold mb-2">No orders found</h3>
-          <p className="text-muted-foreground mb-6">You haven't placed any orders yet.</p>
-          <Button onClick={() => window.location.href = '/'}>
-            Start Shopping
-          </Button>
-        </Card>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50/50 to-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8 text-center">
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-4">
-            My Orders
-          </h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Track and manage your order history across all stores
-          </p>
-        </div>
+    <div className="min-h-screen ">
+      {/* Header (soft card on tinted bg) */}
+      <div className="container mx-auto px-4 pt-6">
+        {/*<div className="flex items-center gap-4 rounded-2xl bg-white/70 backdrop-blur-sm border border-white/60 shadow-soft px-4 py-3">*/}
+          <Link to="/">
+            {/*<Button variant="ghost" size="sm" className="rounded-full">*/}
+            {/*  <ArrowLeft className="h-4 w-4 mr-2" />*/}
+            {/*  Back to Store*/}
+            {/*</Button>*/}
+          </Link>
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Order Tracking</h1>
+            <p className="text-sm md:text-base text-muted-foreground">Track all your orders in one place</p>
+          </div>
+        {/*</div>*/}
+      </div>
 
-        {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <Card className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-warning/20 rounded-lg">
-                <Package className="h-5 w-5 text-warning" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Total Orders</p>
-                <p className="text-2xl font-bold">{orders.length}</p>
-              </div>
-            </div>
-          </Card>
-          
-          <Card className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-info/20 rounded-lg">
-                <Truck className="h-5 w-5 text-info" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">In Transit</p>
-                <p className="text-2xl font-bold">
-                  {orders.filter(o => o.status === 'in_transit').length}
-                </p>
-              </div>
-            </div>
-          </Card>
-          
-          <Card className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-accent/20 rounded-lg">
-                <Package className="h-5 w-5 text-accent" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Ready for Pickup</p>
-                <p className="text-2xl font-bold">
-                  {orders.filter(o => o.status === 'store_pickup').length}
-                </p>
-              </div>
-            </div>
-          </Card>
-          
-          <Card className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-success/20 rounded-lg">
-                <CheckCircle className="h-5 w-5 text-success" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Completed</p>
-                <p className="text-2xl font-bold">
-                  {orders.filter(o => o.status === 'completed').length}
-                </p>
-              </div>
-            </div>
-          </Card>
-        </div>
-
-        {/* Orders Grid */}
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+      {/* Orders List */}
+      <div className="container mx-auto px-4 py-8">
+        <div className="space-y-6">
           {orders.map((order) => {
             const statusInfo = getStatusInfo(order.status);
             const StatusIcon = statusInfo.icon;
@@ -322,10 +257,10 @@ const Orders = () => {
                   <div className="flex items-start justify-between">
                     <div className="space-y-1">
                       <CardTitle className="text-xl md:text-2xl font-semibold tracking-tight">
-                        Order #{order.orderId}
+                        Order #{order.id}
                       </CardTitle>
                       <p className="text-sm text-muted-foreground">
-                        {new Date(order.orderDate).toLocaleDateString()} • {order.store}
+                        Ordered on {new Date(order.orderDate).toLocaleDateString()}
                       </p>
                     </div>
                     <Badge className={`${statusInfo.color} rounded-full px-3 py-1 text-xs md:text-sm`}>
@@ -336,35 +271,29 @@ const Orders = () => {
                 </CardHeader>
 
                 <CardContent className="space-y-4">
-                  {/* Items List */}
-                  <div className="space-y-3">
-                    {order.items.map((item, index) => (
-                      <div key={index} className="flex items-center gap-4 p-3 bg-muted/30 rounded-lg">
-                        <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center">
-                          <Package className="h-6 w-6 text-muted-foreground" />
-                        </div>
-                        <div className="flex-1">
-                          <h4 className="font-medium text-sm">{item.name}</h4>
-                          <p className="text-xs text-muted-foreground">
-                            Qty: {item.quantity} • {formatPrice(item.price)}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-semibold">
-                            {formatPrice(item.price * item.quantity)}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
+                  {/* Product Info */}
+                  <div className="flex items-center gap-4">
+                    <img
+                      src={order.productImage}
+                      alt={order.productName}
+                      className="w-16 h-16 md:w-20 md:h-20 object-cover rounded-xl shadow-soft"
+                    />
+                    <div className="flex-1">
+                      <h3 className="font-medium text-base md:text-lg">{order.productName}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Quantity: {order.quantity} • ${order.price}
+                      </p>
+                      <p className="text-sm md:text-base font-semibold">
+                        Total: ${(order.price * order.quantity).toFixed(2)}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs md:text-sm text-muted-foreground">Tracking Number</p>
+                      <p className="font-mono text-sm md:text-base font-medium">{order.trackingNumber}</p>
+                    </div>
                   </div>
 
                   <Separator />
-
-                  {/* Total Amount */}
-                  <div className="flex justify-between items-center p-3 bg-primary/5 rounded-lg">
-                    <span className="font-semibold">Total Amount:</span>
-                    <span className="font-bold text-lg">{formatPrice(order.totalAmount)}</span>
-                  </div>
 
                   {/* Progress */}
                   <div className="space-y-2">
@@ -375,15 +304,15 @@ const Orders = () => {
                     <Progress value={order.progress} className="h-2" />
                     <p className="text-sm text-muted-foreground">
                       {statusInfo.description}
-                      {order.estimatedDelivery && order.status !== 'completed' && (
-                        <span> • Est. delivery: {new Date(order.estimatedDelivery).toLocaleDateString()}</span>
+                      {order.estimatedDelivery && order.status !== 'delivered' && (
+                        <span> • Estimated delivery: {new Date(order.estimatedDelivery).toLocaleDateString()}</span>
                       )}
                     </p>
                   </div>
 
                   {/* Actions */}
                   <div className="flex flex-wrap items-center gap-2 pt-2">
-                    {order.status === 'completed' && (
+                    {order.status === 'delivered' && (
                       <>
                         <Button variant="outline" size="sm" className="rounded-full">
                           Rate Product
@@ -393,28 +322,22 @@ const Orders = () => {
                         </Button>
                       </>
                     )}
-                    {order.status === 'cancelled' && (
-                      <Button variant="outline" size="sm" className="rounded-full" disabled>
-                        <AlertCircle className="h-4 w-4 mr-2" />
-                        Cancelled
+                    {order.status === 'in-dispute' && (
+                      <Button variant="outline" size="sm" className="rounded-full">
+                        <MessageSquare className="h-4 w-4 mr-2" />
+                        View Dispute
                       </Button>
                     )}
-                    {order.status === 'pending' && (
+                    {order.status === 'in-review' && (
                       <Button variant="outline" size="sm" className="rounded-full">
                         <Clock className="h-4 w-4 mr-2" />
-                        Processing
+                        Review Details
                       </Button>
                     )}
-                    {order.status === 'store_pickup' && (
-                      <Button variant="outline" size="sm" className="rounded-full">
-                        <Package className="h-4 w-4 mr-2" />
-                        Ready for Pickup
-                      </Button>
-                    )}
-                    {order.status === 'in_transit' && (
+                    {(order.status === 'in-transit' || order.status === 'delivery') && (
                       <Button variant="outline" size="sm" className="rounded-full">
                         <Truck className="h-4 w-4 mr-2" />
-                        Track Package
+                        Track Live
                       </Button>
                     )}
                     <Button variant="ghost" size="sm" className="rounded-full">
@@ -426,6 +349,47 @@ const Orders = () => {
             );
           })}
         </div>
+
+        {/* Summary (pill-style like your status bar) */}
+        <Card className="mt-8 rounded-3xl border-0 bg-[#F2FBFD] shadow-soft">
+          <CardContent className="p-6">
+            <div className="text-center space-y-3">
+              <h3 className="text-lg md:text-xl font-semibold tracking-tight">Order Summary</h3>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-6 text-center">
+                <div className="space-y-1">
+                  <div className="text-2xl md:text-3xl font-bold leading-none">
+                    {orders.filter(o => o.status === 'in-transit').length}
+                  </div>
+                  <p className="text-sm md:text-base text-muted-foreground">In Transit</p>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-2xl md:text-3xl font-bold leading-none">
+                    {orders.filter(o => o.status === 'delivery').length}
+                  </div>
+                  <p className="text-sm md:text-base text-muted-foreground">Out for Delivery</p>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-2xl md:text-3xl font-bold leading-none">
+                    {orders.filter(o => o.status === 'delivered').length}
+                  </div>
+                  <p className="text-sm md:text-base text-muted-foreground">Delivered</p>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-2xl md:text-3xl font-bold leading-none">
+                    {orders.filter(o => o.status === 'in-review').length}
+                  </div>
+                  <p className="text-sm md:text-base text-muted-foreground">In Review</p>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-2xl md:text-3xl font-bold leading-none">
+                    {orders.filter(o => o.status === 'in-dispute').length}
+                  </div>
+                  <p className="text-sm md:text-base text-muted-foreground">In Dispute</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
