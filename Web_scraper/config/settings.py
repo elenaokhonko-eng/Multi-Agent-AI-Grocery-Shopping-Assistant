@@ -1,16 +1,15 @@
 import os
 from typing import Optional
-from dotenv import load_dotenv
-
-load_dotenv()
 
 class Config:
     """Configuration settings for the web scraping application."""
     
     # API Keys and External Services
+    GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "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")
+    GROQ_MODEL: str = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
     GROQ_API_KEY: str = os.getenv("GROQ_API_KEY")
     GROQ_MODEL: str = os.getenv("GROQ_MODEL")
-    
+
     # Database Configuration
     MONGO_URI: str = os.getenv("MONGO_URI")
     DATABASE_NAME: str = os.getenv("DATABASE_NAME")

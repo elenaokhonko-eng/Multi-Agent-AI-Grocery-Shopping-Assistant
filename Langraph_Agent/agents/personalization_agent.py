@@ -6,7 +6,9 @@ from typing import List, Dict, Any, Tuple
 from langchain_core.tools import tool
 from langchain_groq import ChatGroq
 from core.user_profile import UserProfile, get_default_profile
-
+from core.profile_store import UserProfileStore
+from core.feedback import PreferenceStore as PrefsStore
+from core.profile_sync import augment_profile_from_learned
 
 @tool
 def filter_by_budget(items: List[Dict[str, Any]], budget_limit: float) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
@@ -218,17 +220,16 @@ def prioritize_by_loyalty(items: List[Dict[str, Any]], loyalty_info: Dict[str, A
     return result
 
 
+
 class PersonalizationAgent:
-    """Agent responsible for personalizing product selections based on user preferences"""
-    
-    def __init__(self, llm: ChatGroq, user_profile: UserProfile = None):
-        self.llm = ChatGroq(
-            model="llama-3.3-70b-versatile",
-            temperature=0.1
-        )
-        self.user_profile = user_profile or get_default_profile()
-        
-        # Available tools
+    def __init__(self, llm: ChatGroq, user_profile: UserProfile = None,
+                 profile_store: UserProfileStore = None,
+                 prefs_store: PrefsStore = None):
+        self.llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.1)
+        self.profile_store = profile_store or UserProfileStore(".profiles")
+        self.prefs_store   = prefs_store   or PrefsStore(".prefs")
+        self.user_profile  = user_profile or get_default_profile()
+
         self.tools = [
             filter_by_budget,
             filter_by_dietary_needs,
@@ -236,11 +237,26 @@ class PersonalizationAgent:
             filter_by_inventory,
             prioritize_by_loyalty
         ]
-        
-        # Bind tools to LLM
         self.llm_with_tools = self.llm.bind_tools(self.tools)
-    
-    def personalize_items(self, items: List[Dict[str, Any]]) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+
+    def _refresh_profile_from_feedback(self):
+        # 1) load persisted profile (if any external edits were made)
+        prof = self.profile_store.load(self.user_profile.user_id)
+        # 2) load learned preferences
+        learned = self.prefs_store.load(self.user_profile.user_id)
+        # 3) project learned -> profile fields (brands, stores, delivery)
+        prof = augment_profile_from_learned(prof, learned, allow_overwrite=False)
+        # 4) save & set active
+        self.profile_store.save(prof)
+        self.user_profile = prof
+
+    def personalize_items(self, items: List[Dict[str, Any]]):
+        # NEW: refresh profile before every run
+        self._refresh_profile_from_feedback()
+
+        print(f"[AGENT] Personalization Agent processing {len(items)} items for user: {self.user_profile.user_id}")
+        # ... your existing pipeline below (dietary -> brand -> inventory -> loyalty -> budget)
+        # unchanged code …
         """
         Personalize items based on user profile using LLM and tools
         
