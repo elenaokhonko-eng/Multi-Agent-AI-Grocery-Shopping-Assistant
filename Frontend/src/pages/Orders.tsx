@@ -21,7 +21,7 @@ import { useToast } from '@/hooks/use-toast';
 // API response interfaces
 interface OrderItem {
   productId: string;
-  name: string;
+  title: string; // API uses 'title', not 'name'
   price: number;
   quantity: number;
   subtotal: number;
@@ -134,7 +134,60 @@ const Orders = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [cancellingOrders, setCancellingOrders] = useState<Set<string>>(new Set());
   const { toast } = useToast();
+
+  const handleCancelOrder = async (order: Order) => {
+    try {
+      setCancellingOrders(prev => new Set(prev).add(order.id));
+      
+      const response = await fetch(
+        `http://localhost:3005/api/orders/${order.store}/${order.orderId}/cancel`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            reason: 'Customer requested cancellation'
+          })
+        }
+      );
+
+      if (response.ok) {
+        // Update the order status in the local state
+        setOrders(prevOrders => 
+          prevOrders.map(o => 
+            o.id === order.id 
+              ? { ...o, status: 'cancelled' as const, progress: 0 }
+              : o
+          )
+        );
+        
+        toast({
+          title: 'Order cancelled successfully',
+          description: `Order #${order.orderId} has been cancelled.`,
+          variant: 'default',
+        });
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to cancel order');
+      }
+    } catch (error) {
+      console.error('Error cancelling order:', error);
+      toast({
+        title: 'Failed to cancel order',
+        description: error instanceof Error ? error.message : 'An unexpected error occurred',
+        variant: 'destructive',
+      });
+    } finally {
+      setCancellingOrders(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(order.id);
+        return newSet;
+      });
+    }
+  };
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -344,7 +397,7 @@ const Orders = () => {
                           <Package className="h-6 w-6 text-muted-foreground" />
                         </div>
                         <div className="flex-1">
-                          <h4 className="font-medium text-sm">{item.name}</h4>
+                          <h4 className="font-medium text-sm">{item.title}</h4>
                           <p className="text-xs text-muted-foreground">
                             Qty: {item.quantity} • {formatPrice(item.price)}
                           </p>
@@ -417,6 +470,52 @@ const Orders = () => {
                         Track Package
                       </Button>
                     )}
+                    
+                    {/* Cancel Order Button - only for pending and in_transit orders */}
+                    {(order.status === 'pending' || order.status === 'in_transit') && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button 
+                            variant="destructive" 
+                            size="sm" 
+                            className="rounded-full"
+                            disabled={cancellingOrders.has(order.id)}
+                          >
+                            {cancellingOrders.has(order.id) ? (
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              <X className="h-4 w-4 mr-2" />
+                            )}
+                            {cancellingOrders.has(order.id) ? 'Cancelling...' : 'Cancel Order'}
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Cancel Order #{order.orderId}?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to cancel this order? This action cannot be undone.
+                              <br /><br />
+                              <strong>Order Details:</strong>
+                              <br />• Store: {order.store}
+                              <br />• Total: {formatPrice(order.totalAmount)}
+                              <br />• Status: {getStatusInfo(order.status).label}
+                              <br /><br />
+                              You will receive a refund if payment has been processed.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Keep Order</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleCancelOrder(order)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Yes, Cancel Order
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
+                    
                     <Button variant="ghost" size="sm" className="rounded-full">
                       Order Details
                     </Button>
