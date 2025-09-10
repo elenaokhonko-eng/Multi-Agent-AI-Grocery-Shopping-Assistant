@@ -71,64 +71,99 @@ function InventoryItemRow({ item, busy, onInc, onDec, onDelete }: RowProps) {
   const low = qty < LOW_STOCK_THRESHOLD;
 
   return (
-    <Card key={id} className="border-border/60 hover:shadow-sm transition-shadow rounded-2xl">
-      <CardContent className="p-3">
-        <div className="flex items-center justify-between gap-3">
-          {/* left: name + meta */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <h5 className="font-medium text-sm truncate">{item.name}</h5>
-              {expired && <Badge variant="destructive" className="text-xs">Expired</Badge>}
-              {!expired && soon && (
-                <Badge className="text-xs bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
-                  Soon
-                </Badge>
-              )}
-              {!expired && !soon && low && (
-                <Badge className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                  Low
-                </Badge>
+    <Card key={id} className="group relative overflow-hidden bg-white/60 backdrop-blur-sm border border-white/20 hover:border-white/40 transition-all duration-500 hover:shadow-xl hover:-translate-y-1 rounded-2xl animate-fade-in">
+      {/* Gradient background that appears on hover */}
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 via-white/30 to-purple-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+      
+      {/* Status indicator bar */}
+      <div className={`absolute top-0 left-0 right-0 h-1 transition-all duration-300 ${
+        expired ? 'bg-gradient-to-r from-red-500 to-red-600' :
+        soon ? 'bg-gradient-to-r from-amber-400 to-orange-500' :
+        low ? 'bg-gradient-to-r from-blue-400 to-cyan-500' :
+        'bg-gradient-to-r from-green-400 to-emerald-500'
+      }`}></div>
+      
+      <CardContent className="relative z-10 p-4">
+        <div className="flex items-center justify-between gap-4">
+          {/* Left: Item info with enhanced styling */}
+          <div className="flex-1 min-w-0 space-y-2">
+            {/* Item name and badges */}
+            <div className="flex items-center gap-3 flex-wrap">
+              <h5 className="font-semibold text-gray-800 group-hover:text-gray-900 transition-colors truncate text-base">
+                {item.name}
+              </h5>
+              
+              {/* Status badges with modern styling */}
+              <div className="flex gap-2">
+                {expired && (
+                  <Badge className="text-xs px-2 py-1 bg-gradient-to-r from-red-500 to-red-600 text-white border-0 rounded-full animate-pulse">
+                    Expired
+                  </Badge>
+                )}
+                {!expired && soon && (
+                  <Badge className="text-xs px-2 py-1 bg-gradient-to-r from-amber-400 to-orange-500 text-white border-0 rounded-full">
+                    Soon
+                  </Badge>
+                )}
+                {!expired && !soon && low && (
+                  <Badge className="text-xs px-2 py-1 bg-gradient-to-r from-blue-400 to-cyan-500 text-white border-0 rounded-full">
+                    Low Stock
+                  </Badge>
+                )}
+              </div>
+            </div>
+            
+            {/* Quantity and expiry info */}
+            <div className="flex items-center gap-4 text-sm text-gray-600">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full"></div>
+                <span className="font-medium">{qty} {unit}</span>
+              </div>
+              
+              {item.expiry && (
+                <div className="flex items-center gap-2 text-gray-500">
+                  <Calendar className="h-3 w-3" />
+                  <span>
+                    Exp: {new Date(item.expiry).toLocaleDateString()}
+                    {typeof daysUntil(item.expiry) === 'number' && (
+                      <span className="ml-1 text-xs bg-gray-100 px-1.5 py-0.5 rounded-full">
+                        {daysUntil(item.expiry)}d
+                      </span>
+                    )}
+                  </span>
+                </div>
               )}
             </div>
-            <p className="text-xs text-muted-foreground">
-              {qty} {unit}
-              {item.expiry && (
-                <span className="ml-2">
-                  • Exp: {new Date(item.expiry).toLocaleDateString()}
-                  {typeof daysUntil(item.expiry) === 'number' && (
-                    <span className="ml-1 text-[11px]">({daysUntil(item.expiry)}d)</span>
-                  )}
-                </span>
-              )}
-            </p>
           </div>
 
           {/* right: qty control + delete */}
           <div className="flex items-center gap-2 shrink-0">
-            {/* segmented qty control */}
-            <div className="flex items-center rounded-lg border bg-accent/5 overflow-hidden">
+            {/* Enhanced quantity control */}
+            <div className="flex items-center bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl border border-gray-200/60 overflow-hidden shadow-sm group-hover:shadow-md transition-shadow duration-300">
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7 rounded-none"
+                className="h-9 w-9 rounded-none hover:bg-white/60 text-gray-600 hover:text-gray-800 transition-all duration-200"
                 onClick={onDec}
                 disabled={busy || qty <= 0}
                 aria-label="Decrease quantity"
               >
-                <Minus className="h-3 w-3" />
+                <Minus className="h-4 w-4" />
               </Button>
-              <div className="px-3 text-sm tabular-nums select-none">{qty}</div>
+              <div className="px-4 py-2 text-sm font-semibold text-gray-800 bg-white/40 min-w-[3rem] text-center tabular-nums">
+                {qty}
+              </div>
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7 rounded-none"
+                className="h-9 w-9 rounded-none hover:bg-white/60 text-gray-600 hover:text-gray-800 transition-all duration-200"
                 onClick={onInc}
                 disabled={busy}
                 aria-label="Increase quantity"
               >
-                <Plus className="h-3 w-3" />
+                <Plus className="h-4 w-4" />
               </Button>
             </div>
 
@@ -173,6 +208,9 @@ function InventoryItemRow({ item, busy, onInc, onDec, onDelete }: RowProps) {
           </div>
         </div>
       </CardContent>
+      
+      {/* Subtle hover glow effect */}
+      <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-blue-400/10 to-purple-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
     </Card>
   );
 }
@@ -363,9 +401,13 @@ export const KitchenInventory = ({ showHeader = true }: KitchenInventoryProps) =
         </>
       )}
 
-      {/* Search and Filters */}
-      <Card className="border-accent/20 shadow-sm rounded-2xl">
-        <CardContent className="p-4 space-y-4">
+      {/* Search and Filters - Modern Design */}
+      <Card className="relative overflow-hidden bg-white/70 backdrop-blur-xl border border-white/30 shadow-lg rounded-3xl">
+        {/* Animated background gradient */}
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-50/30 via-white/20 to-purple-50/30"></div>
+        <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-cyan-200/20 to-blue-200/20 rounded-full blur-2xl"></div>
+        
+        <CardContent className="relative z-10 p-6 space-y-6">
           <div className="flex flex-col sm:flex-row gap-4">
             {/* Search */}
             <div className="flex-1 relative">
@@ -587,12 +629,18 @@ export const KitchenInventory = ({ showHeader = true }: KitchenInventoryProps) =
         </CardContent>
       </Card>
 
-      {/* form */}
-      <Card className="border-accent/30 shadow-sm rounded-2xl">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-lg md:text-xl font-semibold tracking-tight">Add New Item</CardTitle>
+      {/* Add New Item Form - Modern Design */}
+      <Card className="relative overflow-hidden bg-gradient-to-br from-white/80 to-blue-50/50 backdrop-blur-xl border border-white/40 shadow-xl rounded-3xl">
+        {/* Animated background elements */}
+        <div className="absolute top-0 left-0 w-24 h-24 bg-gradient-to-br from-green-200/30 to-emerald-200/30 rounded-full blur-xl"></div>
+        <div className="absolute bottom-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-200/30 to-purple-200/30 rounded-full blur-xl"></div>
+        
+        <CardHeader className="relative z-10 pb-4">
+          <CardTitle className="text-2xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
+            Add New Item
+          </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="relative z-10 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
             <div className="md:col-span-12">
               <label className="block text-xs font-medium mb-1">Item name</label>
@@ -781,23 +829,44 @@ export const KitchenInventory = ({ showHeader = true }: KitchenInventoryProps) =
         </div>
       )}
 
-      {/* stats */}
-      <Card className="bg-[#F2FBFD] rounded-3xl shadow-sm">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-lg md:text-xl font-semibold tracking-tight">
+      {/* Inventory Status - Modern Dashboard Style */}
+      <Card className="relative overflow-hidden bg-gradient-to-br from-blue-50/80 via-white/70 to-purple-50/80 backdrop-blur-xl border border-white/40 rounded-3xl shadow-xl">
+        {/* Animated background orbs */}
+        <div className="absolute top-4 right-8 w-16 h-16 bg-gradient-to-br from-blue-300/20 to-cyan-300/20 rounded-full blur-lg animate-pulse"></div>
+        <div className="absolute bottom-6 left-6 w-12 h-12 bg-gradient-to-br from-purple-300/20 to-pink-300/20 rounded-full blur-lg animate-pulse delay-1000"></div>
+        
+        <CardHeader className="relative z-10 pb-4">
+          <CardTitle className="text-2xl font-bold bg-gradient-to-r from-gray-800 via-blue-700 to-purple-700 bg-clip-text text-transparent flex items-center gap-3">
+            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
+              <Package className="h-4 w-4 text-white" />
+            </div>
             Inventory Status
           </CardTitle>
         </CardHeader>
 
-        <CardContent className="grid grid-cols-2 gap-6 text-center">
-          <div className="space-y-1">
-            <div className="text-2xl md:text-3xl font-bold leading-none">1</div>
-            <p className="text-sm md:text-base text-muted-foreground">Expiring Soon</p>
+        <CardContent className="relative z-10 grid grid-cols-2 gap-8">
+          <div className="text-center p-6 bg-white/50 backdrop-blur-sm rounded-2xl border border-white/20 hover:bg-white/70 transition-all duration-300 hover:scale-105">
+            <div className="mb-3">
+              <div className="w-12 h-12 mx-auto bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl flex items-center justify-center shadow-lg">
+                <Calendar className="h-6 w-6 text-white" />
+              </div>
+            </div>
+            <div className="text-3xl font-bold bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">
+              {expiringSoonCount}
+            </div>
+            <p className="text-sm font-medium text-gray-600 mt-1">Expiring Soon</p>
           </div>
 
-          <div className="space-y-1">
-            <div className="text-2xl md:text-3xl font-bold leading-none">1</div>
-            <p className="text-sm md:text-base text-muted-foreground">Running Low</p>
+          <div className="text-center p-6 bg-white/50 backdrop-blur-sm rounded-2xl border border-white/20 hover:bg-white/70 transition-all duration-300 hover:scale-105">
+            <div className="mb-3">
+              <div className="w-12 h-12 mx-auto bg-gradient-to-br from-blue-400 to-cyan-500 rounded-xl flex items-center justify-center shadow-lg">
+                <Package className="h-6 w-6 text-white" />
+              </div>
+            </div>
+            <div className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
+              {lowStockCount}
+            </div>
+            <p className="text-sm font-medium text-gray-600 mt-1">Running Low</p>
           </div>
         </CardContent>
       </Card>
