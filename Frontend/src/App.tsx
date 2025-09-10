@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import AppLayout from "@/layouts/AppLayout";
+import ScrollToTop from "@/components/ScrollToTop";
 import Index from "./pages/Index";
 import Orders from "./pages/Orders";
 import OrderPlacement from "./pages/OrderPlacement";
@@ -19,6 +20,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <ScrollToTop />
         <Routes>
           {/* Everything below shares Sidebar + Header */}
           <Route element={<AppLayout />}>
