@@ -1,31 +1,28 @@
 import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import banner1 from '@/assets/banner1.jpg';
-import banner2 from '@/assets/banner2.jpg';
-import banner3 from '@/assets/banner3.jpg';
 
 const banners = [
   {
     id: 1,
-    image: banner1,
-    title: "Mega Sale",
-    subtitle: "Up to 50% off on Electronics",
-    cta: "Shop Now"
+    image: "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
+    title: "Fresh Groceries",
+    subtitle: "Up to 40% off on Fresh Fruits & Vegetables",
+    cta: "Shop Fresh"
   },
   {
     id: 2,
-    image: banner2,
-    title: "New Arrivals",
-    subtitle: "Latest Tech Gadgets",
-    cta: "Explore"
+    image: "https://images.unsplash.com/photo-1542838132-92c53300491e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2074&q=80",
+    title: "Mega Sale",
+    subtitle: "Save Big on Daily Essentials & Household Items",
+    cta: "Shop Sale"
   },
   {
     id: 3,
-    image: banner3,
-    title: "Smart Kitchen",
-    subtitle: "30% off on Kitchen Appliances",
-    cta: "Shop Kitchen"
+    image: "https://images.unsplash.com/photo-1588964895597-cfccd6e2dbf9?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2148&q=80",
+    title: "Dairy & Pantry",
+    subtitle: "Best Prices on Milk, Rice, Oil & Cooking Essentials",
+    cta: "Shop Essentials"
   }
 ];
 
