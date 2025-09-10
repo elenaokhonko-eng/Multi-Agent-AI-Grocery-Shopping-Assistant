@@ -1,27 +1,16 @@
-import { Package, Truck, CheckCircle, Clock, AlertCircle, Loader2, ExternalLink, HelpCircle, Calendar, X } from 'lucide-react';
+import { Package, Truck, CheckCircle, Clock, AlertCircle, Loader2, ExternalLink, HelpCircle, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
 import { useEffect, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 
 // API response interfaces
 interface OrderItem {
   productId: string;
-  title: string; // API uses 'title', not 'name'
+  name: string;
   price: number;
   quantity: number;
   subtotal: number;
@@ -62,7 +51,7 @@ interface Order {
   items: OrderItem[];
   totalAmount: number;
   orderDate: string;
-  status: 'pending' | 'in_transit' | 'store_pickup' | 'completed' | 'cancelled';
+  status: 'pending' | 'processing' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'cancelled';
   estimatedDelivery?: string;
   progress: number;
 }
@@ -77,38 +66,46 @@ const getStatusInfo = (status: string) => {
         icon: Clock,
         label: 'Pending',
         color: 'bg-yellow-500 text-white',
-        description: 'Order created successfully',
+        description: 'Order is being processed',
         progress: 25
+      };
+    case 'processing':
+      return {
+        icon: Package,
+        label: 'Processing',
+        color: 'bg-blue-500 text-white',
+        description: 'Order is being prepared',
+        progress: 40
       };
     case 'in_transit':
       return {
         icon: Truck,
         label: 'In Transit',
-        color: 'bg-blue-500 text-white',
+        color: 'bg-info text-white',
         description: 'Your order is on the way',
-        progress: 50
+        progress: 70
       };
-    case 'store_pickup':
+    case 'out_for_delivery':
       return {
         icon: Package,
-        label: 'Ready for Pickup',
-        color: 'bg-orange-500 text-white',
-        description: 'Order ready for store pickup',
-        progress: 75
+        label: 'Out for Delivery',
+        color: 'bg-accent text-white',
+        description: 'Order will be delivered today',
+        progress: 90
       };
-    case 'completed':
+    case 'delivered':
       return {
         icon: CheckCircle,
-        label: 'Completed',
-        color: 'bg-green-500 text-white',
-        description: 'Order completed successfully',
+        label: 'Delivered',
+        color: 'bg-success text-white',
+        description: 'Successfully delivered',
         progress: 100
       };
     case 'cancelled':
       return {
         icon: AlertCircle,
         label: 'Cancelled',
-        color: 'bg-red-500 text-white',
+        color: 'bg-destructive text-white',
         description: 'Order was cancelled',
         progress: 0
       };
@@ -134,60 +131,7 @@ const Orders = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [cancellingOrders, setCancellingOrders] = useState<Set<string>>(new Set());
   const { toast } = useToast();
-
-  const handleCancelOrder = async (order: Order) => {
-    try {
-      setCancellingOrders(prev => new Set(prev).add(order.id));
-      
-      const response = await fetch(
-        `http://localhost:3005/api/orders/${order.store}/${order.orderId}/cancel`,
-        {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            reason: 'Customer requested cancellation'
-          })
-        }
-      );
-
-      if (response.ok) {
-        // Update the order status in the local state
-        setOrders(prevOrders => 
-          prevOrders.map(o => 
-            o.id === order.id 
-              ? { ...o, status: 'cancelled' as const, progress: 0 }
-              : o
-          )
-        );
-        
-        toast({
-          title: 'Order cancelled successfully',
-          description: `Order #${order.orderId} has been cancelled.`,
-          variant: 'default',
-        });
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to cancel order');
-      }
-    } catch (error) {
-      console.error('Error cancelling order:', error);
-      toast({
-        title: 'Failed to cancel order',
-        description: error instanceof Error ? error.message : 'An unexpected error occurred',
-        variant: 'destructive',
-      });
-    } finally {
-      setCancellingOrders(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(order.id);
-        return newSet;
-      });
-    }
-  };
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -337,9 +281,9 @@ const Orders = () => {
                 <Package className="h-5 w-5 text-accent" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Ready for Pickup</p>
+                <p className="text-sm text-muted-foreground">Out for Delivery</p>
                 <p className="text-2xl font-bold">
-                  {orders.filter(o => o.status === 'store_pickup').length}
+                  {orders.filter(o => o.status === 'out_for_delivery').length}
                 </p>
               </div>
             </div>
@@ -351,9 +295,9 @@ const Orders = () => {
                 <CheckCircle className="h-5 w-5 text-success" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Completed</p>
+                <p className="text-sm text-muted-foreground">Delivered</p>
                 <p className="text-2xl font-bold">
-                  {orders.filter(o => o.status === 'completed').length}
+                  {orders.filter(o => o.status === 'delivered').length}
                 </p>
               </div>
             </div>
@@ -397,7 +341,7 @@ const Orders = () => {
                           <Package className="h-6 w-6 text-muted-foreground" />
                         </div>
                         <div className="flex-1">
-                          <h4 className="font-medium text-sm">{item.title}</h4>
+                          <h4 className="font-medium text-sm">{item.name}</h4>
                           <p className="text-xs text-muted-foreground">
                             Qty: {item.quantity} • {formatPrice(item.price)}
                           </p>
@@ -428,7 +372,7 @@ const Orders = () => {
                     <Progress value={order.progress} className="h-2" />
                     <p className="text-sm text-muted-foreground">
                       {statusInfo.description}
-                      {order.estimatedDelivery && order.status !== 'completed' && (
+                      {order.estimatedDelivery && order.status !== 'delivered' && (
                         <span> • Est. delivery: {new Date(order.estimatedDelivery).toLocaleDateString()}</span>
                       )}
                     </p>
@@ -436,7 +380,7 @@ const Orders = () => {
 
                   {/* Actions */}
                   <div className="flex flex-wrap items-center gap-2 pt-2">
-                    {order.status === 'completed' && (
+                    {order.status === 'delivered' && (
                       <>
                         <Button variant="outline" size="sm" className="rounded-full">
                           Rate Product
@@ -458,64 +402,12 @@ const Orders = () => {
                         Processing
                       </Button>
                     )}
-                    {order.status === 'store_pickup' && (
-                      <Button variant="outline" size="sm" className="rounded-full">
-                        <Package className="h-4 w-4 mr-2" />
-                        Ready for Pickup
-                      </Button>
-                    )}
-                    {order.status === 'in_transit' && (
+                    {(order.status === 'in_transit' || order.status === 'out_for_delivery') && (
                       <Button variant="outline" size="sm" className="rounded-full">
                         <Truck className="h-4 w-4 mr-2" />
-                        Track Package
+                        Track Live
                       </Button>
                     )}
-                    
-                    {/* Cancel Order Button - only for pending and in_transit orders */}
-                    {(order.status === 'pending' || order.status === 'in_transit') && (
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button 
-                            variant="destructive" 
-                            size="sm" 
-                            className="rounded-full"
-                            disabled={cancellingOrders.has(order.id)}
-                          >
-                            {cancellingOrders.has(order.id) ? (
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            ) : (
-                              <X className="h-4 w-4 mr-2" />
-                            )}
-                            {cancellingOrders.has(order.id) ? 'Cancelling...' : 'Cancel Order'}
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Cancel Order #{order.orderId}?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Are you sure you want to cancel this order? This action cannot be undone.
-                              <br /><br />
-                              <strong>Order Details:</strong>
-                              <br />• Store: {order.store}
-                              <br />• Total: {formatPrice(order.totalAmount)}
-                              <br />• Status: {getStatusInfo(order.status).label}
-                              <br /><br />
-                              You will receive a refund if payment has been processed.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Keep Order</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => handleCancelOrder(order)}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            >
-                              Yes, Cancel Order
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    )}
-                    
                     <Button variant="ghost" size="sm" className="rounded-full">
                       Order Details
                     </Button>
