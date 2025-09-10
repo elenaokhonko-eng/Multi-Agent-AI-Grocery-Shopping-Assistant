@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Search, ShoppingCart, User, Menu, Image, Mic, Camera, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -44,7 +44,6 @@ export const Header = () => {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
-
 
   // Scroll-based header visibility
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
@@ -92,6 +91,7 @@ export const Header = () => {
       return;
     }
     if (isRecording) {
+      // Stop recording and capture the final transcription
       stop();
       const final = finalText.trim();
       if (final) {
@@ -100,6 +100,7 @@ export const Header = () => {
       }
       reset();
     } else {
+      // Start recording
       start();
       toast({ title: 'Listening…', description: "Speak and I'll transcribe." });
     }
@@ -116,54 +117,6 @@ export const Header = () => {
   }, []);
 
   /* ----------------------------- Search ----------------------------- */
-  // Scroll detection effect
-  useEffect(() => {
-    const controlHeaderVisibility = () => {
-      const currentScrollY = window.scrollY;
-      const scrollThreshold = 80; // Minimum scroll distance to trigger hide/show
-      const scrollDelta = Math.abs(currentScrollY - lastScrollY);
-
-      // Only react to significant scroll movements
-      if (scrollDelta < 10) return;
-
-      if (currentScrollY > lastScrollY && currentScrollY > scrollThreshold) {
-        // Scrolling down - hide header
-        setIsHeaderVisible(false);
-      } else if (currentScrollY < lastScrollY || currentScrollY <= scrollThreshold) {
-        // Scrolling up or near top - show header
-        setIsHeaderVisible(true);
-      }
-
-      setLastScrollY(currentScrollY);
-    };
-
-    const throttledScrollHandler = throttle(controlHeaderVisibility, 50);
-
-    window.addEventListener('scroll', throttledScrollHandler, { passive: true });
-    return () => window.removeEventListener('scroll', throttledScrollHandler);
-  }, [lastScrollY]);
-
-  // Throttle function to limit scroll event firing
-  const throttle = (func: Function, delay: number) => {
-    let timeoutId: NodeJS.Timeout | null = null;
-    let lastExecTime = 0;
-
-    return function (...args: any[]) {
-      const currentTime = Date.now();
-
-      if (currentTime - lastExecTime > delay) {
-        func(...args);
-        lastExecTime = currentTime;
-      } else {
-        if (timeoutId) clearTimeout(timeoutId);
-        timeoutId = setTimeout(() => {
-          func(...args);
-          lastExecTime = Date.now();
-        }, delay - (currentTime - lastExecTime));
-      }
-    };
-  };
-
   const handleSearch = async () => {
     const trimmed = searchQuery.trim();
     if (!trimmed) {
@@ -294,13 +247,7 @@ export const Header = () => {
                 onBlur={() => setIsSearchFocused(false)}
                 onKeyPress={handleKeyPress}
                 disabled={isSearching}
-                className={`pl-10 pr-32 py-3 text-base border-2 border-accent/20 focus:border-accent rounded-xl shadow-soft resize-none transition-all duration-300 ${
-                  isSearchFocused || isSearchExpanded || searchQuery ? 'min-h-[80px]' : 'min-h-[48px] overflow-hidden'
-                className={`ai-search-input ${isSearchFocused || isSearchExpanded || searchQuery ? 'active' : ''} pl-10 pr-32 py-3 text-base border-2 border-accent/20 focus:border-accent rounded-xl shadow-soft resize-none transition-all duration-300 ${
-                  isSearchFocused || isSearchExpanded || searchQuery
-                    ? 'min-h-[80px]'
-                    : 'min-h-[48px] overflow-hidden'
-                } ${isSearching ? 'opacity-75' : ''}`}
+                className={`pl-10 pr-32 py-3 text-base border-2 border-accent/20 focus:border-accent rounded-xl shadow-soft resize-none transition-all duration-300 ${isSearchFocused || isSearchExpanded || searchQuery ? 'min-h-[80px]' : 'min-h-[48px] overflow-hidden'}`}
                 rows={isSearchFocused || isSearchExpanded || searchQuery ? 3 : 1}
               />
 
