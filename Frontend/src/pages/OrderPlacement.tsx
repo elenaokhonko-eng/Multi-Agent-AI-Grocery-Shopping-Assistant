@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Input } from '@/components/ui/input';
 import {
   ArrowLeft,
   Package,
@@ -16,6 +17,7 @@ import {
   Loader2,
   Plus,
   Minus,
+  Search,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -85,6 +87,11 @@ const OrderPlacement = () => {
   
   // Loading state for order processing
   const [isProcessingOrder, setIsProcessingOrder] = useState(false);
+
+  // Additional search functionality state
+  const [additionalQuery, setAdditionalQuery] = useState('');
+  const [isSearchingMore, setIsSearchingMore] = useState(false);
+  const [showAddMoreSection, setShowAddMoreSection] = useState(false);
 
   // Cache/restore results & seed items list
   useEffect(() => {
@@ -389,6 +396,87 @@ const OrderPlacement = () => {
     ));
   };
 
+  // Function to search for additional items
+  const searchAdditionalItems = async () => {
+    if (!additionalQuery.trim()) {
+      toast({
+        title: "Search query required",
+        description: "Please enter what you're looking for",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSearchingMore(true);
+    console.log('🔍 Searching for additional items:', additionalQuery);
+
+    try {
+      const response = await fetch('http://localhost:3004/api/search', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query: additionalQuery }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const searchData = await response.json();
+      console.log('✅ Additional search response:', searchData);
+
+      if (searchData.status === 'success') {
+        // Add new items to existing items
+        const newItems = searchData.results.optimized_items.map((item: OptimizedItem) => ({
+          ...item,
+          quantity: 1, // Default quantity for new items
+          original_query: additionalQuery // Track which query this item came from
+        }));
+
+        setItems(prev => [...prev, ...newItems]);
+        
+        // Update the data object to include new items
+        setData(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            optimized_items: [...prev.optimized_items, ...searchData.results.optimized_items],
+            pipeline_summary: {
+              ...prev.pipeline_summary,
+              items_acquired: prev.pipeline_summary.items_acquired + searchData.results.optimized_items.length
+            }
+          };
+        });
+
+        toast({
+          title: "Additional items found!",
+          description: `Added ${searchData.results.optimized_items.length} new items to your order`,
+        });
+
+        // Clear the search input and hide the section
+        setAdditionalQuery('');
+        setShowAddMoreSection(false);
+      } else {
+        console.error('❌ API returned error:', searchData.message);
+        toast({
+          title: "Search failed",
+          description: searchData.message || "Unable to find additional items",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('❌ Search request failed:', error);
+      toast({
+        title: "Search failed",
+        description: "Unable to connect to search service. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSearchingMore(false);
+    }
+  };
+
   if (!data) {
     return (
       <div className="min-h-screen bg-background">
@@ -441,6 +529,66 @@ const OrderPlacement = () => {
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Main Content - Product List */}
           <div className="lg:col-span-2 space-y-6">
+            {/* Add More Items Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Search className="h-5 w-5" />
+                    <span>Add More Items</span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowAddMoreSection(!showAddMoreSection)}
+                  >
+                    {showAddMoreSection ? 'Hide' : 'Show'}
+                  </Button>
+                </CardTitle>
+              </CardHeader>
+              {showAddMoreSection && (
+                <CardContent>
+                  <div className="space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                      Search for additional items to add to your order. The AI will find and optimize more products for you.
+                    </p>
+                    <div className="flex space-x-2">
+                      <Input
+                        placeholder="Search for more items (e.g., 'organic vegetables', 'dairy products')..."
+                        value={additionalQuery}
+                        onChange={(e) => setAdditionalQuery(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            searchAdditionalItems();
+                          }
+                        }}
+                        className="flex-1"
+                        disabled={isSearchingMore}
+                      />
+                      <Button 
+                        onClick={searchAdditionalItems}
+                        disabled={isSearchingMore || !additionalQuery.trim()}
+                        className="bg-gradient-primary"
+                      >
+                        {isSearchingMore ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            Searching...
+                          </>
+                        ) : (
+                          <>
+                            <Search className="h-4 w-4 mr-2" />
+                            Search
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              )}
+            </Card>
+
             {/* Results Summary */}
             <Card>
               <CardHeader>
