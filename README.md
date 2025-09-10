@@ -28,6 +28,7 @@ The Tensor Titans SLAIC 2025 project is an innovative AI-powered product search 
 👤 Personalization → 🚛 Logistics Filtering → 💳 Loyalty Optimization → 
 📋 Output Formatting
 ```
+![Multi Agent Pipeline](086_TensorTitans_Architecture.png)
 
 ### **Core Components**
 
@@ -206,10 +207,6 @@ python test_query_system.py
 - **Database Ready:** PostgreSQL/MongoDB support
 - **Cloud Deployment:** Docker containerization ready
 
-## 🤝 **Contributing**
-
-We welcome contributions from the community! Please read our [Contributing Guidelines](CONTRIBUTING.md) before submitting pull requests.
-
 ### **Development Setup**
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
@@ -223,19 +220,6 @@ We welcome contributions from the community! Please read our [Contributing Guide
 - **Testing:** Minimum 80% code coverage
 - **Type Hints:** Full type annotation
 
-## 📞 **Support & Contact**
-
-### **Team Tensor Titans**
-- **Project Lead:** [Your Name]
-- **AI Engineer:** [Team Member]
-- **Backend Developer:** [Team Member]
-- **Frontend Developer:** [Team Member]
-
-### **Get Help**
-- 📧 **Email:** tensortitans.slaic2025@gmail.com
-- 💬 **Discord:** [Join our server](https://discord.gg/tensor-titans)
-- 📝 **Issues:** [GitHub Issues](https://github.com/Tech-Titans-AI/Tensor-Titans-SLAIC-2025-Working/issues)
-- 📖 **Wiki:** [Project Documentation](https://github.com/Tech-Titans-AI/Tensor-Titans-SLAIC-2025-Working/wiki)
 
 ## 📄 **License**
 
