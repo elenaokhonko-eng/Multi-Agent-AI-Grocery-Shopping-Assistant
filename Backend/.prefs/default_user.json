@@ -1,0 +1,36 @@
+{
+  "brand_beta": {
+    "anchor": [
+      6,
+      1
+    ]
+  },
+  "store_beta": {
+    "glomark.lk": [
+      6,
+      3
+    ]
+  },
+  "category_beta": {
+    "dairy": [
+      6,
+      1
+    ]
+  },
+  "tag_scores": {
+    "high-protein": 0.9436864852905273,
+    "milk": 0.9436864852905273,
+    "full-cream": 0.9436864852905273,
+    "collection:glowmark": -0.4375,
+    "ai-enhanced": -0.4375,
+    "site:glowmark.lk": -0.4375
+  },
+  "price_mean": {
+    "dairy": 1390.0
+  },
+  "price_var": {
+    "dairy": 0.0
+  },
+  "delivery_mean_h": 17.4921875,
+  "last_updated": 1757459918.2445543
+}

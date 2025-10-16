@@ -12,6 +12,7 @@ import logging
 from pathlib import Path
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
+from typing import Dict, Any
 
 # --------------------------
 # Paths & import plumbing
@@ -93,6 +94,81 @@ def get_rag():
         ))
     return _rag
 
+
+def create_user_profile_from_request(profile_data: Dict[str, Any]):
+    """
+    Create UserProfile object from frontend request data
+
+    Args:
+        profile_data: Dictionary containing user profile from request
+
+    Returns:
+        UserProfile object
+    """
+    from core.user_profile import (
+        UserProfile,
+        DietaryNeeds,
+        BrandPreferences,
+        HouseholdInventory,
+        LoyaltyMembership,
+        DeliveryPreferences
+    )
+
+    # Create base profile
+    user_profile = UserProfile(
+        user_id=profile_data.get('user_id', 'guest_user'),
+        budget_limit_lkr=float(profile_data.get('budget_limit_lkr', 5000.0)),
+        location=profile_data.get('location', 'Colombo, Sri Lanka')
+    )
+
+    # Set dietary needs
+    dietary_data = profile_data.get('dietary_needs', {})
+    user_profile.dietary_needs = DietaryNeeds(
+        vegetarian=dietary_data.get('vegetarian', False),
+        vegan=dietary_data.get('vegan', False),
+        gluten_free=dietary_data.get('gluten_free', False),
+        dairy_free=dietary_data.get('dairy_free', False),
+        organic_only=dietary_data.get('organic_only', False),
+        low_sodium=dietary_data.get('low_sodium', False),
+        sugar_free=dietary_data.get('sugar_free', False),
+        halal=dietary_data.get('halal', False),
+        kosher=dietary_data.get('kosher', False),
+        allergies=dietary_data.get('allergies', [])
+    )
+
+    # Set brand preferences
+    brand_data = profile_data.get('brand_preferences', {})
+    user_profile.brand_preferences = BrandPreferences(
+        preferred_brands=brand_data.get('preferred_brands', []),
+        disliked_brands=brand_data.get('disliked_brands', [])
+    )
+
+    # Set household inventory
+    inventory_data = profile_data.get('household_inventory', {})
+    user_profile.household_inventory = HouseholdInventory(
+        current_items=inventory_data.get('current_items', {}),
+        low_stock_threshold=inventory_data.get('low_stock_threshold', 2)
+    )
+
+    # Set loyalty membership
+    loyalty_data = profile_data.get('loyalty_membership', {})
+    user_profile.loyalty_membership = LoyaltyMembership(
+        preferred_stores=loyalty_data.get('preferred_stores', []),
+        memberships=loyalty_data.get('memberships', {})
+    )
+
+    # Set delivery preferences (if provided)
+    delivery_data = profile_data.get('delivery_preferences', {})
+    if delivery_data:
+        user_profile.delivery_preferences = DeliveryPreferences(
+            preferred_stores=delivery_data.get('preferred_stores', []),
+            max_delivery_time_hours=delivery_data.get('max_delivery_time_hours', 48.0),
+            preferred_delivery_method=delivery_data.get('preferred_delivery_method', 'standard')
+        )
+
+    return user_profile
+
+
 def normalize_citations(raw):
     """
     Strip disk paths, dedupe by file+page, and build a public URL to serve the PDF page.
@@ -168,13 +244,40 @@ def health_check():
         'langraph_available': orchestrator is not None
     })
 
+
 @app.route('/api/search', methods=['POST'])
 def search_products():
     """
-    Search products using the Langraph agentic pipeline
+    Search products using the Langraph agentic pipeline with user profile from request
 
     Request body:
-      { "query": "I need rice and tea for my kitchen" }
+      {
+        "query": "I need rice and tea for my kitchen",
+        "user_profile": {                              # OPTIONAL
+          "user_id": "user123",
+          "budget_limit_lkr": 5000.0,
+          "location": "Colombo, Sri Lanka",
+          "dietary_needs": {
+            "vegetarian": false,
+            "vegan": false,
+            "gluten_free": false,
+            "dairy_free": false,
+            "allergies": []
+          },
+          "brand_preferences": {
+            "preferred_brands": ["Anchor", "Maliban"],
+            "disliked_brands": []
+          },
+          "household_inventory": {
+            "current_items": {},
+            "low_stock_threshold": 2
+          },
+          "loyalty_membership": {
+            "preferred_stores": ["glowmark.lk", "kapruka.com"],
+            "memberships": {}
+          }
+        }
+      }
     """
     try:
         data = request.get_json()
@@ -187,11 +290,36 @@ def search_products():
 
         logger.info(f"🔍 Processing search query: {query}")
 
-        if not orchestrator:
-            return jsonify({'status': 'error', 'message': 'Langraph pipeline not available'}), 503
+        # ===== NEW: Handle user profile from request =====
+        user_profile_data = data.get('user_profile', None)
+        request_orchestrator = None
+
+        if user_profile_data:
+            try:
+                # Create UserProfile from request
+                user_profile = create_user_profile_from_request(user_profile_data)
+                logger.info(f"✅ Using user profile from request: {user_profile.user_id}")
+
+                # Create NEW orchestrator with this profile
+                request_orchestrator = ProductSearchOrchestrator(user_profile)
+
+            except Exception as profile_error:
+                logger.error(f"❌ Failed to parse user profile: {profile_error}")
+                return jsonify({
+                    'status': 'error',
+                    'message': f'Invalid user profile data: {str(profile_error)}'
+                }), 400
+        else:
+            # Use global orchestrator with default profile
+            logger.info("ℹ️  No user profile in request, using default orchestrator")
+            if not orchestrator:
+                return jsonify({'status': 'error', 'message': 'Langraph pipeline not available'}), 503
+            request_orchestrator = orchestrator
+        # ===== END NEW CODE =====
 
         try:
-            result = orchestrator.process_query(query)
+            # MODIFIED: Use request_orchestrator instead of orchestrator
+            result = request_orchestrator.process_query(query)
             logger.info("✅ Pipeline processing completed successfully")
 
             if result is None:
@@ -216,7 +344,8 @@ def search_products():
 
             if optimized_items:
                 total_cost = sum(item.get('price_lkr', 0) for item in optimized_items)
-                selection_summary = budget_optimization_summary.get('selection_summary', {}) if isinstance(budget_optimization_summary, dict) else {}
+                selection_summary = budget_optimization_summary.get('selection_summary', {}) if isinstance(
+                    budget_optimization_summary, dict) else {}
                 final_total_cost = selection_summary.get('total_cost', total_cost) or total_cost
                 budget_percentage = selection_summary.get('budget_utilization', round((total_cost / 5000.0) * 100, 1))
                 delivery_time = selection_summary.get('estimated_delivery_time', 24.0)
@@ -224,6 +353,8 @@ def search_products():
                 response_data = {
                     'status': 'success',
                     'query': query,
+                    'user_id': user_profile_data.get('user_id', 'default') if user_profile_data else 'default',
+                    # NEW: Add user_id
                     'results': {
                         'optimized_items': optimized_items,
                         'total_cost': final_total_cost,
@@ -236,10 +367,17 @@ def search_products():
                         'total_items_found': len(optimized_items),
                         'pipeline_summary': {
                             'keywords_extracted': len(result.get('keywords', [])),
-                            'items_acquired': sum(len(items) for items in data_acquisition.values() if isinstance(items, list)),
-                            'items_personalized': len(result.get('personalized_data', {}).get('filtered_items', [])) if result.get('personalized_data') else 0,
-                            'items_after_logistics': len(result.get('logistics_optimization', {}).get('filtered_items', [])) if result.get('logistics_optimization') else 0,
-                            'loyalty_savings': result.get('loyalty_summary', {}).get('total_savings', 0.0) if result.get('loyalty_summary') else 0.0,
+                            'items_acquired': sum(
+                                len(items) for items in data_acquisition.values() if isinstance(items, list)),
+                            'items_personalized': len(
+                                result.get('personalized_data', {}).get('filtered_items', [])) if result.get(
+                                'personalized_data') else 0,
+                            'items_after_logistics': len(
+                                result.get('logistics_optimization', {}).get('filtered_items', [])) if result.get(
+                                'logistics_optimization') else 0,
+                            'loyalty_savings': result.get('loyalty_summary', {}).get('total_savings',
+                                                                                     0.0) if result.get(
+                                'loyalty_summary') else 0.0,
                             'final_selection': len(optimized_items)
                         }
                     }
@@ -270,6 +408,8 @@ def search_products():
                     response_data = {
                         'status': 'success',
                         'query': query,
+                        'user_id': user_profile_data.get('user_id', 'default') if user_profile_data else 'default',
+                        # NEW
                         'results': {
                             'optimized_items': demo_items,
                             'total_cost': demo_total_cost,
@@ -294,6 +434,8 @@ def search_products():
                     response_data = {
                         'status': 'success',
                         'query': query,
+                        'user_id': user_profile_data.get('user_id', 'default') if user_profile_data else 'default',
+                        # NEW
                         'results': {
                             'optimized_items': [],
                             'total_cost': 0.0,
@@ -319,6 +461,7 @@ def search_products():
                 response_data = {
                     'status': 'success',
                     'query': query,
+                    'user_id': user_profile_data.get('user_id', 'default') if user_profile_data else 'default',  # NEW
                     'results': {
                         'optimized_items': [],
                         'total_cost': 0.0,
@@ -350,6 +493,7 @@ def search_products():
     except Exception as e:
         logger.error(f"❌ API error: {e}")
         return jsonify({'status': 'error', 'message': f'API error: {str(e)}'}), 500
+
 
 @app.route('/api/search/test', methods=['GET'])
 def test_search():
