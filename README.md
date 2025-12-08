@@ -1,16 +1,13 @@
-# 🛒 Tensor Titans SLAIC 2025 - AI-Powered Product Search System
+# 🛒 Multi-Agent AI Shopping Assistant for E-commerce
 
 [![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://python.org)
 [![Langraph](https://img.shields.io/badge/Langraph-Latest-green.svg)](https://langchain-ai.github.io/langgraph/)
 [![Groq](https://img.shields.io/badge/Groq-LLaMA_3.3_70B-orange.svg)](https://groq.com)
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-> **Advanced AI Shopping Assistant for Sri Lankan E-commerce**  
-> Leveraging Langraph multi-agent architecture with Knowledge Graph enhancement, real-time web scraping, and intelligent personalization for optimal product discovery and loyalty optimization.
 
 ## 🌟 **Project Overview**
 
-The Tensor Titans SLAIC 2025 project is an innovative AI-powered product search system designed specifically for the Sri Lankan e-commerce landscape. Our solution combines cutting-edge technologies to deliver personalized shopping experiences with intelligent logistics optimization and loyalty program integration.
+This project is an AI-powered product search system designed for the Sri Lankan e-commerce landscape. It uses cutting-edge technologies to deliver personalized shopping experiences, intelligent logistics optimization, and seamless loyalty program integration. The system leverages a LangGraph-based multi-agent architecture enhanced with a Knowledge Graph, real-time web scraping, and intelligent personalization to provide optimal product discovery, smarter recommendations, and improved loyalty optimization.
 
 ### 🏆 **Key Achievements**
 - ✅ **6-Node Langraph Pipeline** with proper execution order
@@ -40,7 +37,7 @@ The Tensor Titans SLAIC 2025 project is an innovative AI-powered product search 
 ## 📁 **Repository Structure**
 
 ```
-Tensor-Titans-SLAIC-2025-Working/
+Multi-Agent-AI-Shopping-Assistant/
 ├── 🤖 Langraph_Agent/          # Main AI pipeline system
 │   ├── agents/                 # Individual agent implementations
 │   ├── core/                   # Core system components
@@ -52,7 +49,7 @@ Tensor-Titans-SLAIC-2025-Working/
 │   ├── retrieval/              # Data retrieval logic
 │   └── data/                   # Scraped product data
 ├── 🎨 Frontend/                # User interface
-└── 📚 docs/                    # Documentation
+└── 📚 Backend/                 # API + server-side logic
 ```
 
 ## ⚡ **Quick Start**
@@ -66,8 +63,8 @@ Tensor-Titans-SLAIC-2025-Working/
 
 1. **Clone the repository**
 ```bash
-git clone https://github.com/Tech-Titans-AI/Tensor-Titans-SLAIC-2025-Working.git
-cd Tensor-Titans-SLAIC-2025-Working
+git clone https://github.com/Tech-Titans-AI/Multi-Agent-AI-Shopping-Assistant.git
+cd Multi-Agent-AI-Shopping-Assistant
 ```
 
 2. **Set up the Langraph Agent**
@@ -218,24 +215,13 @@ python test_query_system.py
 - **Type Hints:** Full type annotation
 
 
-## 📄 **License**
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
 ## 🏆 **Acknowledgments**
 
-- **SLAIC 2025** organizing committee
+- **Sri Lanka AI Challenge 2025** organizing committee
 - **Groq** for providing LLaMA 3.3 70B API access
 - **Langchain** team for the Langraph framework
 - **Sri Lankan E-commerce** partners for data access
 - **Open Source Community** for inspiration and tools
 
----
-
-### **🚀 Ready to revolutionize Sri Lankan e-commerce with AI?**
-
-**[Get Started](#quick-start)** | **[View Demo](https://demo.tensor-titans.slaic2025.com)** | **[Join Community](https://discord.gg/tensor-titans)**
-
----
 
 *Built with ❤️ by Team Tensor Titans for SLAIC 2025*
