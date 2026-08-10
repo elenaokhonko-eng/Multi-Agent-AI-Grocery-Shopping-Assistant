@@ -707,6 +707,63 @@ def cleanup():
 import atexit
 atexit.register(cleanup)
 
+@app.route("/shop", methods=["POST"])
+def run_shopping():
+    """
+    Run the shopping pipeline for a list of items.
+    Expected JSON:
+    {
+        "items": [
+            {"keyword": "sockeye salmon", "quantity": 1, "unit": "kg"},
+            {"keyword": "berries", "quantity": 4, "unit": "packs"}
+        ],
+        "max_results": 20,
+        "min_similarity": 0.3
+    }
+    """
+    data = request.get_json()
+    items = data.get("items", [])
+    if not items:
+        return jsonify({"error": "No items provided"}), 400
+
+    max_results = int(data.get("max_results", 20))
+    min_similarity = float(data.get("min_similarity", 0.3))
+
+    all_results = []
+    for entry in items:
+        keyword = entry.get("keyword")
+        if not keyword:
+            continue
+        try:
+            results, _ = item_retriever.retrieve_sync(
+                query=keyword,
+                max_results=max_results,
+                include_scraping=True,
+                include_similarity=True,
+                scrape_sites=None,
+                min_similarity=min_similarity,
+            )
+            for r in results:
+                r_dict = {
+                    "title": r.title,
+                    "price_lkr": r.price_lkr,
+                    "currency": r.currency,
+                    "source": r.source,
+                    "website": r.website,
+                    "collection": r.collection,
+                    "quantity": entry.get("quantity"),
+                    "unit": entry.get("unit"),
+                }
+                if r.similarity_score:
+                    r_dict["similarity_score"] = r.similarity_score
+                if r.source_url:
+                    r_dict["source_url"] = r.source_url
+                all_results.append(r_dict)
+        except Exception as e:
+            logger.error(f"Error processing item '{keyword}': {e}")
+
+    return jsonify({"success": True, "shopping_results": all_results})
+
 if __name__ == "__main__":
     logger.info("Starting Enhanced Scraper API...")
     logger.info(f"Available scrapers: {list(scrapers.keys())}")
