@@ -63,8 +63,8 @@ Multi-Agent-AI-Shopping-Assistant/
 
 1. **Clone the repository**
 ```bash
-git clone https://github.com/Tech-Titans-AI/Multi-Agent-AI-Shopping-Assistant.git
-cd Multi-Agent-AI-Shopping-Assistant
+git clone https://github.com/elenaokhonko-eng/Multi-Agent-AI-Grocery-Shopping-Assistant.git
+cd Multi-Agent-AI-Grocery-Shopping-Assistant
 ```
 
 2. **Set up the Langraph Agent**
@@ -79,6 +79,15 @@ cp .env.example .env
 # Add your Groq API key to .env file
 echo "GROQ_API_KEY=your_groq_api_key_here" >> .env
 ```
+
+4. **Build and run the Docker image**
+```bash
+docker build -t grocery-agent .
+# Run container (example) with necessary ports and volume mounts
+docker run -it --rm grocery-agent
+```
+
+*The Docker image includes the updated scraper logging configuration that resolves the permission error for `/app/data/scraper.log`.*
 
 4. **Run the system**
 ```bash
