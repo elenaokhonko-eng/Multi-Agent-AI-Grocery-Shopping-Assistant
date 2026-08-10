@@ -15,20 +15,24 @@ from pymongo import MongoClient
 # Add the current directory to Python path
 sys.path.insert(0, str(Path(__file__).parent))
 
-from scrapers.glowmark_scraper import GlowmarkScraper
-from scrapers.kapruka_scraper import KaprukaScraper
-from scrapers.onlinekade_scraper import OnlineKadeScraper
+from scrapers.littlefarms_scraper import LittleFarmsScraper
+from scrapers.fairprice_scraper import FairPriceScraper
+from scrapers.shengsiong_scraper import ShengSiongScraper
+from scrapers.coldstorage_scraper import ColdStorageScraper
+from scrapers.lazada_scraper import LazadaScraper
 from config.settings import Config
 
 class MultiStoreScraper:
-    """Scraper that handles all three stores."""
+    """Scraper that handles Singapore stores."""
     
     def __init__(self):
         """Initialize the multi-store scraper."""
         self.scrapers = {
-            "glowmark": GlowmarkScraper(),
-            "kapruka": KaprukaScraper(),
-            "onlinekade": OnlineKadeScraper()
+            "littlefarms": LittleFarmsScraper(),
+            "fairprice": FairPriceScraper(),
+            "shengsiong": ShengSiongScraper(),
+            "coldstorage": ColdStorageScraper(),
+            "lazada": LazadaScraper()
         }
         
         # Database connection

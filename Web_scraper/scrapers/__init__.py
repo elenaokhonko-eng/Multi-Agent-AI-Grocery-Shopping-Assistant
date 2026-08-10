@@ -1,15 +1,19 @@
 """
-Scrapers package for different e-commerce websites.
+Scrapers package for Singapore e-grocery websites.
 """
 
-from .glowmark_scraper import GlowmarkScraper, scrape_glowmark
-from .kapruka_scraper import KaprukaScraper, scrape_kapruka
-from .onlinekade_scraper import OnlineKadeScraper, scrape_onlinekade
+from .littlefarms_scraper import LittleFarmsScraper
+from .fairprice_scraper import FairPriceScraper
+from .shengsiong_scraper import ShengSiongScraper
+from .coldstorage_scraper import ColdStorageScraper
+from .lazada_scraper import LazadaScraper
 from .base_scraper import BaseScraper
 
 __all__ = [
     'BaseScraper',
-    'GlowmarkScraper', 'scrape_glowmark',
-    'KaprukaScraper', 'scrape_kapruka', 
-    'OnlineKadeScraper', 'scrape_onlinekade'
+    'LittleFarmsScraper',
+    'FairPriceScraper',
+    'ShengSiongScraper',
+    'ColdStorageScraper',
+    'LazadaScraper'
 ]

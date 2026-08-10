@@ -1,7 +1,7 @@
 """
-Store location data for Sri Lanka e-commerce platforms
+Store location data for Singapore e-grocery platforms
 """
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 from dataclasses import dataclass
 
 @dataclass
@@ -9,267 +9,185 @@ class StoreLocation:
     """Store location with coordinates and delivery info"""
     store_id: str
     name: str
-    brand: str  # glowmark, kapruka, onlinekade
+    brand: str  # littlefarms, fairprice, shengsiong, coldstorage, lazada
     address: str
     city: str
     district: str
     province: str
     latitude: float
     longitude: float
-    delivery_charge_lkr: float
+    delivery_charge_lkr: float  # Serves as SGD charge in Singapore mode
     max_delivery_radius_km: float
     average_delivery_hours: float
     operating_hours: str
     phone: str
     is_warehouse: bool = False
 
-# Store location data for major cities in Sri Lanka
+# Store location data for major hubs/outlets in Singapore
 STORE_LOCATIONS: List[StoreLocation] = [
-    # Glowmark Stores
+    # Little Farms Outlets
     StoreLocation(
-        store_id="GLW_COL_001",
-        name="Glowmark Colombo Main",
-        brand="glowmark",
-        address="123 Galle Road, Colombo 03",
-        city="Colombo",
-        district="Colombo",
-        province="Western",
-        latitude=6.9271,
-        longitude=79.8612,
-        delivery_charge_lkr=300.0,
-        max_delivery_radius_km=25.0,
-        average_delivery_hours=2.0,
-        operating_hours="8:00 AM - 10:00 PM",
-        phone="+94112123456",
-        is_warehouse=True
-    ),
-    StoreLocation(
-        store_id="GLW_KAN_001",
-        name="Glowmark Kandy",
-        brand="glowmark",
-        address="456 Peradeniya Road, Kandy",
-        city="Kandy",
-        district="Kandy",
+        store_id="LTF_RVR_001",
+        name="Little Farms River Valley",
+        brand="littlefarms",
+        address="491 River Valley Road, #01-20 Valley Point, Singapore 248371",
+        city="Singapore",
+        district="Central",
         province="Central",
-        latitude=7.2906,
-        longitude=80.6337,
-        delivery_charge_lkr=250.0,
-        max_delivery_radius_km=20.0,
-        average_delivery_hours=2.5,
-        operating_hours="8:00 AM - 9:00 PM",
-        phone="+94812345678"
-    ),
-    StoreLocation(
-        store_id="GLW_GAL_001",
-        name="Glowmark Galle",
-        brand="glowmark",
-        address="789 Matara Road, Galle",
-        city="Galle",
-        district="Galle",
-        province="Southern",
-        latitude=6.0535,
-        longitude=80.2210,
-        delivery_charge_lkr=350.0,
-        max_delivery_radius_km=15.0,
-        average_delivery_hours=3.0,
-        operating_hours="8:00 AM - 8:00 PM",
-        phone="+94912345678"
-    ),
-    StoreLocation(
-        store_id="GLW_JAF_001",
-        name="Glowmark Jaffna",
-        brand="glowmark",
-        address="321 Hospital Road, Jaffna",
-        city="Jaffna",
-        district="Jaffna",
-        province="Northern",
-        latitude=9.6615,
-        longitude=80.0255,
-        delivery_charge_lkr=400.0,
-        max_delivery_radius_km=18.0,
-        average_delivery_hours=4.0,
-        operating_hours="8:00 AM - 8:00 PM",
-        phone="+94212345678"
-    ),
-    
-    # Kapruka Stores
-    StoreLocation(
-        store_id="KAP_COL_001",
-        name="Kapruka Colombo Hub",
-        brand="kapruka",
-        address="567 Duplication Road, Colombo 04",
-        city="Colombo",
-        district="Colombo",
-        province="Western",
-        latitude=6.8905,
-        longitude=79.8563,
-        delivery_charge_lkr=280.0,
+        latitude=1.2925,
+        longitude=103.8262,
+        delivery_charge_lkr=12.0,  # SGD 12
         max_delivery_radius_km=30.0,
         average_delivery_hours=1.5,
-        operating_hours="24/7",
-        phone="+94112987654",
-        is_warehouse=True
+        operating_hours="7:30 AM - 9:30 PM",
+        phone="+65 6262 0616",
+        is_warehouse=False
     ),
     StoreLocation(
-        store_id="KAP_DEH_001",
-        name="Kapruka Dehiwala",
-        brand="kapruka",
-        address="890 Galle Road, Dehiwala",
-        city="Dehiwala",
-        district="Colombo",
-        province="Western",
-        latitude=6.8519,
-        longitude=79.8721,
-        delivery_charge_lkr=250.0,
-        max_delivery_radius_km=20.0,
+        store_id="LTF_BKT_002",
+        name="Little Farms Bukit Timah",
+        brand="littlefarms",
+        address="10 Jalan Serene, #01-04 Serene Centre, Singapore 258748",
+        city="Singapore",
+        district="Bukit Timah",
+        province="West",
+        latitude=1.3225,
+        longitude=103.8080,
+        delivery_charge_lkr=12.0,  # SGD 12
+        max_delivery_radius_km=30.0,
         average_delivery_hours=1.5,
-        operating_hours="7:00 AM - 11:00 PM",
-        phone="+94112876543"
-    ),
-    StoreLocation(
-        store_id="KAP_KAN_001",
-        name="Kapruka Kandy Center",
-        brand="kapruka",
-        address="234 Dalada Veediya, Kandy",
-        city="Kandy",
-        district="Kandy",
-        province="Central",
-        latitude=7.2937,
-        longitude=80.6349,
-        delivery_charge_lkr=300.0,
-        max_delivery_radius_km=22.0,
-        average_delivery_hours=2.0,
-        operating_hours="8:00 AM - 10:00 PM",
-        phone="+94812876543"
-    ),
-    StoreLocation(
-        store_id="KAP_NEG_001",
-        name="Kapruka Negombo",
-        brand="kapruka",
-        address="456 Main Street, Negombo",
-        city="Negombo",
-        district="Gampaha",
-        province="Western",
-        latitude=7.2084,
-        longitude=79.8405,
-        delivery_charge_lkr=320.0,
-        max_delivery_radius_km=25.0,
-        average_delivery_hours=2.5,
-        operating_hours="8:00 AM - 9:00 PM",
-        phone="+94312876543"
+        operating_hours="7:30 AM - 9:30 PM",
+        phone="+65 6262 0616",
+        is_warehouse=False
     ),
     
-    # OnlineKade Stores  
+    # FairPrice Hubs
     StoreLocation(
-        store_id="OLK_COL_001",
-        name="OnlineKade Colombo Warehouse",
-        brand="onlinekade",
-        address="789 Baseline Road, Colombo 09",
-        city="Colombo",
-        district="Colombo",
-        province="Western",
-        latitude=6.9034,
-        longitude=79.8597,
-        delivery_charge_lkr=320.0,
-        max_delivery_radius_km=28.0,
+        store_id="FP_JK_001",
+        name="FairPrice Hub Joo Koon",
+        brand="fairprice",
+        address="1 Joo Koon Circle, Singapore 629117",
+        city="Singapore",
+        district="Jurong",
+        province="West",
+        latitude=1.3275,
+        longitude=103.6783,
+        delivery_charge_lkr=7.0,  # SGD 7
+        max_delivery_radius_km=40.0,
         average_delivery_hours=2.0,
-        operating_hours="6:00 AM - 12:00 AM",
-        phone="+94112765432",
+        operating_hours="24/7",
+        phone="+65 6552 2722",
         is_warehouse=True
     ),
     StoreLocation(
-        store_id="OLK_KOT_001",
-        name="OnlineKade Kottawa",
-        brand="onlinekade",
-        address="345 High Level Road, Kottawa",
-        city="Kottawa",
-        district="Colombo",
-        province="Western",
-        latitude=6.8176,
-        longitude=79.9733,
-        delivery_charge_lkr=280.0,
-        max_delivery_radius_km=20.0,
+        store_id="FP_TP_002",
+        name="FairPrice Tampines Hub",
+        brand="fairprice",
+        address="1 Tampines Walk, Singapore 528523",
+        city="Singapore",
+        district="Tampines",
+        province="East",
+        latitude=1.3525,
+        longitude=103.9405,
+        delivery_charge_lkr=7.0,  # SGD 7
+        max_delivery_radius_km=40.0,
         average_delivery_hours=2.0,
+        operating_hours="7:00 AM - 11:00 PM",
+        phone="+65 6552 2722"
+    ),
+
+    # Sheng Siong Locations
+    StoreLocation(
+        store_id="SS_AMK_001",
+        name="Sheng Siong Ang Mo Kio",
+        brand="shengsiong",
+        address="Block 122 Ang Mo Kio Avenue 3, Singapore 560122",
+        city="Singapore",
+        district="Ang Mo Kio",
+        province="North-East",
+        latitude=1.3683,
+        longitude=103.8436,
+        delivery_charge_lkr=6.0,  # SGD 6
+        max_delivery_radius_km=30.0,
+        average_delivery_hours=2.0,
+        operating_hours="24/7",
+        phone="+65 6456 8288"
+    ),
+    StoreLocation(
+        store_id="SS_BDK_002",
+        name="Sheng Siong Bedok",
+        brand="shengsiong",
+        address="Block 209 New Upper Changi Road, Singapore 460209",
+        city="Singapore",
+        district="Bedok",
+        province="East",
+        latitude=1.3245,
+        longitude=103.9315,
+        delivery_charge_lkr=6.0,  # SGD 6
+        max_delivery_radius_km=30.0,
+        average_delivery_hours=2.0,
+        operating_hours="6:00 AM - 10:30 PM",
+        phone="+65 6244 8288"
+    ),
+
+    # Cold Storage Outlets
+    StoreLocation(
+        store_id="CS_JEL_001",
+        name="Cold Storage Jelita",
+        brand="coldstorage",
+        address="293 Holland Road, Jelita Shopping Centre, Singapore 278628",
+        city="Singapore",
+        district="Holland",
+        province="West",
+        latitude=1.3168,
+        longitude=103.7845,
+        delivery_charge_lkr=8.0,  # SGD 8
+        max_delivery_radius_km=30.0,
+        average_delivery_hours=1.5,
         operating_hours="8:00 AM - 10:00 PM",
-        phone="+94112654321"
+        phone="+65 6469 3877",
+        is_warehouse=False
     ),
     StoreLocation(
-        store_id="OLK_GAM_001",
-        name="OnlineKade Gampaha",
-        brand="onlinekade",
-        address="678 Colombo Road, Gampaha",
-        city="Gampaha",
-        district="Gampaha",
-        province="Western",
-        latitude=7.0873,
-        longitude=79.9990,
-        delivery_charge_lkr=300.0,
-        max_delivery_radius_km=18.0,
-        average_delivery_hours=2.5,
-        operating_hours="8:00 AM - 9:00 PM",
-        phone="+94332654321"
+        store_id="CS_TNG_002",
+        name="Cold Storage Tanglin Market Place",
+        brand="coldstorage",
+        address="19 Tanglin Road, #B1-01-19 Tanglin Shopping Centre, Singapore 247909",
+        city="Singapore",
+        district="Tanglin",
+        province="Central",
+        latitude=1.3048,
+        longitude=103.8242,
+        delivery_charge_lkr=8.0,  # SGD 8
+        max_delivery_radius_km=35.0,
+        average_delivery_hours=1.5,
+        operating_hours="9:00 AM - 10:00 PM",
+        phone="+65 6734 0105"
     ),
+
+    # Lazada RedMart Warehouse
     StoreLocation(
-        store_id="OLK_KUR_001",
-        name="OnlineKade Kurunegala",
-        brand="onlinekade",
-        address="901 Kandy Road, Kurunegala",
-        city="Kurunegala",
-        district="Kurunegala",
-        province="North Western",
-        latitude=7.4818,
-        longitude=80.3609,
-        delivery_charge_lkr=350.0,
-        max_delivery_radius_km=22.0,
-        average_delivery_hours=3.0,
-        operating_hours="8:00 AM - 8:00 PM",
-        phone="+94372654321"
-    ),
-    StoreLocation(
-        store_id="OLK_MAT_001",
-        name="OnlineKade Matara",
-        brand="onlinekade",
-        address="234 Anagarika Dharmapala Mawatha, Matara",
-        city="Matara",
-        district="Matara",
-        province="Southern",
-        latitude=5.9549,
-        longitude=80.5550,
-        delivery_charge_lkr=380.0,
-        max_delivery_radius_km=16.0,
-        average_delivery_hours=3.5,
-        operating_hours="8:00 AM - 8:00 PM",
-        phone="+94412654321"
+        store_id="RED_TG_001",
+        name="RedMart Toh Guan Warehouse",
+        brand="lazada",
+        address="Toh Guan Road East, Singapore 608829",
+        city="Singapore",
+        district="Jurong",
+        province="West",
+        latitude=1.3325,
+        longitude=103.7485,
+        delivery_charge_lkr=6.99,  # SGD 6.99
+        max_delivery_radius_km=50.0,
+        average_delivery_hours=2.0,
+        operating_hours="24/7",
+        phone="+65 6950 0950",
+        is_warehouse=True
     )
 ]
 
-# Helper functions to work with store data
-def get_stores_by_brand(brand: str) -> List[StoreLocation]:
-    """Get all stores for a specific brand"""
-    return [store for store in STORE_LOCATIONS if store.brand == brand]
-
-def get_stores_by_city(city: str) -> List[StoreLocation]:
-    """Get all stores in a specific city"""
-    return [store for store in STORE_LOCATIONS if store.city.lower() == city.lower()]
-
-def get_stores_by_province(province: str) -> List[StoreLocation]:
-    """Get all stores in a specific province"""
-    return [store for store in STORE_LOCATIONS if store.province.lower() == province.lower()]
-
-def get_warehouses() -> List[StoreLocation]:
-    """Get all warehouse locations"""
-    return [store for store in STORE_LOCATIONS if store.is_warehouse]
-
-def get_store_by_id(store_id: str) -> StoreLocation:
-    """Get a specific store by ID"""
+def get_store_by_id(store_id: str) -> Optional[StoreLocation]:
+    """Get store location details by ID"""
     for store in STORE_LOCATIONS:
         if store.store_id == store_id:
             return store
-    raise ValueError(f"Store with ID {store_id} not found")
-
-# Store brand mapping for easy access
-BRAND_STORES = {
-    "glowmark": get_stores_by_brand("glowmark"),
-    "kapruka": get_stores_by_brand("kapruka"), 
-    "onlinekade": get_stores_by_brand("onlinekade")
-}
+    return None

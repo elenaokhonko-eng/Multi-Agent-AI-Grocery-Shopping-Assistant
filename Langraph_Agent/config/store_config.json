@@ -1,76 +1,109 @@
 {
   "stores": {
-    "kapruka.com": {
-      "name": "Kapruka",
-      "average_delivery_hours": 24.0,
-      "reliability_score": 0.92,
-      "quality_rating": 4.2,
-      "processing_time_hours": 2.0,
-      "delivery_fee": 200.0,
-      "minimum_order": 500.0,
-      "peak_hours_delay": 6.0,
+    "littlefarms.com": {
+      "name": "Little Farms",
+      "average_delivery_hours": 12.0,
+      "reliability_score": 0.96,
+      "quality_rating": 4.8,
+      "processing_time_hours": 1.0,
+      "delivery_fee": 12.0,
+      "minimum_order": 50.0,
+      "free_shipping_threshold": 100.0,
+      "peak_hours_delay": 2.0,
       "weekend_delivery": true,
       "express_delivery_available": true,
-      "express_delivery_hours": 12.0,
-      "express_delivery_fee": 400.0,
-      "coverage_areas": ["Colombo", "Gampaha", "Kalutara", "Kandy", "Galle"],
-      "specialties": ["electronics", "books", "toys", "home"],
-      "customer_rating": 4.3,
-      "on_time_delivery_rate": 0.89
+      "express_delivery_hours": 4.0,
+      "express_delivery_fee": 20.0,
+      "coverage_areas": ["Singapore Central", "Bukit Timah", "East Coast", "River Valley"],
+      "specialties": ["organic", "fresh", "premium_meats", "artisanal"],
+      "customer_rating": 4.7,
+      "on_time_delivery_rate": 0.95
     },
-    "glowmark.lk": {
-      "name": "Glowmark",
-      "average_delivery_hours": 18.0,
-      "reliability_score": 0.88,
-      "quality_rating": 4.0,
-      "processing_time_hours": 1.5,
-      "delivery_fee": 150.0,
-      "minimum_order": 300.0,
+    "fairprice.com.sg": {
+      "name": "FairPrice",
+      "average_delivery_hours": 24.0,
+      "reliability_score": 0.94,
+      "quality_rating": 4.2,
+      "processing_time_hours": 2.0,
+      "delivery_fee": 7.0,
+      "minimum_order": 20.0,
+      "free_shipping_threshold": 100.0,
       "peak_hours_delay": 4.0,
       "weekend_delivery": true,
       "express_delivery_available": true,
-      "express_delivery_hours": 8.0,
-      "express_delivery_fee": 350.0,
-      "coverage_areas": ["Colombo", "Gampaha", "Kalutara", "Negombo"],
-      "specialties": ["fashion", "electronics", "beauty", "lifestyle"],
-      "customer_rating": 4.1,
-      "on_time_delivery_rate": 0.85
+      "express_delivery_hours": 6.0,
+      "express_delivery_fee": 12.0,
+      "coverage_areas": ["Singapore Central", "East Coast", "Jurong", "Tampines", "Woodlands"],
+      "specialties": ["groceries", "fresh", "household_essentials", "local_brands"],
+      "customer_rating": 4.3,
+      "on_time_delivery_rate": 0.91
     },
-    "onlinekade.lk": {
-      "name": "Online Kade",
-      "average_delivery_hours": 12.0,
-      "reliability_score": 0.85,
-      "quality_rating": 3.8,
-      "processing_time_hours": 1.0,
-      "delivery_fee": 100.0,
-      "minimum_order": 200.0,
-      "peak_hours_delay": 2.0,
-      "weekend_delivery": false,
+    "shengsiong.com.sg": {
+      "name": "Sheng Siong",
+      "average_delivery_hours": 24.0,
+      "reliability_score": 0.91,
+      "quality_rating": 4.0,
+      "processing_time_hours": 2.0,
+      "delivery_fee": 6.0,
+      "minimum_order": 20.0,
+      "free_shipping_threshold": 100.0,
+      "peak_hours_delay": 3.0,
+      "weekend_delivery": true,
+      "express_delivery_available": false,
+      "express_delivery_hours": 12.0,
+      "express_delivery_fee": 10.0,
+      "coverage_areas": ["Bedok", "Ang Mo Kio", "Yishun", "Clementi", "Punggol"],
+      "specialties": ["value_groceries", "fresh_seafood", "frozen_food", "local_products"],
+      "customer_rating": 4.1,
+      "on_time_delivery_rate": 0.88
+    },
+    "coldstorage.com.sg": {
+      "name": "Cold Storage",
+      "average_delivery_hours": 18.0,
+      "reliability_score": 0.95,
+      "quality_rating": 4.5,
+      "processing_time_hours": 1.5,
+      "delivery_fee": 8.0,
+      "minimum_order": 30.0,
+      "free_shipping_threshold": 100.0,
+      "peak_hours_delay": 3.0,
+      "weekend_delivery": true,
       "express_delivery_available": true,
       "express_delivery_hours": 4.0,
-      "express_delivery_fee": 250.0,
-      "coverage_areas": ["Colombo", "Mount Lavinia", "Dehiwala", "Moratuwa"],
-      "specialties": ["groceries", "food", "beverages", "daily_essentials"],
-      "customer_rating": 3.9,
-      "on_time_delivery_rate": 0.91
+      "express_delivery_fee": 15.0,
+      "coverage_areas": ["Singapore Central", "Orchard", "Tanglin", "Sentosa", "Katong"],
+      "specialties": ["international_brands", "fresh_deli", "bakery", "wines"],
+      "customer_rating": 4.4,
+      "on_time_delivery_rate": 0.93
+    },
+    "lazada.sg": {
+      "name": "RedMart",
+      "average_delivery_hours": 24.0,
+      "reliability_score": 0.93,
+      "quality_rating": 4.3,
+      "processing_time_hours": 2.0,
+      "delivery_fee": 6.99,
+      "minimum_order": 20.0,
+      "free_shipping_threshold": 100.0,
+      "peak_hours_delay": 5.0,
+      "weekend_delivery": true,
+      "express_delivery_available": true,
+      "express_delivery_hours": 8.0,
+      "express_delivery_fee": 10.99,
+      "coverage_areas": ["Singapore Central", "East Coast", "Jurong", "Sengkang", "Pasir Ris"],
+      "specialties": ["bulk_packs", "frozen_meals", "beverages", "international_foods"],
+      "customer_rating": 4.2,
+      "on_time_delivery_rate": 0.90
     }
   },
   "delivery_zones": {
-    "colombo_city": {
+    "singapore_central": {
       "zone_multiplier": 1.0,
       "same_day_available": true
     },
-    "colombo_suburbs": {
-      "zone_multiplier": 1.2,
-      "same_day_available": false
-    },
-    "western_province": {
-      "zone_multiplier": 1.5,
-      "same_day_available": false
-    },
-    "other_provinces": {
-      "zone_multiplier": 2.0,
-      "same_day_available": false
+    "singapore_suburbs": {
+      "zone_multiplier": 1.0,
+      "same_day_available": true
     }
   },
   "optimization_weights": {

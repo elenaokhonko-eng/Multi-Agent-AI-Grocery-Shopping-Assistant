@@ -9,7 +9,7 @@ from dataclasses import dataclass, asdict
 from collections import defaultdict
 
 from retrieval.similarity_search import SimilaritySearchEngine, SearchResult
-from scrapers import GlowmarkScraper, KaprukaScraper, OnlineKadeScraper
+from scrapers import LittleFarmsScraper, FairPriceScraper, ShengSiongScraper, ColdStorageScraper, LazadaScraper
 from config.settings import Config
 from utils.helpers import setup_logging, calculate_stats, format_currency
 
@@ -49,9 +49,11 @@ class ItemRetriever:
         
         # Initialize scrapers
         self.scrapers = {
-            "glowmark": GlowmarkScraper(),
-            "kapruka": KaprukaScraper(),
-            "onlinekade": OnlineKadeScraper()
+            "littlefarms": LittleFarmsScraper(),
+            "fairprice": FairPriceScraper(),
+            "shengsiong": ShengSiongScraper(),
+            "coldstorage": ColdStorageScraper(),
+            "lazada": LazadaScraper()
         }
         
         # Initialize similarity search engine

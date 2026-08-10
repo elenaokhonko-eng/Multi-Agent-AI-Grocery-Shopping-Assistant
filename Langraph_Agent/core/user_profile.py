@@ -88,8 +88,8 @@ class LoyaltyMembership:
 class UserProfile:
     """Complete user profile with all preferences"""
     user_id: str
-    budget_limit_lkr: float = 5000.0
-    location: str = "Colombo, Sri Lanka"  # Default location
+    budget_limit_lkr: float = 1000.0
+    location: str = "Singapore"  # Default location
     dietary_needs: DietaryNeeds = None
     brand_preferences: BrandPreferences = None
     household_inventory: HouseholdInventory = None

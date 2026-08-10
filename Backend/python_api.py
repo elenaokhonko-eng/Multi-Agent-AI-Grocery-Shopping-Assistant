@@ -343,18 +343,18 @@ def search_products():
             total_items_found = sum(len(items) for items in data_acquisition.values() if isinstance(items, list))
 
             if optimized_items:
-                total_cost = sum(item.get('price_lkr', 0) for item in optimized_items)
+                total_cost = budget_optimization_summary.get('total_cost', sum(item.get('price_lkr', 0) for item in optimized_items))
                 selection_summary = budget_optimization_summary.get('selection_summary', {}) if isinstance(
                     budget_optimization_summary, dict) else {}
-                final_total_cost = selection_summary.get('total_cost', total_cost) or total_cost
-                budget_percentage = selection_summary.get('budget_utilization', round((total_cost / 5000.0) * 100, 1))
-                delivery_time = selection_summary.get('estimated_delivery_time', 24.0)
+                final_total_cost = total_cost
+                budget_percentage = round((total_cost / 1000.0) * 100, 1)
+                delivery_time = budget_optimization_summary.get('total_delivery_time', 24.0)
+                single_store_comparisons = budget_optimization_summary.get('single_store_comparisons', {})
 
                 response_data = {
                     'status': 'success',
                     'query': query,
                     'user_id': user_profile_data.get('user_id', 'default') if user_profile_data else 'default',
-                    # NEW: Add user_id
                     'results': {
                         'optimized_items': optimized_items,
                         'total_cost': final_total_cost,
@@ -362,9 +362,10 @@ def search_products():
                         'estimated_delivery_hours': delivery_time,
                         'items_count': len(optimized_items),
                         'stores_used': list({item.get('website', 'unknown') for item in optimized_items}),
-                        'optimization_method': 'Linear Programming + Multi-Criteria AI',
+                        'optimization_method': result.get('optimization_method', 'Linear Programming + Multi-Criteria AI'),
                         'keywords_processed': result.get('keywords', []),
                         'total_items_found': len(optimized_items),
+                        'single_store_comparisons': single_store_comparisons,
                         'pipeline_summary': {
                             'keywords_extracted': len(result.get('keywords', [])),
                             'items_acquired': sum(

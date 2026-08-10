@@ -125,7 +125,7 @@ export default function UserProfilePage() {
           </CardHeader>
           <CardContent className="grid md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Budget Limit (LKR)</Label>
+              <Label>Budget Limit (SGD)</Label>
               <Input
                 type="number"
                 value={profile.budget_limit_lkr}
@@ -138,7 +138,7 @@ export default function UserProfilePage() {
               <Label>Location</Label>
               <Input
                 type="text"
-                placeholder="e.g., Colombo, Sri Lanka"
+                placeholder="e.g., Singapore"
                 value={profile.location || ""}
                 onChange={(e) =>
                   setProfile({ ...profile, location: e.target.value })
@@ -295,7 +295,7 @@ export default function UserProfilePage() {
             <div className="space-y-2">
               <Label>Preferred stores (comma separated domains or names)</Label>
               <Input
-                placeholder="glowmark.lk, kapruka.com"
+                placeholder="fairprice.com.sg, coldstorage.com.sg"
                 value={toList(profile.loyalty_membership.preferred_stores)}
                 onChange={(e) =>
                   setProfile({

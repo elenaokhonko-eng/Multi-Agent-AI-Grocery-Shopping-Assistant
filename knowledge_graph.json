@@ -1,0 +1,224 @@
+{
+  "nodes": {
+    "rice": {
+      "id": "rice",
+      "label": "Rice",
+      "category": "staple_food",
+      "attributes": {
+        "type": "grain",
+        "cooking_time": "15-20min"
+      }
+    },
+    "samba_rice": {
+      "id": "samba_rice",
+      "label": "Samba Rice",
+      "category": "rice_variety",
+      "attributes": {
+        "type": "long_grain",
+        "origin": "Sri Lanka"
+      }
+    },
+    "nadu_rice": {
+      "id": "nadu_rice",
+      "label": "Nadu Rice",
+      "category": "rice_variety",
+      "attributes": {
+        "type": "medium_grain",
+        "origin": "Sri Lanka"
+      }
+    },
+    "basmati_rice": {
+      "id": "basmati_rice",
+      "label": "Basmati Rice",
+      "category": "rice_variety",
+      "attributes": {
+        "type": "aromatic",
+        "origin": "India"
+      }
+    },
+    "dairy": {
+      "id": "dairy",
+      "label": "Dairy",
+      "category": "food_category",
+      "attributes": {
+        "perishable": true
+      }
+    },
+    "milk": {
+      "id": "milk",
+      "label": "Milk",
+      "category": "dairy_product",
+      "attributes": {
+        "fat_content": "variable",
+        "shelf_life": "3-5 days"
+      }
+    },
+    "cheese": {
+      "id": "cheese",
+      "label": "Cheese",
+      "category": "dairy_product",
+      "attributes": {
+        "aged": true,
+        "shelf_life": "weeks"
+      }
+    },
+    "yogurt": {
+      "id": "yogurt",
+      "label": "Yogurt",
+      "category": "dairy_product",
+      "attributes": {
+        "probiotic": true,
+        "shelf_life": "1-2 weeks"
+      }
+    },
+    "milo_400g": {
+      "id": "milo_400g",
+      "label": "Milo 400g",
+      "category": "beverage_product",
+      "attributes": {
+        "brand": "Milo",
+        "size": "400g"
+      }
+    },
+    "nestomalt_400g": {
+      "id": "nestomalt_400g",
+      "label": "Nestomalt 400g",
+      "category": "beverage_product",
+      "attributes": {
+        "brand": "Nestomalt",
+        "size": "400g"
+      }
+    },
+    "milo_200g": {
+      "id": "milo_200g",
+      "label": "Milo 200g",
+      "category": "beverage_product",
+      "attributes": {
+        "brand": "Milo",
+        "size": "200g"
+      }
+    },
+    "tea": {
+      "id": "tea",
+      "label": "Tea",
+      "category": "beverage",
+      "attributes": {
+        "caffeine": true,
+        "hot_drink": true
+      }
+    },
+    "black_tea": {
+      "id": "black_tea",
+      "label": "Black Tea",
+      "category": "tea_variety",
+      "attributes": {
+        "oxidation": "full",
+        "strength": "strong"
+      }
+    },
+    "green_tea": {
+      "id": "green_tea",
+      "label": "Green Tea",
+      "category": "tea_variety",
+      "attributes": {
+        "oxidation": "minimal",
+        "antioxidants": "high"
+      }
+    },
+    "herbal_tea": {
+      "id": "herbal_tea",
+      "label": "Herbal Tea",
+      "category": "tea_variety",
+      "attributes": {
+        "caffeine": false,
+        "medicinal": true
+      }
+    }
+  },
+  "relations": [
+    {
+      "from_node": "samba_rice",
+      "to_node": "rice",
+      "relation_type": "is_type_of",
+      "weight": 1.0
+    },
+    {
+      "from_node": "nadu_rice",
+      "to_node": "rice",
+      "relation_type": "is_type_of",
+      "weight": 1.0
+    },
+    {
+      "from_node": "basmati_rice",
+      "to_node": "rice",
+      "relation_type": "is_type_of",
+      "weight": 1.0
+    },
+    {
+      "from_node": "milk",
+      "to_node": "dairy",
+      "relation_type": "belongs_to",
+      "weight": 1.0
+    },
+    {
+      "from_node": "cheese",
+      "to_node": "dairy",
+      "relation_type": "belongs_to",
+      "weight": 1.0
+    },
+    {
+      "from_node": "yogurt",
+      "to_node": "dairy",
+      "relation_type": "belongs_to",
+      "weight": 1.0
+    },
+    {
+      "from_node": "cheese",
+      "to_node": "milk",
+      "relation_type": "made_from",
+      "weight": 0.9
+    },
+    {
+      "from_node": "yogurt",
+      "to_node": "milk",
+      "relation_type": "made_from",
+      "weight": 0.8
+    },
+    {
+      "from_node": "milo_400g",
+      "to_node": "nestomalt_400g",
+      "relation_type": "substitute_brand",
+      "weight": 0.8
+    },
+    {
+      "from_node": "nestomalt_400g",
+      "to_node": "milo_400g",
+      "relation_type": "substitute_brand",
+      "weight": 0.8
+    },
+    {
+      "from_node": "milo_400g",
+      "to_node": "milo_200g",
+      "relation_type": "substitute_package",
+      "weight": 0.7
+    },
+    {
+      "from_node": "black_tea",
+      "to_node": "tea",
+      "relation_type": "is_type_of",
+      "weight": 1.0
+    },
+    {
+      "from_node": "green_tea",
+      "to_node": "tea",
+      "relation_type": "is_type_of",
+      "weight": 1.0
+    },
+    {
+      "from_node": "herbal_tea",
+      "to_node": "tea",
+      "relation_type": "is_type_of",
+      "weight": 1.0
+    }
+  ]
+}

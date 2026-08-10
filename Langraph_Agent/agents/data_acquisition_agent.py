@@ -23,17 +23,24 @@ except ImportError as e:
 # Initialize Knowledge Graph Agent globally
 kg_agent = KnowledgeGraphAgent()
 
+import sys
+sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "Web_scraper"))
+from utils.mock_singapore_data import search_mock_products
+import random
+
 class MongoDBTextSearcher:
     """MongoDB text search without semantic dependencies"""
     
     def __init__(self):
         self.client = None
         self.db = None
-        self.collections = ["Glowmark", "Kapruka", "OnlineKade"]
+        self.collections = ["LittleFarms", "FairPrice", "ShengSiong", "ColdStorage", "Lazada"]
         self.collection_mapping = {
-            "Glowmark": "glowmark.lk",
-            "Kapruka": "kapruka.com", 
-            "OnlineKade": "onlinekade.lk"
+            "LittleFarms": "littlefarms.com",
+            "FairPrice": "fairprice.com.sg", 
+            "ShengSiong": "shengsiong.com.sg",
+            "ColdStorage": "coldstorage.com.sg",
+            "Lazada": "lazada.sg"
         }
         
         if MONGODB_AVAILABLE:
@@ -97,9 +104,12 @@ class MongoDBTextSearcher:
                             similarity_score = self._calculate_similarity(query, product)
                             
                             # Standardize product format
+                            price_val = self._extract_price(product)
                             standardized = {
                                 "title": product.get('title', product.get('name', 'Unknown')),
-                                "price_lkr": self._extract_price(product),
+                                "price_lkr": price_val,
+                                "price_sgd": price_val,
+                                "currency": "SGD",
                                 "website": self.collection_mapping.get(collection_name, collection_name.lower()),
                                 "source_url": product.get('source_url', product.get('url', '')),
                                 "image_url": product.get('image_url', ''),
@@ -225,39 +235,24 @@ def retrieve_product_data(keywords: List[str], max_results: int = 10) -> Dict[st
                 else:
                     # Fallback to mock data if MongoDB unavailable
                     print(f"[TOOL] MongoDB unavailable, using mock data for '{search_term}'")
-                    mock_items = [
-                        {
-                            "title": f"Premium {search_term.title()}", 
-                            "price_lkr": 250.0,
-                            "website": "glowmark.lk",
-                            "source_url": f"https://glowmark.lk/product/premium-{search_term}",
-                            "collection": "glowmark",
-                            "similarity_score": 0.95,
-                            "kg_enhanced": search_term != original_kw,
-                            "original_query": original_kw
-                        },
-                        {
-                            "title": f"Fresh {search_term.title()}", 
-                            "price_lkr": 320.0,
-                            "website": "onlinekade.lk",
-                            "source_url": f"https://onlinekade.lk/product/fresh-{search_term}",
-                            "collection": "onlinekade",
-                            "similarity_score": 0.92,
-                            "kg_enhanced": search_term != original_kw,
-                            "original_query": original_kw
-                        },
-                        {
-                            "title": f"Organic {search_term.title()}", 
-                            "price_lkr": 180.0,
-                            "website": "kapruka.com",
-                            "source_url": f"https://kapruka.com/product/organic-{search_term}",
-                            "collection": "kapruka",
-                            "similarity_score": 0.88,
-                            "kg_enhanced": search_term != original_kw,
-                            "original_query": original_kw
-                        }
-                    ]
-                    
+                    # Search across all Singapore stores
+                    mock_items = []
+                    for store_domain in ["littlefarms.com", "fairprice.com.sg", "shengsiong.com.sg", "coldstorage.com.sg", "lazada.sg"]:
+                        mock_products = search_mock_products(search_term, store_domain)
+                        for mp in mock_products:
+                            mock_items.append({
+                                "title": mp["title"],
+                                "price_lkr": mp["price_value"],
+                                "price_sgd": mp["price_value"],
+                                "currency": "SGD",
+                                "website": store_domain,
+                                "source_url": f"https://{store_domain}/search?q={search_term}",
+                                "collection": store_domain.split('.')[0],
+                                "similarity_score": 0.95 - (0.02 * random.random()),
+                                "kg_enhanced": search_term != original_kw,
+                                "original_query": original_kw,
+                                "image_url": mp.get("image_url", "")
+                            })
                     combined_items.extend(mock_items)
             
             # Remove duplicates based on title and store
@@ -281,7 +276,7 @@ def retrieve_product_data(keywords: List[str], max_results: int = 10) -> Dict[st
             for i, item in enumerate(final_items, 1):
                 enhanced_mark = "🧠" if item.get("kg_enhanced") else "📦"
                 enhanced_text = f" (from: {item.get('enhanced_from', 'direct')})" if item.get("kg_enhanced") else ""
-                print(f"       {i}. {enhanced_mark} {item['title']} - LKR {item['price_lkr']} ({item['website']}) [Score: {item['similarity_score']:.2f}]{enhanced_text}")
+                print(f"       {i}. {enhanced_mark} {item['title']} - SGD {item['price_lkr']} ({item['website']}) [Score: {item['similarity_score']:.2f}]{enhanced_text}")
                 if i >= 5:  # Limit displayed items
                     remaining = len(final_items) - 5
                     if remaining > 0:
@@ -295,13 +290,32 @@ def retrieve_product_data(keywords: List[str], max_results: int = 10) -> Dict[st
         # Return mock data for all keywords as fallback
         fallback_results = {}
         for kw in keywords:
-            fallback_results[kw] = [
+            kw_items = []
+            for store_domain in ["littlefarms.com", "fairprice.com.sg", "shengsiong.com.sg", "coldstorage.com.sg", "lazada.sg"]:
+                mock_products = search_mock_products(kw, store_domain)
+                for mp in mock_products:
+                    kw_items.append({
+                        "title": mp["title"],
+                        "price_lkr": mp["price_value"],
+                        "price_sgd": mp["price_value"],
+                        "currency": "SGD",
+                        "website": store_domain,
+                        "source_url": f"https://{store_domain}/search?q={kw}",
+                        "collection": store_domain.split('.')[0],
+                        "similarity_score": 0.95,
+                        "kg_enhanced": False,
+                        "original_query": kw,
+                        "image_url": mp.get("image_url", "")
+                    })
+            fallback_results[kw] = kw_items if kw_items else [
                 {
                     "title": f"Premium {kw.title()}", 
-                    "price_lkr": 250.0,
-                    "website": "glowmark.lk",
-                    "source_url": f"https://glowmark.lk/product/premium-{kw}",
-                    "collection": "glowmark",
+                    "price_lkr": 5.0,
+                    "price_sgd": 5.0,
+                    "currency": "SGD",
+                    "website": "fairprice.com.sg",
+                    "source_url": f"https://fairprice.com.sg/search?q={kw}",
+                    "collection": "fairprice",
                     "similarity_score": 0.95,
                     "kg_enhanced": False,
                     "original_query": kw

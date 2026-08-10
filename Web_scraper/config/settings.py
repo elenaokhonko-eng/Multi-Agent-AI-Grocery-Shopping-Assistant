@@ -34,31 +34,47 @@ class Config:
     SAVE_JSON_OUTPUT: bool = os.getenv("SAVE_JSON_OUTPUT", "true").lower() == "true"
 
 class ScraperConfig:
-    """Website-specific scraper configurations."""
+    """Website-specific scraper configurations for Singapore."""
     
     SCRAPERS = {
-        "glowmark": {
-            "name": "Glowmark",
-            "base_url": "https://glomark.lk",
-            "search_path": "/search?search-text=",
-            "collection": "Glowmark",
-            "markdown_marker": "By Price",
-            "rate_limit": 1.0,
-        },
-        "kapruka": {
-            "name": "Kapruka", 
-            "base_url": "https://www.kapruka.com",
-            "search_path": "/srilanka_online_search.jsp?d=",
-            "collection": "Kapruka",
-            "markdown_marker": "in Kapruka",
-            "rate_limit": 1.0,
-        },
-        "onlinekade": {
-            "name": "OnlineKade",
-            "base_url": "https://onlinekade.lk",
-            "search_path": "/?s={}&post_type=product&dgwt_wcas=1",
-            "collection": "OnlineKade", 
+        "littlefarms": {
+            "name": "Little Farms",
+            "base_url": "https://littlefarms.com",
+            "search_path": "/search?q=",
+            "collection": "LittleFarms",
             "markdown_marker": "Products",
             "rate_limit": 1.0,
+        },
+        "fairprice": {
+            "name": "FairPrice",
+            "base_url": "https://www.fairprice.com.sg",
+            "search_path": "/search?query=",
+            "collection": "FairPrice",
+            "markdown_marker": "Search Results",
+            "rate_limit": 1.5,
+        },
+        "shengsiong": {
+            "name": "Sheng Siong",
+            "base_url": "https://shengsiong.com.sg",
+            "search_path": "/search?q=",
+            "collection": "ShengSiong",
+            "markdown_marker": "Search Results",
+            "rate_limit": 1.0,
+        },
+        "coldstorage": {
+            "name": "Cold Storage",
+            "base_url": "https://coldstorage.com.sg",
+            "search_path": "/search?q=",
+            "collection": "ColdStorage",
+            "markdown_marker": "Search Results",
+            "rate_limit": 1.0,
+        },
+        "lazada": {
+            "name": "RedMart",
+            "base_url": "https://www.lazada.sg",
+            "search_path": "/catalog/?q=",
+            "collection": "Lazada",
+            "markdown_marker": "RedMart",
+            "rate_limit": 2.0,
         }
     }

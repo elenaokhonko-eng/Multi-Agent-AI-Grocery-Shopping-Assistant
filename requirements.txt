@@ -1,0 +1,11 @@
+flask
+langgraph
+langchain
+pymongo
+numpy
+nest_asyncio
+crawl4ai
+groq
+# Add any additional libraries your project needs, e.g.
+# beautifulsoup4
+# requests

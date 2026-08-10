@@ -10,7 +10,7 @@ from typing import Dict, List, Any, Optional
 from flask import Flask, request, jsonify, render_template_string
 from flask_cors import CORS
 
-from scrapers import GlowmarkScraper, KaprukaScraper, OnlineKadeScraper
+from scrapers import LittleFarmsScraper, FairPriceScraper, ShengSiongScraper, ColdStorageScraper, LazadaScraper
 from retrieval import ItemRetriever
 from utils.query_manager import QueryManager
 from config.settings import Config, ScraperConfig
@@ -24,9 +24,11 @@ logger = setup_logging(Config.LOG_LEVEL, Config.LOG_FILE)
 
 # Initialize scrapers and retriever
 scrapers = {
-    "glowmark": GlowmarkScraper(),
-    "kapruka": KaprukaScraper(),
-    "onlinekade": OnlineKadeScraper()
+    "littlefarms": LittleFarmsScraper(),
+    "fairprice": FairPriceScraper(),
+    "shengsiong": ShengSiongScraper(),
+    "coldstorage": ColdStorageScraper(),
+    "lazada": LazadaScraper()
 }
 
 # Initialize item retriever and query manager

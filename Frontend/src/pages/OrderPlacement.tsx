@@ -92,6 +92,15 @@ const OrderPlacement = () => {
   const [additionalQuery, setAdditionalQuery] = useState('');
   const [isSearchingMore, setIsSearchingMore] = useState(false);
 
+  // Payment authorization details state
+  const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [payment, setPayment] = useState({
+    cardholderName: '',
+    cardNumber: '',
+    expiryDate: '',
+    cvv: ''
+  });
+
   // Cache/restore results & seed items list
   useEffect(() => {
     if (inbound?.searchResults && inbound?.originalQuery) {
@@ -129,6 +138,25 @@ const OrderPlacement = () => {
       return;
     }
 
+    if (!showPaymentForm) {
+      setShowPaymentForm(true);
+      toast({
+        title: 'Payment Details Required',
+        description: 'Please complete your secure credit card details in the checkout form to proceed.',
+      });
+      return;
+    }
+
+    // Validate payment inputs
+    if (!payment.cardholderName.trim() || !payment.cardNumber.trim() || !payment.expiryDate.trim() || !payment.cvv.trim()) {
+      toast({
+        title: 'Incomplete Payment Details',
+        description: 'Please enter all credit card details to authorize order placement.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     // Set loading state
     setIsProcessingOrder(true);
 
@@ -147,8 +175,8 @@ const OrderPlacement = () => {
 
     // Show loading state
     toast({
-      title: 'Placing orders...',
-      description: 'Processing your order with multiple stores.',
+      title: 'Placing authorized orders...',
+      description: 'Authorizing credit card and processing orders with stores.',
     });
 
     const orderResults: Array<{ store: string; success: boolean; error?: string }> = [];
@@ -159,25 +187,20 @@ const OrderPlacement = () => {
         const orderData = {
           userId: `test-user-123`, // Generate unique user ID
           items: storeItems.map((item, index) => {
-            // If price is 0, use default price of 500
-            const price = item.price_lkr === 0 ? 500 : item.price_lkr;
+            // If price is 0, use default price of 5.0 SGD
+            const price = item.price_lkr === 0 ? 5 : item.price_lkr;
             
             const orderItem = {
               productId: `${getStorePrefix(store)}${String(index + 1).padStart(3, '0')}`,
               title: item.title,
               price: price, // Use corrected price
               quantity: item.quantity || 1, // Use actual quantity from item
-              // Additional fields for reference
               source_url: item.source_url,
               collection: item.collection,
             };
-            console.log(`📋 Order item for ${store}:`, orderItem);
-            console.log(`   - productId: "${orderItem.productId}" (${typeof orderItem.productId})`);
-            console.log(`   - title: "${orderItem.title}" (${typeof orderItem.title})`);
-            console.log(`   - price: ${orderItem.price} (${typeof orderItem.price}) ${item.price_lkr === 0 ? '[CORRECTED FROM 0]' : ''}`);
-            console.log(`   - quantity: ${orderItem.quantity} (${typeof orderItem.quantity})`);
             return orderItem;
           }),
+          payment: payment // Send payment details securely for simulation gateway validation
         };
 
         console.log(`📦 Sending order to ${store}:`, orderData);
@@ -219,35 +242,30 @@ const OrderPlacement = () => {
     const failedOrders = orderResults.filter(result => !result.success);
 
     if (successfulOrders.length > 0 && failedOrders.length === 0) {
-      // All orders successful
       toast({
         title: 'All orders placed successfully! 🎉',
         description: `Orders placed with ${successfulOrders.length} store${successfulOrders.length > 1 ? 's' : ''}: ${successfulOrders.map(r => r.store).join(', ')}. Redirecting to orders page...`,
       });
       
-      // Navigate to orders page after a short delay
       setTimeout(() => {
         navigate('/orders');
       }, 2000);
       
     } else if (successfulOrders.length > 0 && failedOrders.length > 0) {
-      // Partial success
       toast({
         title: 'Some orders placed successfully',
         description: `✅ Success: ${successfulOrders.map(r => r.store).join(', ')}. ❌ Failed: ${failedOrders.map(r => r.store).join(', ')}. Redirecting to orders page...`,
         variant: 'destructive',
       });
       
-      // Navigate to orders page after a short delay even with partial success
       setTimeout(() => {
         navigate('/orders');
       }, 3000);
       
     } else {
-      // All orders failed
       toast({
         title: 'Failed to place orders',
-        description: `All orders failed. Please try again later.`,
+        description: `All orders failed. Please check payment details or try again later.`,
         variant: 'destructive',
       });
     }
@@ -261,15 +279,19 @@ const OrderPlacement = () => {
     try {
       const domain = new URL(item.source_url).hostname.replace(/^www\./, '').toLowerCase();
       // Map to our API endpoint names
-      if (domain.includes('onlinekade')) return 'onlinekade';
-      if (domain.includes('kapruka')) return 'kapruka';
-      if (domain.includes('glowmark') || domain.includes('glomark')) return 'glowmark';
-      return domain.replace('.lk', '').replace('.com', '');
+      if (domain.includes('littlefarms')) return 'littlefarms';
+      if (domain.includes('fairprice')) return 'fairprice';
+      if (domain.includes('shengsiong')) return 'shengsiong';
+      if (domain.includes('coldstorage')) return 'coldstorage';
+      if (domain.includes('lazada') || domain.includes('redmart')) return 'lazada';
+      return domain.replace('.lk', '').replace('.com.sg', '').replace('.com', '').replace('.sg', '');
     } catch {
       const website = (item.website || item.collection || '').toLowerCase();
-      if (website.includes('onlinekade')) return 'onlinekade';
-      if (website.includes('kapruka')) return 'kapruka';
-      if (website.includes('glowmark') || website.includes('glomark')) return 'glowmark';
+      if (website.includes('littlefarms')) return 'littlefarms';
+      if (website.includes('fairprice')) return 'fairprice';
+      if (website.includes('shengsiong')) return 'shengsiong';
+      if (website.includes('coldstorage')) return 'coldstorage';
+      if (website.includes('lazada') || website.includes('redmart')) return 'lazada';
       return website;
     }
   };
@@ -277,20 +299,46 @@ const OrderPlacement = () => {
   // Helper function to get store prefix for product IDs
   const getStorePrefix = (store: string): string => {
     const prefixes: Record<string, string> = {
-      'onlinekade': 'OLK',
-      'kapruka': 'KAP',
-      'glowmark': 'GLW',
-      'glomark': 'GLW',
+      'littlefarms': 'LTF',
+      'fairprice': 'FP',
+      'shengsiong': 'SS',
+      'coldstorage': 'CS',
+      'lazada': 'LZD',
     };
     return prefixes[store] || 'GEN';
   };
 
   const formatPrice = (price: number) =>
-    new Intl.NumberFormat('en-LK', {
+    new Intl.NumberFormat('en-SG', {
       style: 'currency',
-      currency: 'LKR',
+      currency: 'SGD',
       minimumFractionDigits: 2,
     }).format(price);
+
+  const calculateTotalDeliveryFee = () => {
+    const storeFees: Record<string, number> = {
+      'littlefarms': 12.0,
+      'fairprice': 7.0,
+      'shengsiong': 6.0,
+      'coldstorage': 8.0,
+      'lazada': 6.99
+    };
+    
+    // Group items by store
+    const grouped = items.reduce((acc, item) => {
+      const store = getStoreDomain(item);
+      acc[store] = (acc[store] || 0) + ((item.price_lkr === 0 ? 5 : item.price_lkr) * (item.quantity || 1));
+      return acc;
+    }, {} as Record<string, number>);
+    
+    let totalFee = 0;
+    Object.entries(grouped).forEach(([store, subtotal]) => {
+      if (subtotal < 100) {
+        totalFee += storeFees[store] || 7.0;
+      }
+    });
+    return totalFee;
+  };
 
   // Derive a stable domain from source_url; fallback to website
   const storeDomain = (item: OptimizedItem) => {
@@ -299,10 +347,11 @@ const OrderPlacement = () => {
 
   const getStoreColor = (domain: string) => {
     const colors: Record<string, string> = {
-      'glomark.lk': 'bg-blue-100 text-blue-800',
-      'kapruka.com': 'bg-green-100 text-green-800',
-      'onlinekade.lk': 'bg-purple-100 text-purple-800',
-      'lassanaflora.com': 'bg-pink-100 text-pink-800',
+      'littlefarms': 'bg-rose-100 text-rose-800',
+      'fairprice': 'bg-blue-100 text-blue-800',
+      'shengsiong': 'bg-emerald-100 text-emerald-800',
+      'coldstorage': 'bg-yellow-100 text-yellow-800',
+      'lazada': 'bg-purple-100 text-purple-800',
     };
     return colors[domain] || 'bg-gray-100 text-gray-800';
   };
@@ -499,7 +548,7 @@ const OrderPlacement = () => {
   const subtotalCount = items.length;
   const totalQuantity = items.reduce((sum, it) => sum + (it.quantity || 1), 0);
   // Calculate totals with corrected prices (0 -> 500) and quantities
-  const subtotalTotal = items.reduce((sum, it) => sum + ((it.price_lkr === 0 ? 500 : it.price_lkr) * (it.quantity || 1)), 0);
+  const subtotalTotal = items.reduce((sum, it) => sum + ((it.price_lkr === 0 ? 5 : it.price_lkr) * (it.quantity || 1)), 0);
 
   return (
     <div className="min-h-screen bg-background">
@@ -687,7 +736,7 @@ const OrderPlacement = () => {
 
                                 <div className="text-right min-w-[180px]">
                                   <div className="text-2xl font-bold text-primary">
-                                    {formatPrice(item.price_lkr === 0 ? 500 : item.price_lkr)}
+                                    {formatPrice(item.price_lkr === 0 ? 5 : item.price_lkr)}
                                     {item.price_lkr === 0 && (
                                       <span className="text-xs text-orange-600 ml-1"></span>
                                     )}
@@ -697,7 +746,7 @@ const OrderPlacement = () => {
                                   {/* Total price if quantity > 1 */}
                                   {(item.quantity || 1) > 1 && (
                                     <div className="text-lg font-semibold text-green-600 mt-1">
-                                      Total: {formatPrice((item.price_lkr === 0 ? 500 : item.price_lkr) * (item.quantity || 1))}
+                                      Total: {formatPrice((item.price_lkr === 0 ? 5 : item.price_lkr) * (item.quantity || 1))}
                                     </div>
                                   )}
 
@@ -796,16 +845,84 @@ const OrderPlacement = () => {
                   </div>
                   <div className="flex justify-between">
                     <span>Delivery Fee</span>
-                    <span className="text-green-600">FREE</span>
+                    <span>
+                      {calculateTotalDeliveryFee() === 0 ? (
+                        <span className="text-green-600 font-medium">FREE</span>
+                      ) : (
+                        formatPrice(calculateTotalDeliveryFee())
+                      )}
+                    </span>
                   </div>
                   <Separator />
                   <div className="flex justify-between text-lg font-bold">
                     <span>Total</span>
                     <span className="text-primary">
-                      {formatPrice(subtotalTotal - data.pipeline_summary.loyalty_savings)}
+                      {formatPrice(subtotalTotal - data.pipeline_summary.loyalty_savings + calculateTotalDeliveryFee())}
                     </span>
                   </div>
                 </div>
+
+                {/* Secure Credit Card entry form */}
+                {showPaymentForm && (
+                  <div className="border rounded-lg p-3 bg-muted/40 space-y-3 mt-2">
+                    <div className="text-sm font-semibold flex items-center gap-1.5 text-primary">
+                      <CreditCard className="h-4 w-4" />
+                      <span>Secure Payment Authorization</span>
+                    </div>
+                    
+                    <div className="space-y-2.5">
+                      <div>
+                        <label className="text-xs text-muted-foreground block mb-1">Cardholder Name</label>
+                        <Input
+                          type="text"
+                          placeholder="e.g. John Doe"
+                          value={payment.cardholderName}
+                          onChange={(e) => setPayment(prev => ({ ...prev, cardholderName: e.target.value }))}
+                          className="h-8 text-sm"
+                          disabled={isProcessingOrder}
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="text-xs text-muted-foreground block mb-1">Card Number</label>
+                        <Input
+                          type="text"
+                          placeholder="4000 1234 5678 9010"
+                          value={payment.cardNumber}
+                          onChange={(e) => setPayment(prev => ({ ...prev, cardNumber: e.target.value }))}
+                          className="h-8 text-sm"
+                          disabled={isProcessingOrder}
+                        />
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-xs text-muted-foreground block mb-1">Expiry Date</label>
+                          <Input
+                            type="text"
+                            placeholder="MM/YY"
+                            value={payment.expiryDate}
+                            onChange={(e) => setPayment(prev => ({ ...prev, expiryDate: e.target.value }))}
+                            className="h-8 text-sm"
+                            disabled={isProcessingOrder}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-muted-foreground block mb-1">CVV</label>
+                          <Input
+                            type="password"
+                            placeholder="123"
+                            maxLength={4}
+                            value={payment.cvv}
+                            onChange={(e) => setPayment(prev => ({ ...prev, cvv: e.target.value }))}
+                            className="h-8 text-sm"
+                            disabled={isProcessingOrder}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div className="space-y-3">
                   <div className="flex items-center space-x-2 text-sm">
@@ -815,11 +932,15 @@ const OrderPlacement = () => {
 
                   <Button
                     onClick={handleConfirmOrder}
-                    className="w-full bg-gradient-primary hover:opacity-90"
+                    className="w-full bg-gradient-primary hover:opacity-90 font-semibold"
                     disabled={subtotalCount === 0 || isProcessingOrder}
                   >
                     {isProcessingOrder && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                    {isProcessingOrder ? 'Processing Orders...' : 'Confirm Order'}
+                    {isProcessingOrder 
+                      ? 'Processing Authorized Orders...' 
+                      : showPaymentForm 
+                        ? 'Authorize & Confirm Order' 
+                        : 'Confirm Order'}
                   </Button>
 
                   <p className="text-xs text-muted-foreground text-center">

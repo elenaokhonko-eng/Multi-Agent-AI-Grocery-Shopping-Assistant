@@ -105,7 +105,26 @@ class ProductSearchOrchestrator:
             else:
                 user_input = str(last_msg)
         
-        keywords = self.keyword_agent.extract_keywords(user_input)
+        # Intercept Singapore Grocery Cart queries
+        is_grocery = any(k in user_input.lower() for k in ["compare", "grocery", "cart", "list", "weekly", "bi-weekly"])
+        if is_grocery:
+            import json
+            try:
+                main_dir = os.path.dirname(os.path.abspath(__file__))
+                list_path = os.path.join(os.path.dirname(main_dir), "Backend", "data", "fixed_grocery_list.json")
+                with open(list_path, 'r') as f:
+                    grocery_data = json.load(f)
+                
+                keywords = [item["keyword"] for item in grocery_data["weekly_items"]]
+                if any(k in user_input.lower() for k in ["bi-weekly", "biweekly"]):
+                    keywords.extend([item["keyword"] for item in grocery_data["bi_weekly_items"]])
+                
+                print(f"[NODE] Intercepted Singapore Grocery Cart: loaded {len(keywords)} fixed items.")
+            except Exception as e:
+                print(f"[NODE] Failed to load fixed list, using agent: {e}")
+                keywords = self.keyword_agent.extract_keywords(user_input)
+        else:
+            keywords = self.keyword_agent.extract_keywords(user_input)
         
         # Print step details
         print(f"\n🔍 STEP 1: KEYWORD EXTRACTION")
@@ -486,9 +505,17 @@ class ProductSearchOrchestrator:
             print(f"   Budget Used: {(optimization_result.get('total_cost', 0) / constraints.max_budget * 100):.1f}%")
             print(f"   Estimated Delivery: {optimization_result.get('total_delivery_time', 0):.1f} hours")
             
+            # Put the single store comparisons and summary together in budget_optimization_summary
+            budget_summary_data = {
+                "selection_summary": optimization_summary,
+                "single_store_comparisons": optimization_result.get("single_store_comparisons", {}),
+                "total_cost": optimization_result.get("total_cost", 0),
+                "total_delivery_time": optimization_result.get("total_delivery_time", 0)
+            }
+            
             return {
                 "budget_optimized_data": budget_optimized_data,
-                "budget_optimization_summary": optimization_summary,
+                "budget_optimization_summary": budget_summary_data,
                 "processing_stage": "budget_optimization_complete"
             }
             

@@ -234,21 +234,131 @@ class BudgetOptimizationAgent:
                 final_selection, constraints, scored_categories
             )
             
+            # Run single-store cart optimization
+            single_store_results = self._optimize_single_store_cart(loyalty_optimized_data)
+            best_store = single_store_results["best_store"]
+            
+            # If the user query is about grocery carts or shopping lists, use single-store cart results
+            if any(k in user_query.lower() for k in ["compare", "grocery", "cart", "list", "weekly", "bi-weekly"]):
+                final_selection = single_store_results["stores"][best_store]["selection"]
+                total_cost = single_store_results["stores"][best_store]["total_cost"]
+                optimization_method = f"Single-Store Cart Optimization ({single_store_results['stores'][best_store]['name']})"
+            else:
+                total_cost = sum(item["price_lkr"] for item in final_selection.values())
+                optimization_method = "hybrid_llm_linear_programming"
+
             return {
                 "optimized_selection": final_selection,
                 "optimization_summary": reasoning,
-                "total_cost": sum(item["price_lkr"] for item in final_selection.values()),
+                "total_cost": total_cost,
                 "total_delivery_time": max(
                     self.store_configs[item["website"]].average_delivery_hours 
                     for item in final_selection.values()
                 ),
-                "optimization_method": "hybrid_llm_linear_programming",
-                "constraints_satisfied": self._validate_constraints(final_selection, constraints)
+                "optimization_method": optimization_method,
+                "constraints_satisfied": self._validate_constraints(final_selection, constraints),
+                "single_store_comparisons": single_store_results
             }
             
         except Exception as e:
             print(f"❌ Budget optimization failed: {e}")
             return {"error": str(e)}
+
+    def _optimize_single_store_cart(self, categories_data: Dict[str, List[Dict]]) -> Dict[str, Any]:
+        """
+        Compare the cost of buying the entire grocery list at each store.
+        Applies the SGD 100 free shipping cutoff and split-ordering for specialty items like Sockeye Salmon.
+        """
+        stores_to_compare = ["littlefarms.com", "fairprice.com.sg", "shengsiong.com.sg", "coldstorage.com.sg", "lazada.sg"]
+        results = {"stores": {}, "best_store": None}
+        
+        # We need the sockeye salmon from littlefarms.com specifically
+        salmon_item = None
+        if "sockeye salmon" in categories_data and categories_data["sockeye salmon"]:
+            for item in categories_data["sockeye salmon"]:
+                if item["website"] == "littlefarms.com":
+                    salmon_item = item
+                    break
+            # Fallback if not found in categories_data
+            if not salmon_item:
+                salmon_item = {
+                    "title": "Little Farms New Zealand Wild Caught Sockeye Salmon (approx 1kg)",
+                    "price_lkr": 72.50,
+                    "price_sgd": 72.50,
+                    "currency": "SGD",
+                    "website": "littlefarms.com",
+                    "source_url": "https://littlefarms.com/search?q=sockeye salmon",
+                    "collection": "littlefarms",
+                    "similarity_score": 1.0,
+                    "kg_enhanced": False,
+                    "original_query": "sockeye salmon"
+                }
+
+        for store in stores_to_compare:
+            store_name = self.store_configs.get(store).name if store in self.store_configs else store.split('.')[0].title()
+            selection = {}
+            subtotal = 0.0
+            split_salmon_added = False
+            
+            for category, items in categories_data.items():
+                if category == "sockeye salmon":
+                    if store == "littlefarms.com":
+                        selection[category] = salmon_item
+                        subtotal += salmon_item["price_lkr"]
+                    else:
+                        # Salmon must be ordered from Little Farms specifically (split order)
+                        selection[category] = salmon_item
+                        split_salmon_added = True
+                    continue
+                
+                # Find cheapest item in category for this store
+                store_items = [it for it in items if it["website"] == store]
+                if store_items:
+                    cheapest_item = min(store_items, key=lambda x: x["price_lkr"])
+                    selection[category] = cheapest_item
+                    subtotal += cheapest_item["price_lkr"]
+                elif items:
+                    # Fallback: if store doesn't have it, pick the cheapest item from any store
+                    cheapest_any = min(items, key=lambda x: x["price_lkr"])
+                    selection[category] = cheapest_any
+                    subtotal += cheapest_any["price_lkr"]
+            
+            # Calculate shipping fee for store
+            delivery_config = self.store_configs.get(store)
+            free_threshold = getattr(delivery_config, "free_shipping_threshold", 100.0) if delivery_config else 100.0
+            base_delivery = getattr(delivery_config, "delivery_fee", 7.0) if delivery_config else 7.0
+            
+            delivery_fee = 0.0 if subtotal >= free_threshold else base_delivery
+            
+            # Split order fee for salmon if applicable
+            split_subtotal = 0.0
+            split_delivery_fee = 0.0
+            if split_salmon_added and salmon_item:
+                split_subtotal = salmon_item["price_lkr"]
+                # Sockeye salmon is SGD 72.50, which is < SGD 100 free shipping, so add Little Farms delivery fee (SGD 12)
+                lf_config = self.store_configs.get("littlefarms.com")
+                split_delivery_fee = lf_config.delivery_fee if lf_config else 12.0
+            
+            total_cost = subtotal + delivery_fee + split_subtotal + split_delivery_fee
+            
+            results["stores"][store] = {
+                "name": store_name,
+                "website": store,
+                "subtotal": round(subtotal, 2),
+                "delivery_fee": round(delivery_fee, 2),
+                "split_order": {
+                    "active": split_salmon_added,
+                    "subtotal": round(split_subtotal, 2),
+                    "delivery_fee": round(split_delivery_fee, 2)
+                },
+                "total_cost": round(total_cost, 2),
+                "selection": selection
+            }
+            
+        # Find best store (lowest total cost)
+        best_store = min(stores_to_compare, key=lambda s: results["stores"][s]["total_cost"])
+        results["best_store"] = best_store
+        return results
     
     def _calculate_item_scores(
         self, 

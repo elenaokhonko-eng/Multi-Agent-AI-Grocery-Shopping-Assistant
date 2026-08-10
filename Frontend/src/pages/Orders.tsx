@@ -68,7 +68,7 @@ interface Order {
 }
 
 const USER_ID = 'test-user-123'; // Same user ID used in OrderPlacement
-const STORE_NAMES = ['onlinekade', 'kapruka', 'glowmark'];
+const STORE_NAMES = ['littlefarms', 'fairprice', 'shengsiong', 'coldstorage', 'lazada'];
 
 const getStatusInfo = (status: string) => {
   switch (status.toLowerCase()) {
@@ -124,9 +124,9 @@ const getStatusInfo = (status: string) => {
 };
 
 const formatPrice = (price: number) =>
-  new Intl.NumberFormat('en-LK', {
+  new Intl.NumberFormat('en-SG', {
     style: 'currency',
-    currency: 'LKR',
+    currency: 'SGD',
     minimumFractionDigits: 2,
   }).format(price);
 
