@@ -29,10 +29,13 @@ def setup_logging(log_level: str = "INFO", log_file: Optional[str] = None) -> lo
     
     # File handler if log_file is specified
     if log_file:
-        Path(log_file).parent.mkdir(parents=True, exist_ok=True)
-        file_handler = logging.FileHandler(log_file)
+        # Resolve absolute path and ensure directory exists
+        log_path = Path(log_file).expanduser().resolve()
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        file_handler = logging.FileHandler(log_path)
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
+        logger.debug(f"Logging to file: {log_path}")
     
     return logger
 
