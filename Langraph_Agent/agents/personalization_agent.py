@@ -4,7 +4,7 @@ Personalization Agent with LLM-based filtering and customization tools
 import json
 from typing import List, Dict, Any, Tuple
 from langchain_core.tools import tool
-from langchain_groq import ChatGroq
+from langchain_ollama import ChatOllama
 from core.user_profile import UserProfile, get_default_profile
 from core.profile_store import UserProfileStore
 from core.feedback import PreferenceStore as PrefsStore
@@ -222,10 +222,10 @@ def prioritize_by_loyalty(items: List[Dict[str, Any]], loyalty_info: Dict[str, A
 
 
 class PersonalizationAgent:
-    def __init__(self, llm: ChatGroq, user_profile: UserProfile = None,
+    def __init__(self, llm: ChatOllama, user_profile: UserProfile = None,
                  profile_store: UserProfileStore = None,
                  prefs_store: PrefsStore = None):
-        self.llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.1)
+        self.llm = ChatOllama(base_url=Config.OLLAMA_BASE_URL, model="llama-3.3-70b-versatile", temperature=0.1)
         self.profile_store = profile_store or UserProfileStore(".profiles")
         self.prefs_store   = prefs_store   or PrefsStore(".prefs")
         self.user_profile  = user_profile or get_default_profile()

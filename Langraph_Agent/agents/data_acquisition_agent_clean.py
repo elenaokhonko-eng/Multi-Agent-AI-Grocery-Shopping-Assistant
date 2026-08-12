@@ -6,7 +6,7 @@ import os
 import re
 from typing import List, Dict, Any
 from langchain_core.tools import tool
-from langchain_groq import ChatGroq
+from langchain_ollama import ChatOllama
 from agents.knowledge_graph_agent import KnowledgeGraphAgent
 
 # MongoDB with simple text search (no PyTorch dependencies)
@@ -363,11 +363,11 @@ class DataAcquisitionAgent:
 
 # Test the agent if run directly
 if __name__ == "__main__":
-    from langchain_groq import ChatGroq
+    from langchain_ollama import ChatOllama
     
     # Test configuration
     os.environ["GROQ_API_KEY"] = "your-api-key-here"  # Replace with actual key
-    llm = ChatGroq(model="llama-3.1-8b-instant", temperature=0)
+    llm = ChatOllama(base_url=Config.OLLAMA_BASE_URL, model="llama-3.1-8b-instant", temperature=0)
     
     # Create and test agent
     agent = DataAcquisitionAgent(llm)

@@ -101,11 +101,11 @@ def test_loyalty_agent_standalone():
     print("=" * 60)
     
     try:
-        from langchain_groq import ChatGroq
+        from langchain_ollama import ChatOllama
         from agents.loyalty_aggregator_agent import LoyaltyAggregatorAgent
         
         # Initialize agent
-        llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.1)
+        llm = ChatOllama(base_url=Config.OLLAMA_BASE_URL, model="llama-3.3-70b-versatile", temperature=0.1)
         loyalty_agent = LoyaltyAggregatorAgent(llm)
         
         # Create test items

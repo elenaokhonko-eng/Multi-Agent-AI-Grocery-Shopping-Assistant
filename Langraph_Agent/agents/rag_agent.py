@@ -14,9 +14,8 @@ from langchain_core.prompts import ChatPromptTemplate
 
 # LLMs / embeddings
 try:
-    from langchain_groq import ChatGroq  # optional if you use Groq
-except Exception:
-    ChatGroq = None
+    from langchain_ollama import ChatOllama  # optional if you use Groq
+except Exception: ChatOllama = None
 
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_community.chat_models import ChatOllama
@@ -143,7 +142,7 @@ class RAGAgent:
             api_key = os.getenv("GROQ_API_KEY")
             if not api_key:
                 raise RuntimeError("GROQ_API_KEY not set")
-            return ChatGroq(model=name, api_key=api_key, temperature=0)
+            return ChatOllama(base_url=Config.OLLAMA_BASE_URL, model=name, temperature=0)
         if p == "openai":
             # Requires OPENAI_API_KEY in environment
             return ChatOpenAI(model=name, temperature=0)
@@ -154,7 +153,7 @@ class RAGAgent:
     def _build_embeddings(self, spec: str):
         if spec.startswith("hf:"):
             model = spec.split("hf:", 1)[1] or "sentence-transformers/all-MiniLM-L6-v2"
-            return HuggingFaceEmbeddings(model_name=model)
+            return HuggingFaceEmbeddings(model=model)
         # default to OpenAI embeddings if prefixed with openai:*
         if spec.startswith("openai:"):
             model = spec.split("openai:", 1)[1] or "text-embedding-3-small"
@@ -163,7 +162,7 @@ class RAGAgent:
         if ":" not in spec:
             return OpenAIEmbeddings(model=spec)
         # final fallback
-        return HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+        return HuggingFaceEmbeddings(model="sentence-transformers/all-MiniLM-L6-v2")
 
     @traceable(name="rag_load_or_build_index", tags=["titanstore", "rag", "index"])
     def _load_or_build_index(self) -> FAISS:

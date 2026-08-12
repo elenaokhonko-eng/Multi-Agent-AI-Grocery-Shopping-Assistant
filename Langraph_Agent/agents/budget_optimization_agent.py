@@ -16,7 +16,7 @@ except ImportError:
     print("⚠️ PuLP not installed. Install with: pip install pulp")
 
 import numpy as np
-from groq import Groq
+from openai import OpenAI
 
 # Import config
 import sys
@@ -65,7 +65,7 @@ class BudgetOptimizationAgent:
     """
     
     def __init__(self):
-        self.client = Groq(api_key=Config.GROQ_API_KEY)
+        self.client = OpenAI()
         self.store_configs = self._load_store_configs()
         self.optimization_tools = [
             {

@@ -1,0 +1,116 @@
+{
+  "weekly_items": [
+    {
+      "keyword": "sockeye salmon",
+      "quantity": 1,
+      "unit": "kg",
+      "little_farms_only": true,
+      "notes": "1 kg or so from Little Farms specifically"
+    },
+    {
+      "keyword": "salmon skin",
+      "quantity": 2,
+      "unit": "packets",
+      "notes": "egg yolk salmon skin packets"
+    },
+    {
+      "keyword": "macadamia nuts",
+      "quantity": 1,
+      "unit": "packet",
+      "notes": "raw or baked macadamia nuts"
+    },
+    {
+      "keyword": "berries",
+      "quantity": 4,
+      "unit": "packets",
+      "notes": "blueberries or raspberries - in season"
+    },
+    {
+      "keyword": "trash bags",
+      "quantity": 1,
+      "unit": "roll",
+      "notes": "medium or heavy duty trash bags"
+    },
+    {
+      "keyword": "washing powder",
+      "quantity": 1,
+      "unit": "pack",
+      "notes": "Dynamo or Breeze washing powder / detergent"
+    },
+    {
+      "keyword": "bell peppers",
+      "quantity": 1,
+      "unit": "pack",
+      "notes": "fresh yellow bell peppers 3 pieces"
+    },
+    {
+      "keyword": "eggs",
+      "quantity": 1,
+      "unit": "pack",
+      "notes": "3-4 eggs Nuegg intense egg yolk"
+    },
+    {
+      "keyword": "kopi o",
+      "quantity": 1,
+      "unit": "pack",
+      "notes": "Gold Roast kopi o kosong"
+    },
+    {
+      "keyword": "spinach",
+      "quantity": 1,
+      "unit": "packet",
+      "notes": "fresh baby spinach or local spinach"
+    },
+    {
+      "keyword": "avocados",
+      "quantity": 3,
+      "unit": "pieces",
+      "notes": "fresh avocados"
+    },
+    {
+      "keyword": "sunflower seeds",
+      "quantity": 1,
+      "unit": "packet",
+      "notes": "roasted sunflower seeds"
+    },
+    {
+      "keyword": "guazi",
+      "quantity": 1,
+      "unit": "packet",
+      "notes": "chinese sunflower seeds in shells (guazi)"
+    },
+    {
+      "keyword": "smoked salmon",
+      "quantity": 1,
+      "unit": "packet",
+      "notes": "sliced smoked salmon"
+    }
+  ],
+  "bi_weekly_items": [
+    {
+      "keyword": "mineral water",
+      "quantity": 1,
+      "unit": "cart",
+      "notes": "12 bottles of drinking mineral water (glacier or natural spring from any country)"
+    },
+    {
+      "keyword": "sparkling water",
+      "quantity": 1,
+      "unit": "cart",
+      "notes": "24 smaller sparkling water bottles (glacier or natural spring sparkling)"
+    },
+    {
+      "keyword": "lemons",
+      "quantity": 1,
+      "unit": "pack",
+      "notes": "3-4 pieces or 0.5 kg lemons"
+    },
+    {
+      "keyword": "sockeye salmon",
+      "quantity": 1,
+      "unit": "kg",
+      "little_farms_only": true,
+      "notes": "1 kg or so from Little Farms specifically"
+    }
+  ]
+}

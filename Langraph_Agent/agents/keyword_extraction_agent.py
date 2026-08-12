@@ -3,13 +3,13 @@ Keyword Extraction Agent
 """
 import json
 from typing import List
-from langchain_groq import ChatGroq
+from langchain_ollama import ChatOllama
 
 
 class KeywordExtractionAgent:
     """Agent responsible for extracting food items and products from user input"""
     
-    def __init__(self, llm: ChatGroq):
+    def __init__(self, llm: ChatOllama):
         self.llm = llm
     
     def extract_keywords(self, user_message: str) -> List[str]:

@@ -7,7 +7,7 @@ from typing import Dict, List, Any, Tuple, Optional
 from dataclasses import dataclass, asdict
 
 from langchain.tools import tool
-from langchain_groq import ChatGroq
+from langchain_ollama import ChatOllama
 
 from core.config import Config
 from data.store_locations import STORE_LOCATIONS, StoreLocation, get_store_by_id
@@ -435,12 +435,12 @@ def filter_items_by_distance(user_location: Dict[str, Any], personalized_data: D
 class LogisticsAgent:
     """Logistics Agent for filtering items based on delivery distance"""
     
-    def __init__(self, llm: ChatGroq):
+    def __init__(self, llm: ChatOllama):
         """Initialize the Logistics Agent"""
         self.llm = llm
         
         # Create LLM without JSON mode for tool calling
-        self.tool_llm = ChatGroq(
+        self.tool_llm = ChatOllama(base_url=Config.OLLAMA_BASE_URL, 
             model=Config.GROQ_MODEL,
             temperature=Config.GROQ_TEMPERATURE
         )

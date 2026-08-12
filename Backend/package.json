@@ -6,7 +6,10 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "checkout:littlefarms": "node scripts/littlefarms_checkout.js",
+    "checkout:fairprice": "node scripts/fairprice_checkout.js",
+    "checkout:redmart": "node scripts/redmart_checkout.js"
   },
   "keywords": [],
   "author": "",
@@ -18,7 +21,8 @@
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
     "express-validator": "^7.2.1",
-    "mongoose": "^8.18.0"
+    "mongoose": "^8.18.0",
+    "playwright": "^1.62.1"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"

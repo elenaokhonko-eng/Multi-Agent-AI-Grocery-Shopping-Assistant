@@ -101,6 +101,8 @@ const OrderPlacement = () => {
     cvv: ''
   });
 
+
+
   // Cache/restore results & seed items list
   useEffect(() => {
     if (inbound?.searchResults && inbound?.originalQuery) {

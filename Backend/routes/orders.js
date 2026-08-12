@@ -1,5 +1,6 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
+const Order = require('../models/Order');
 
 const router = express.Router();
 
@@ -109,8 +110,8 @@ router.post('/:store', validateOrder, async (req, res) => {
     // Generate order ID
     const orderId = `${store.toUpperCase()}-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
 
-    // Create order object
-    const order = {
+    // Create order object using Mongoose model
+    const order = new Order({
       orderId,
       userId,
       store: storeConfig.name,
@@ -126,12 +127,12 @@ router.post('/:store', validateOrder, async (req, res) => {
       orderSubtotal,
       deliveryFee,
       orderTotal,
+      totalAmount: orderTotal, // frontend expects totalAmount
       estimatedDelivery: storeConfig.delivery_time,
-      status: 'confirmed',
-      createdAt: new Date(),
+      status: 'pending',
       paymentMethod: 'credit_card',
       cardDetailsMasked: maskedCard
-    };
+    });
 
     // Log the transaction securely (NEVER log raw CC or CVV details)
     console.log(`🔒 Secure CC order authorized for ${userId} with card ${maskedCard}`);
@@ -171,6 +172,11 @@ router.post('/:store', validateOrder, async (req, res) => {
 
     const storeResponse = await simulateStoreResponse();
 
+    // Update order with simulated response data
+    order.storeOrderId = storeResponse.storeOrderId;
+    order.trackingNumber = storeResponse.trackingNumber;
+    await order.save();
+
     // Return success response
     res.status(201).json({
       success: true,
@@ -181,11 +187,7 @@ router.post('/:store', validateOrder, async (req, res) => {
         transactionId: paymentResponse.transactionId,
         cardLastFour: rawCard.slice(-4)
       },
-      order: {
-        ...order,
-        storeOrderId: storeResponse.storeOrderId,
-        trackingNumber: storeResponse.trackingNumber
-      },
+      order: order.toObject(),
       store: {
         name: storeConfig.name,
         delivery_time: storeConfig.delivery_time,
@@ -263,6 +265,67 @@ router.get('/stores', (req, res) => {
       message: 'Failed to fetch stores',
       error: error.message 
     });
+  }
+});
+
+// GET /api/orders/:store/user/:userId - Get all orders for a user from a store
+router.get('/:store/user/:userId', async (req, res) => {
+  try {
+    const { store, userId } = req.params;
+    
+    const storeConfig = STORE_CONFIGS[store.toLowerCase()];
+    if (!storeConfig) {
+      return res.status(400).json({ success: false, message: `Unsupported store: ${store}` });
+    }
+
+    const orders = await Order.find({ userId, store: storeConfig.name }).sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      store: storeConfig.name,
+      data: orders
+    });
+  } catch (error) {
+    console.error('Error fetching user orders:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch orders', error: error.message });
+  }
+});
+
+// PUT /api/orders/:store/:orderId/cancel - Cancel an order
+router.put('/:store/:orderId/cancel', async (req, res) => {
+  try {
+    const { store, orderId } = req.params;
+
+    const storeConfig = STORE_CONFIGS[store.toLowerCase()];
+    if (!storeConfig) {
+      return res.status(400).json({ success: false, message: `Unsupported store: ${store}` });
+    }
+
+    const order = await Order.findOne({ orderId, store: storeConfig.name });
+    
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    if (order.status === 'cancelled') {
+      return res.status(400).json({ success: false, message: 'Order is already cancelled' });
+    }
+
+    if (order.status !== 'pending' && order.status !== 'in_transit') {
+      return res.status(400).json({ success: false, message: 'Only pending or in_transit orders can be cancelled' });
+    }
+
+    order.status = 'cancelled';
+    await order.save();
+
+    res.json({
+      success: true,
+      message: 'Order cancelled successfully',
+      order
+    });
+  } catch (error) {
+    console.error('Error cancelling order:', error);
+    res.status(500).json({ success: false, message: 'Failed to cancel order', error: error.message });
   }
 });
 

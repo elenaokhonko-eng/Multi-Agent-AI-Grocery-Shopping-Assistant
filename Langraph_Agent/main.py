@@ -8,9 +8,9 @@ from typing import Dict, Any
 from core.config import Config
 os.environ["GROQ_API_KEY"] = Config.GROQ_API_KEY
 os.environ["LANGSMITH_API_KEY"] = Config.LANGSMITH_API_KEY
-from langchain_groq import ChatGroq
+from langchain_ollama import ChatOllama
 from langgraph.graph import StateGraph, START, END
-from langchain_groq import ChatGroq
+from langchain_ollama import ChatOllama
 
 # Import custom agents and state
 from core.state import ApplicationState
@@ -33,7 +33,7 @@ class ProductSearchOrchestrator:
     
     def __init__(self, user_profile=None):
         """Initialize the orchestrator with LLM and agents"""
-        self.llm = ChatGroq(
+        self.llm = ChatOllama(base_url=Config.OLLAMA_BASE_URL, 
             model=Config.GROQ_MODEL,
             temperature=Config.GROQ_TEMPERATURE,
             model_kwargs={"response_format": {"type": "json_object"}}
@@ -44,9 +44,8 @@ class ProductSearchOrchestrator:
         self.profile_manager = UserProfileManager()
         
                 # Initialize LLM
-        self.llm = ChatGroq(
-            api_key=Config.GROQ_API_KEY,
-            model_name=Config.GROQ_MODEL,
+        self.llm = ChatOllama(base_url=Config.OLLAMA_BASE_URL, 
+            model=Config.GROQ_MODEL,
             temperature=0.1
         )
         

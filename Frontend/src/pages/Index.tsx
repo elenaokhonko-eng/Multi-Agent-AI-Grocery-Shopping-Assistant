@@ -1,10 +1,90 @@
+import { useState } from 'react';
 import { PromoBanner } from '@/components/PromoBanner';
 import { ProductGrid } from '@/components/ProductGrid';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
+import { Loader2 } from 'lucide-react';
 
 const Index = () => {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const [isLoadingList, setIsLoadingList] = useState(false);
+
+  const handleLoadFixedList = async () => {
+    setIsLoadingList(true);
+    toast({
+      title: 'Loading Fixed Shopping List',
+      description: 'Consulting AI and scraping stores for your weekly items...',
+    });
+
+    try {
+      const payload = {
+        query: "my weekly list",
+        modalities: {}
+      };
+
+      const response = await fetch('http://localhost:3004/api/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+
+      if (data.status === 'success') {
+        navigate('/order-placement', {
+          state: { searchResults: data.results, originalQuery: "my weekly list" },
+        });
+        toast({
+          title: 'Search completed!',
+          description: `Found ${data.results.items_count} optimized items for your weekly list.`,
+        });
+      } else {
+        toast({
+          title: 'Search failed',
+          description: data.message || 'An error occurred during search',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Search error:', error);
+      toast({
+        title: 'Network Error',
+        description: 'Failed to connect to AI backend. Is it running?',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoadingList(false);
+    }
+  };
+
   return (
     <div className="space-y-8">
+      
+      {/* Quick Start Fixed List */}
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-xl p-6 flex flex-col sm:flex-row items-center justify-between shadow-sm">
+        <div className="mb-4 sm:mb-0">
+          <h3 className="text-xl font-bold text-blue-900">Weekly Grocery Run</h3>
+          <p className="text-blue-700">Automatically load and optimize your fixed grocery list for checkout.</p>
+        </div>
+        <Button 
+          onClick={handleLoadFixedList} 
+          disabled={isLoadingList}
+          size="lg"
+          className="bg-blue-600 hover:bg-blue-700 text-white shadow-md transition-all hover:shadow-lg w-full sm:w-auto"
+        >
+          {isLoadingList ? (
+            <>
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              Processing...
+            </>
+          ) : (
+            'Load Fixed Shopping List'
+          )}
+        </Button>
+      </div>
 
       {/* Promotional Banner */}
       <PromoBanner />

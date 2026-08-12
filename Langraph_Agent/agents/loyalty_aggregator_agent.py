@@ -4,7 +4,7 @@ Loyalty Aggregator Agent with LLM-based discount optimization
 import json
 from typing import List, Dict, Any, Tuple
 from langchain_core.tools import tool
-from langchain_groq import ChatGroq
+from langchain_ollama import ChatOllama
 from data.loyalty_programs import (
     get_loyalty_program, get_applicable_bank_discounts, 
     get_store_promotions, DiscountType, LOYALTY_PROGRAMS, BANK_DISCOUNTS
@@ -257,8 +257,8 @@ def optimize_discount_combination(
 class LoyaltyAggregatorAgent:
     """Agent responsible for optimizing discounts and loyalty benefits"""
     
-    def __init__(self, llm: ChatGroq):
-        self.llm = ChatGroq(
+    def __init__(self, llm: ChatOllama):
+        self.llm = ChatOllama(base_url=Config.OLLAMA_BASE_URL, 
             model="llama-3.3-70b-versatile",
             temperature=0.1
         )
