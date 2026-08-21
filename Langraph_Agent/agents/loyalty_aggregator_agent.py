@@ -3,6 +3,7 @@ Loyalty Aggregator Agent with LLM-based discount optimization
 """
 import json
 from typing import List, Dict, Any, Tuple
+from core.config import Config
 from langchain_core.tools import tool
 from langchain_ollama import ChatOllama
 from data.loyalty_programs import (

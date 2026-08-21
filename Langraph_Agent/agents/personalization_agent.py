@@ -3,6 +3,7 @@ Personalization Agent with LLM-based filtering and customization tools
 """
 import json
 from typing import List, Dict, Any, Tuple
+from core.config import Config
 from langchain_core.tools import tool
 from langchain_ollama import ChatOllama
 from core.user_profile import UserProfile, get_default_profile

@@ -5,6 +5,7 @@ import json
 import os
 import re
 from typing import List, Dict, Any
+from core.config import Config
 from langchain_core.tools import tool
 from langchain_ollama import ChatOllama
 from agents.knowledge_graph_agent import KnowledgeGraphAgent
@@ -24,8 +25,13 @@ except ImportError as e:
 kg_agent = KnowledgeGraphAgent()
 
 import sys
-sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "Web_scraper"))
-from utils.mock_singapore_data import search_mock_products
+scraper_file = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "Web_scraper", "utils", "mock_singapore_data.py")
+import importlib.util
+spec = importlib.util.spec_from_file_location("mock_singapore_data", scraper_file)
+mock_singapore_data = importlib.util.module_from_spec(spec)
+sys.modules["mock_singapore_data"] = mock_singapore_data
+spec.loader.exec_module(mock_singapore_data)
+search_mock_products = mock_singapore_data.search_mock_products
 import random
 
 class MongoDBTextSearcher:

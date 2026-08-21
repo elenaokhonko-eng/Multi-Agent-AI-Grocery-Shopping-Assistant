@@ -65,7 +65,7 @@ class BudgetOptimizationAgent:
     """
     
     def __init__(self):
-        self.client = OpenAI()
+        self.client = OpenAI(base_url="http://localhost:11434/v1", api_key="ollama")
         self.store_configs = self._load_store_configs()
         self.optimization_tools = [
             {

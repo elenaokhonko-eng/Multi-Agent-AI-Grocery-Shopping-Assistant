@@ -653,6 +653,127 @@ def feedback_health():
     )
 
 # --------------------------
+# Multi-Agent Endpoints
+# --------------------------
+@app.route('/api/compare_carts', methods=['POST'])
+def compare_carts():
+    """
+    Spawns StoreAgents to fetch carts concurrently.
+    """
+    try:
+        data = request.get_json()
+        query = data.get('query', '')
+        
+        # Simple keyword extraction for MVP
+        keywords = [k.strip() for k in query.replace(',', ' ').split() if k.strip().lower() not in ["compare", "grocery", "cart", "list", "weekly", "bi-weekly", "items", "i", "need", "some"]]
+        
+        # Load fixed grocery list
+        main_dir = os.path.dirname(os.path.abspath(__file__))
+        list_path = os.path.join(main_dir, "data", "fixed_grocery_list.json")
+        try:
+            with open(list_path, 'r') as f:
+                grocery_data = json.load(f)
+            fixed_keywords = [item["keyword"] for item in grocery_data.get("weekly_items", [])]
+            keywords.extend(fixed_keywords)
+        except Exception as e:
+            logger.error(f"Failed to load fixed grocery list: {e}")
+            
+        # Deduplicate
+        keywords = list(set(keywords))
+        
+        if not keywords:
+            return jsonify({'status': 'error', 'message': 'No keywords found to search'}), 400
+            
+        logger.info(f"🛒 Comparing carts for keywords: {keywords}")
+        
+        import threading
+        from agents.store_agents import FairPriceAgent, RedMartAgent
+        
+        # Create a dummy LLM for the agents
+        from langchain_ollama import ChatOllama
+        from core.config import Config
+        dummy_llm = ChatOllama(base_url=Config.OLLAMA_BASE_URL, model=Config.GROQ_MODEL)
+        
+        fp_agent = FairPriceAgent(dummy_llm)
+        rm_agent = RedMartAgent(dummy_llm)
+        
+        results = {}
+        
+        def fetch_fp():
+            results["FairPrice"] = fp_agent.get_cart(keywords)
+            
+        def fetch_rm():
+            results["RedMart"] = rm_agent.get_cart(keywords)
+            
+        t1 = threading.Thread(target=fetch_fp)
+        t2 = threading.Thread(target=fetch_rm)
+        t1.start()
+        t2.start()
+        t1.join()
+        t2.join()
+        
+        return jsonify({
+            'status': 'success',
+            'query': query,
+            'carts': [results.get("FairPrice"), results.get("RedMart")]
+        }), 200
+
+    except Exception as e:
+        logger.exception("Failed to compare carts")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+@app.route('/api/execute_order', methods=['POST'])
+def execute_order():
+    """
+    Executes an order using the designated StoreAgent.
+    """
+    try:
+        data = request.get_json()
+        store_name = data.get('store_name')
+        items = data.get('items', [])
+        
+        if not store_name or not items:
+            return jsonify({'status': 'error', 'message': 'store_name and items are required'}), 400
+            
+        from agents.store_agents import FairPriceAgent, RedMartAgent, ShengSiongAgent, ColdStorageAgent, LittleFarmsAgent
+        
+        # Dummy LLM
+        from langchain_ollama import ChatOllama
+        from core.config import Config
+        dummy_llm = ChatOllama(base_url=Config.OLLAMA_BASE_URL, model=Config.GROQ_MODEL)
+        
+        agent_map = {
+            "FairPrice": FairPriceAgent(dummy_llm),
+            "RedMart": RedMartAgent(dummy_llm),
+            "ShengSiong": ShengSiongAgent(dummy_llm),
+            "ColdStorage": ColdStorageAgent(dummy_llm),
+            "LittleFarms": LittleFarmsAgent(dummy_llm)
+        }
+        
+        agent = agent_map.get(store_name)
+        if not agent:
+            return jsonify({'status': 'error', 'message': f"Store agent not found for {store_name}"}), 400
+            
+        success = agent.checkout(items)
+        
+        if success:
+            return jsonify({
+                'status': 'success', 
+                'message': f"Order successfully placed with {store_name} Agent!",
+                'order_details': {
+                    'store': store_name,
+                    'items_count': len(items)
+                }
+            }), 200
+        else:
+            return jsonify({'status': 'error', 'message': 'Checkout failed'}), 500
+
+    except Exception as e:
+        logger.exception("Failed to execute order")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+# --------------------------
 # Main
 # --------------------------
 if __name__ == '__main__':
@@ -666,6 +787,8 @@ if __name__ == '__main__':
     print("   - POST /api/feedback")
     print("   - GET  /api/feedback/snapshot")
     print("   - GET  /api/feedback/health")
+    print("   - POST /api/compare_carts")
+    print("   - POST /api/execute_order")
     print()
 
     app.run(host='0.0.0.0', port=3004, debug=False, threaded=True)

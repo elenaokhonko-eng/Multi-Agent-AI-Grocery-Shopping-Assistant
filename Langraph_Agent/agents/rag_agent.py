@@ -2,6 +2,7 @@
 from __future__ import annotations
 import os
 from dataclasses import dataclass
+from core.config import Config
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Tuple
 
@@ -18,7 +19,7 @@ try:
 except Exception: ChatOllama = None
 
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
-from langchain_community.chat_models import ChatOllama
+
 from langchain_community.embeddings import HuggingFaceEmbeddings
 
 # Vector store + loaders

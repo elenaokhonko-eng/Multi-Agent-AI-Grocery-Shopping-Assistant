@@ -5,6 +5,7 @@ import json
 import os
 import re
 from typing import List, Dict, Any
+from core.config import Config
 from langchain_core.tools import tool
 from langchain_ollama import ChatOllama
 from agents.knowledge_graph_agent import KnowledgeGraphAgent

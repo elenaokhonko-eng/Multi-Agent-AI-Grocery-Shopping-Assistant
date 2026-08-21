@@ -15,7 +15,9 @@
     "allergies": []
   },
   "brand_preferences": {
-    "preferred_brands": [],
+    "preferred_brands": [
+      "anchor"
+    ],
     "disliked_brands": [],
     "premium_brands_only": false,
     "local_brands_priority": false
@@ -28,10 +30,12 @@
   "loyalty_membership": {
     "memberships": {},
     "points_balance": {},
-    "preferred_stores": []
+    "preferred_stores": [
+      "glomark.lk"
+    ]
   },
   "delivery_preferences": {
-    "max_delivery_time_hours": 24,
+    "max_delivery_time_hours": 17,
     "max_delivery_radius_km": 10,
     "preferred_time_slots": [
       "09:00-12:00",
@@ -39,5 +43,5 @@
     ],
     "avoid_weekends": false
   },
-  "_saved_at": 1757504828.0848541
+  "_saved_at": 1786539409.753221
 }
