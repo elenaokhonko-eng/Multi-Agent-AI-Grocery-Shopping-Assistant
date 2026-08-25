@@ -5,4 +5,4 @@ pulp
 pymongo
 sentence-transformers
 faiss-cpu
-numpy
+numpyplaywright>=1.40.0

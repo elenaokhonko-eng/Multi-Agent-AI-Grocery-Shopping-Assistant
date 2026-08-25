@@ -773,6 +773,215 @@ def execute_order():
         logger.exception("Failed to execute order")
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
+
+# ---------------------------------------------
+# E2E FLOW: Orchestration and Checkout Endpoints
+# ---------------------------------------------
+
+@app.route('/api/shopping-list', methods=['GET'])
+def get_shopping_list():
+    """Return the editable shopping list"""
+    try:
+        list_path = LANGRAPH_DIR / "data" / "shopping_list.json"
+        if not list_path.exists():
+            return jsonify([{"item": "Oat Milk", "quantity": 1}, {"item": "Eggs", "quantity": 1}])
+        with open(list_path, 'r', encoding='utf-8') as f:
+            return jsonify(json.load(f))
+    except Exception as e:
+        logger.error(f"Error reading shopping list: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/orchestrate', methods=['POST'])
+def orchestrate_shopping():
+    """
+    Run agents across stores to fetch prices and calculate delivery fees.
+    """
+    try:
+        from agents.store_agents import FairPriceAgent, RedMartAgent, ShengSiongAgent, LittleFarmsAgent
+        
+        # 1. Load Shopping List
+        list_path = LANGRAPH_DIR / "data" / "shopping_list.json"
+        if not list_path.exists():
+            return jsonify({"error": "No shopping list found."}), 400
+        with open(list_path, 'r', encoding='utf-8') as f:
+            shopping_list = json.load(f)
+            
+        general_keywords = [item['item'] for item in shopping_list if "salmon" not in item['item'].lower()]
+        salmon_keywords = [item['item'] for item in shopping_list if "salmon" in item['item'].lower()]
+        
+        # Default mock LLM for basic scraping instantiation
+        mock_llm = "mock"
+        
+        # Instantiate agents
+        fp_agent = FairPriceAgent(mock_llm)
+        rm_agent = RedMartAgent(mock_llm)
+        ss_agent = ShengSiongAgent(mock_llm)
+        lf_agent = LittleFarmsAgent(mock_llm)
+        
+        results = {}
+        
+        def calc_delivery(subtotal, threshold, fee):
+            if subtotal >= threshold:
+                return 0.0
+            return fee
+
+        # 2. Pull Pricing
+        if general_keywords:
+            fp_cart = fp_agent.get_cart(general_keywords)
+            fp_fee = calc_delivery(fp_cart['subtotal'], 79.00, 3.99)
+            results["FairPrice"] = {
+                "items": fp_cart['items'],
+                "missing_items": fp_cart.get('missing_items', []),
+                "subtotal": fp_cart['subtotal'],
+                "delivery_fee": fp_fee,
+                "free_delivery_threshold": 79.00,
+                "total": fp_cart['subtotal'] + fp_fee
+            }
+            
+            rm_cart = rm_agent.get_cart(general_keywords)
+            rm_fee = calc_delivery(rm_cart['subtotal'], 60.00, 5.99)
+            results["RedMart"] = {
+                "items": rm_cart['items'],
+                "missing_items": rm_cart.get('missing_items', []),
+                "subtotal": rm_cart['subtotal'],
+                "delivery_fee": rm_fee,
+                "free_delivery_threshold": 60.00,
+                "total": rm_cart['subtotal'] + rm_fee
+            }
+
+            ss_cart = ss_agent.get_cart(general_keywords)
+            ss_fee = calc_delivery(ss_cart['subtotal'], 100.00, 6.00)
+            results["ShengSiong"] = {
+                "items": ss_cart['items'],
+                "missing_items": ss_cart.get('missing_items', []),
+                "subtotal": ss_cart['subtotal'],
+                "delivery_fee": ss_fee,
+                "free_delivery_threshold": 100.00,
+                "total": ss_cart['subtotal'] + ss_fee
+            }
+            
+        if salmon_keywords:
+            lf_cart = lf_agent.get_cart(salmon_keywords)
+            lf_fee = calc_delivery(lf_cart['subtotal'], 100.00, 14.98)
+            results["LittleFarms"] = {
+                "items": lf_cart['items'],
+                "missing_items": lf_cart.get('missing_items', []),
+                "subtotal": lf_cart['subtotal'],
+                "delivery_fee": lf_fee,
+                "free_delivery_threshold": 100.00,
+                "total": lf_cart['subtotal'] + lf_fee
+            }
+            
+        # Determine cheapest general store
+        cheapest_store = "FairPrice"
+        lowest_total = float('inf')
+        for store in ["FairPrice", "RedMart", "ShengSiong"]:
+            if store in results and results[store]['total'] < lowest_total:
+                lowest_total = results[store]['total']
+                cheapest_store = store
+
+        return jsonify({
+            "shopping_list": shopping_list,
+            "comparisons": results,
+            "cheapest_store": cheapest_store
+        })
+
+    except Exception as e:
+        logger.error(f"Error orchestrating shopping: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/prepare_checkout', methods=['POST'])
+def prepare_checkout():
+    """
+    Prepare checkout for a chosen store, returning delivery details
+    """
+    try:
+        data = request.get_json()
+        store = data.get("store")
+        total = data.get("total", 0)
+        delivery_fee = data.get("delivery_fee", 0)
+        subtotal = data.get("subtotal", 0)
+        
+        if not store:
+            return jsonify({"error": "Store is required"}), 400
+            
+        from agents.store_agents import FairPriceAgent, RedMartAgent, ShengSiongAgent, LittleFarmsAgent
+        mock_llm = "mock"
+        
+        agent = None
+        if store == "FairPrice":
+            agent = FairPriceAgent(mock_llm)
+        elif store == "RedMart":
+            agent = RedMartAgent(mock_llm)
+        elif store == "ShengSiong":
+            agent = ShengSiongAgent(mock_llm)
+        elif store == "LittleFarms":
+            agent = LittleFarmsAgent(mock_llm)
+        else:
+            return jsonify({"error": f"Unknown store {store}"}), 400
+            
+        # Dynamically fetch details via Playwright
+        details = agent.get_checkout_details()
+        details["subtotal"] = subtotal
+        details["delivery_fee"] = delivery_fee
+        details["total"] = total
+            
+        return jsonify({
+            "status": "success",
+            "details": details
+        })
+            
+    except Exception as e:
+        logger.error(f"Error preparing checkout: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/confirm_checkout', methods=['POST'])
+def confirm_checkout():
+    """
+    Finalize checkout for a chosen store
+    """
+    try:
+        data = request.get_json()
+        store = data.get("store")
+        items = data.get("items", [])
+        
+        if not store:
+            return jsonify({"error": "Store is required"}), 400
+            
+        from agents.store_agents import FairPriceAgent, RedMartAgent, ShengSiongAgent, LittleFarmsAgent
+        mock_llm = "mock"
+        
+        agent = None
+        if store == "FairPrice":
+            agent = FairPriceAgent(mock_llm)
+        elif store == "RedMart":
+            agent = RedMartAgent(mock_llm)
+        elif store == "ShengSiong":
+            agent = ShengSiongAgent(mock_llm)
+        elif store == "LittleFarms":
+            agent = LittleFarmsAgent(mock_llm)
+        else:
+            return jsonify({"error": f"Unknown store {store}"}), 400
+            
+        success = agent.checkout(items)
+        if success:
+            return jsonify({"status": "success", "message": f"Successfully placed order at {store}!"})
+        else:
+            return jsonify({"status": "error", "message": f"Failed to checkout at {store}."}), 500
+            
+    except Exception as e:
+        logger.error(f"Error during checkout: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+
+
 # --------------------------
 # Main
 # --------------------------
@@ -792,3 +1001,4 @@ if __name__ == '__main__':
     print()
 
     app.run(host='0.0.0.0', port=3004, debug=False, threaded=True)
+

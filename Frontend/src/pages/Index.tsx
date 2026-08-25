@@ -18,7 +18,7 @@ const Index = () => {
 
     try {
       const payload = {
-        query: "Akaroa Salmon Fresh New Zealand King Salmon Fillet, Emborg Frozen Chopped Spinach, Jeju SamDaSoo Mineral Bottle Water 2L, Jeju SamDaSoo Mineral Bottle Water 500ml, Nuyolk Vitamins Enriched Eggs, Authentic Tea House Ayataka No Sugar Japanese Green Tea, Nature's Wonders Baked nuts Macadamia, CGPL South Africa Lemon, Live Well Baby Spinach, Snacky & Crisps Salted Egg Fish Skin, Yuan Zhen Yuan Yellow Capsicum, The Golden Duck Co Gourmet Crunchy Crisps Salted Egg FishSkin, Yuan Zhen Yuan Mexican Avocado, Simply Finest USA Cherries",
+        query: "Akaroa Salmon Fresh New Zealand King Salmon Fillet, Emborg Frozen Chopped Spinach, Jeju SamDaSoo Mineral Bottle Water 2L, Jeju SamDaSoo Mineral Bottle Water 500ml, Nuyolk Vitamins Enriched Eggs, Authentic Tea House Ayataka No Sugar Japanese Green Tea, Nature's Wonders Baked nuts Macadamia, CGPL South Africa Lemon, Live Well Baby Spinach, Snacky & Crisps Salted Egg Fish Skin, Yuan Zhen Yuan Yellow Capsicum, The Golden Duck Co Gourmet Crunchy Crisps Salted Egg FishSkin, Yuan Zhen Yuan Mexican Avocado, Blueberries, Raspberries",
         modalities: {}
       };
 

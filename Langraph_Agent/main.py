@@ -104,25 +104,31 @@ class ProductSearchOrchestrator:
             else:
                 user_input = str(last_msg)
         
-        # Intercept Singapore Grocery Cart queries
-        is_grocery = any(k in user_input.lower() for k in ["compare", "grocery", "cart", "list", "weekly", "bi-weekly"])
-        if is_grocery:
-            import json
-            try:
-                main_dir = os.path.dirname(os.path.abspath(__file__))
-                list_path = os.path.join(os.path.dirname(main_dir), "Backend", "data", "fixed_grocery_list.json")
-                with open(list_path, 'r') as f:
-                    grocery_data = json.load(f)
+        # Load from editable shopping list
+        import json
+        try:
+            main_dir = os.path.dirname(os.path.abspath(__file__))
+            list_path = os.path.join(main_dir, "data", "shopping_list.json")
+            with open(list_path, 'r') as f:
+                grocery_data = json.load(f)
+            
+            # Allow the shopping list to either be a list of dicts with 'item' or list of strings
+            keywords = []
+            for item in grocery_data:
+                if isinstance(item, dict) and "item" in item:
+                    keywords.append(item["item"])
+                elif isinstance(item, str):
+                    keywords.append(item)
+            
+            print(f"[NODE] Loaded {len(keywords)} items from editable shopping list.")
+            
+            # If the user still provided specific query terms, we can optionally append them
+            if user_input and not any(k in user_input.lower() for k in ["grocery", "cart", "list", "weekly"]):
+                extra_keywords = self.keyword_agent.extract_keywords(user_input)
+                keywords.extend(extra_keywords)
                 
-                keywords = [item["keyword"] for item in grocery_data["weekly_items"]]
-                if any(k in user_input.lower() for k in ["bi-weekly", "biweekly"]):
-                    keywords.extend([item["keyword"] for item in grocery_data["bi_weekly_items"]])
-                
-                print(f"[NODE] Intercepted Singapore Grocery Cart: loaded {len(keywords)} fixed items.")
-            except Exception as e:
-                print(f"[NODE] Failed to load fixed list, using agent: {e}")
-                keywords = self.keyword_agent.extract_keywords(user_input)
-        else:
+        except Exception as e:
+            print(f"[NODE] Failed to load editable shopping list, using agent: {e}")
             keywords = self.keyword_agent.extract_keywords(user_input)
         
         # Print step details
