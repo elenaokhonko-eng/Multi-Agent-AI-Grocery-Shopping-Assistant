@@ -33,12 +33,9 @@ def start_scheduler():
     # Schedule to run every week
     schedule.every().monday.at("09:00").do(run_little_farms_weekly_job)
     
-    # Run once on startup to demonstrate functionality
-    try:
-        run_little_farms_weekly_job()
-    except Exception as e:
-        print(f"[Scheduler] Error running job: {e}")
+    # [PHASE 0]: Removed run-once on startup to prevent unintended live requests
     
+
     while True:
         schedule.run_pending()
         time.sleep(60)

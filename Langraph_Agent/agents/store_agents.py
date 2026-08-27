@@ -523,6 +523,75 @@ class LittleFarmsAgent(BaseStoreAgent):
             "image_url": ""
         }
     
+    def checkout(self, items: List[Dict[str, Any]]) -> bool:
+        """Full Playwright checkout flow for Little Farms"""
+        print(f"[{self.store_name} Agent] Proceeding to full autonomous checkout...")
+        
+        try:
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=True)
+                context = browser.new_context(user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+                page = context.new_page()
+                Stealth().apply_stealth_sync(page)
+                
+                # 1. Login
+                self.login(page)
+                
+                # 2. Add Items to Cart
+                for item in items:
+                    url = item.get("source_url")
+                    if url:
+                        print(f"[{self.store_name} Agent] Adding {item['keyword']} to cart from {url}")
+                        page.goto(url)
+                        page.wait_for_timeout(3000)
+                        # Execute JS to add to cart to avoid visibility issues
+                        page.evaluate("if(document.querySelector('form[data-role=\"tocart-form\"]')) { document.querySelector('form[data-role=\"tocart-form\"]').submit(); }")
+                        page.wait_for_timeout(4000)
+                
+                # 3. Navigate to Checkout
+                print(f"[{self.store_name} Agent] Navigating to checkout...")
+                page.goto(f"https://{self.domain}/checkout/")
+                page.wait_for_timeout(8000) # Wait for checkout SPA to hydrate
+                
+                # 4. Shipping Step
+                print(f"[{self.store_name} Agent] Processing shipping step...")
+                # In Magento, the Next button usually has class .continue
+                page.evaluate("if(document.querySelector('button.continue')) { document.querySelector('button.continue').click(); }")
+                page.wait_for_timeout(6000)
+                
+                # 5. Payment & Comment Step
+                print(f"[{self.store_name} Agent] Injecting order comments and selecting payment...")
+                # Inject comment via JS
+                comment = "intercom might not work - call me when arrive to the condo - lobby 3B"
+                page.evaluate(f"if(document.querySelector('textarea#order_comment')) {{ document.querySelector('textarea#order_comment').value = '{comment}'; document.querySelector('textarea#order_comment').dispatchEvent(new Event('change')); }}")
+                
+                # Select vaulted card
+                page.evaluate("""
+                    var radios = document.querySelectorAll('input[name="payment[method]"]');
+                    for (var i = 0; i < radios.length; i++) {
+                        if (radios[i].value.includes('stripe') || radios[i].value.includes('vault')) {
+                            radios[i].click();
+                            break;
+                        }
+                    }
+                """)
+                page.wait_for_timeout(3000)
+                
+                # 6. Place Order
+                print(f"[{self.store_name} Agent] Finalizing order placement...")
+                
+                # DANGER: UNCOMMENT THE FOLLOWING LINES TO ENABLE REAL PURCHASES
+                # page.evaluate("if(document.querySelector('button.action.primary.checkout')) { document.querySelector('button.action.primary.checkout').click(); }")
+                # page.wait_for_timeout(10000)
+                # print(f"[{self.store_name} Agent] Order placed successfully! (url: {page.url})")
+                print(f"[{self.store_name} Agent] [SAFETY STOP]: Order would have been placed here. Uncomment code in store_agents.py to go live.")
+                
+                browser.close()
+                return True
+        except Exception as e:
+            print(f"[{self.store_name} Agent] Checkout failed: {e}")
+            return False
+    
     def process_weekly_salmon_order(self):
         """Special workflow for the autonomous salmon order"""
         print("[LittleFarms Agent] Triggered autonomous weekly salmon workflow.")

@@ -57,11 +57,7 @@ const validateOrder = [
   body('items.*.price').isFloat({ min: 0 }).withMessage('Price must be a positive number'),
   body('items.*.quantity').isInt({ min: 1 }).withMessage('Quantity must be a positive integer'),
   
-  // Secure payment fields
-  body('payment.cardholderName').trim().notEmpty().withMessage('Cardholder Name is required'),
-  body('payment.cardNumber').trim().matches(/^[\d\s-]{13,19}$/).withMessage('Valid credit card number is required'),
-  body('payment.expiryDate').trim().matches(/^(0[1-9]|1[0-2])\/?([2-9][0-9])$/).withMessage('Expiry Date must be MM/YY'),
-  body('payment.cvv').trim().matches(/^\d{3,4}$/).withMessage('CVV must be 3 or 4 digits')
+  // [PHASE 0]: Removed raw card validation fields to prevent capturing sensitive data
 ];
 
 // POST /api/orders/:store - Place an order with a specific Singapore store
@@ -77,7 +73,7 @@ router.post('/:store', validateOrder, async (req, res) => {
     }
 
     const { store } = req.params;
-    const { userId, items, payment } = req.body;
+    const { userId, items } = req.body;
 
     // Validate store
     const storeConfig = STORE_CONFIGS[store.toLowerCase()];
@@ -88,113 +84,10 @@ router.post('/:store', validateOrder, async (req, res) => {
       });
     }
 
-    // Calculate order subtotal
-    const orderSubtotal = items.reduce((total, item) => total + (item.price * item.quantity), 0);
-
-    // Check minimum order requirement
-    if (orderSubtotal < storeConfig.min_order) {
-      return res.status(400).json({
-        success: false,
-        message: `Minimum order for ${storeConfig.name} is SGD ${storeConfig.min_order}. Current total: SGD ${orderSubtotal}`
-      });
-    }
-
-    // Determine delivery charge based on SGD 100 cutoff
-    const deliveryFee = orderSubtotal >= storeConfig.free_shipping_threshold ? 0 : storeConfig.delivery_fee;
-    const orderTotal = orderSubtotal + deliveryFee;
-
-    // Generate masked card number for receipt logs (last 4 digits only)
-    const rawCard = payment.cardNumber.replace(/[\s-]/g, '');
-    const maskedCard = `•••• •••• •••• ${rawCard.slice(-4)}`;
-
-    // Generate order ID
-    const orderId = `${store.toUpperCase()}-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
-
-    // Create order object using Mongoose model
-    const order = new Order({
-      orderId,
-      userId,
-      store: storeConfig.name,
-      items: items.map(item => ({
-        productId: item.productId,
-        title: item.title,
-        price: item.price,
-        quantity: item.quantity,
-        subtotal: item.price * item.quantity,
-        source_url: item.source_url || '',
-        collection: item.collection || store
-      })),
-      orderSubtotal,
-      deliveryFee,
-      orderTotal,
-      totalAmount: orderTotal, // frontend expects totalAmount
-      estimatedDelivery: storeConfig.delivery_time,
-      status: 'pending',
-      paymentMethod: 'credit_card',
-      cardDetailsMasked: maskedCard
-    });
-
-    // Log the transaction securely (NEVER log raw CC or CVV details)
-    console.log(`🔒 Secure CC order authorized for ${userId} with card ${maskedCard}`);
-    console.log(`📦 Order placed with ${storeConfig.name}:`, {
-      orderId: order.orderId,
-      total: order.orderTotal,
-      items: order.items.length
-    });
-
-    // Simulate merchant payment gateway response
-    const simulatePaymentGateway = () => {
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          resolve({
-            success: true,
-            authCode: `AUTH-SG-${Math.floor(100000 + Math.random() * 900000)}`,
-            transactionId: `TXN-PAY-${Date.now()}`
-          });
-        }, 800);
-      });
-    };
-
-    const paymentResponse = await simulatePaymentGateway();
-
-    // Simulate API call to store order placement
-    const simulateStoreResponse = () => {
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          resolve({
-            success: true,
-            storeOrderId: `${store.toUpperCase()}-STORE-${Math.random().toString(36).substr(2, 8)}`,
-            trackingNumber: `TRK-SG-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`
-          });
-        }, 500);
-      });
-    };
-
-    const storeResponse = await simulateStoreResponse();
-
-    // Update order with simulated response data
-    order.storeOrderId = storeResponse.storeOrderId;
-    order.trackingNumber = storeResponse.trackingNumber;
-    await order.save();
-
-    // Return success response
-    res.status(201).json({
-      success: true,
-      message: `Order successfully placed and authorized with ${storeConfig.name}`,
-      paymentAuth: {
-        authorized: true,
-        authCode: paymentResponse.authCode,
-        transactionId: paymentResponse.transactionId,
-        cardLastFour: rawCard.slice(-4)
-      },
-      order: order.toObject(),
-      store: {
-        name: storeConfig.name,
-        delivery_time: storeConfig.delivery_time,
-        min_order: storeConfig.min_order,
-        delivery_fee: storeConfig.delivery_fee,
-        free_shipping_threshold: storeConfig.free_shipping_threshold
-      }
+    // [PHASE 0]: Refuse to execute simulated purchase
+    return res.status(501).json({
+      success: false,
+      message: 'DEMO_ONLY: Live checkout via Node is disabled. Application is in fixture mode.'
     });
 
   } catch (error) {

@@ -13,7 +13,7 @@ class Config:
     GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
     GROQ_MODEL = OLLAMA_MODEL # fallback for older config references
     GROQ_TEMPERATURE = 0
-    LANGSMITH_API_KEY = "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"
+    LANGSMITH_API_KEY = os.environ.get("LANGSMITH_API_KEY", "")
     # Application Settings
     MAX_RESULTS_PER_KEYWORD = 10
     DEBUG_MODE = True

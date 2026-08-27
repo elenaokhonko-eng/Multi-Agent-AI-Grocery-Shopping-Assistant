@@ -7,6 +7,10 @@
 
 ## 🌟 **Project Overview**
 
+> [!WARNING]
+> **Phase 0 (Security & Integrity Refactoring) Active**
+> This repository is currently running in fixture/demo mode. Live automated purchases and order placements are strictly disabled to prevent unintended transactions and to prepare for a safe, human-in-the-loop multi-agent architecture. All transactions return simulated successes or NOT_IMPLEMENTED.
+
 This project is an AI-powered product search system designed for the Sri Lankan e-commerce landscape. It uses cutting-edge technologies to deliver personalized shopping experiences, intelligent logistics optimization, and seamless loyalty program integration. The system leverages a LangGraph-based multi-agent architecture enhanced with a Knowledge Graph, real-time web scraping, and intelligent personalization to provide optimal product discovery, smarter recommendations, and improved loyalty optimization.
 
 ### 🏆 **Key Achievements**

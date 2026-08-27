@@ -12,7 +12,7 @@ try:
     print("✅ PyMongo imported successfully")
     
     # Try to connect
-    client = MongoClient("mongodb+srv://yasirunipunbasnayake2_db_user:hFIS1XVxBmbaC5Ro@techtitans0.c5azljc.mongodb.net/", serverSelectionTimeoutMS=5000)
+    client = MongoClient("mongodb+srv://user:pass@cluster.mongodb.net/", serverSelectionTimeoutMS=5000)
     
     # Test connection
     server_info = client.server_info()

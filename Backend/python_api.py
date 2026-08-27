@@ -27,6 +27,19 @@ if str(LANGRAPH_DIR) not in sys.path:
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+
+# --------------------------
+# Database setup
+# --------------------------
+from sqlmodel import SQLModel, create_engine, Session
+from packages.domain.repositories.shopping_list_repository import ShoppingListRepository
+from packages.domain.repositories.quote_repository import QuoteRepository
+from packages.domain.services.pricing import calculate_gst_inclusive, calculate_delivery_fee, add_money, cents_to_display
+from packages.domain.services.eligibility import rank_quotes
+
+DB_URL = os.environ.get("DATABASE_URL", f"sqlite:///{PROJECT_ROOT}/grocery.db")
+engine = create_engine(DB_URL)
+
 # --------------------------
 # Logging
 # --------------------------
@@ -728,50 +741,11 @@ def execute_order():
     """
     Executes an order using the designated StoreAgent.
     """
-    try:
-        data = request.get_json()
-        store_name = data.get('store_name')
-        items = data.get('items', [])
-        
-        if not store_name or not items:
-            return jsonify({'status': 'error', 'message': 'store_name and items are required'}), 400
-            
-        from agents.store_agents import FairPriceAgent, RedMartAgent, ShengSiongAgent, ColdStorageAgent, LittleFarmsAgent
-        
-        # Dummy LLM
-        from langchain_ollama import ChatOllama
-        from core.config import Config
-        dummy_llm = ChatOllama(base_url=Config.OLLAMA_BASE_URL, model=Config.GROQ_MODEL)
-        
-        agent_map = {
-            "FairPrice": FairPriceAgent(dummy_llm),
-            "RedMart": RedMartAgent(dummy_llm),
-            "ShengSiong": ShengSiongAgent(dummy_llm),
-            "ColdStorage": ColdStorageAgent(dummy_llm),
-            "LittleFarms": LittleFarmsAgent(dummy_llm)
-        }
-        
-        agent = agent_map.get(store_name)
-        if not agent:
-            return jsonify({'status': 'error', 'message': f"Store agent not found for {store_name}"}), 400
-            
-        success = agent.checkout(items)
-        
-        if success:
-            return jsonify({
-                'status': 'success', 
-                'message': f"Order successfully placed with {store_name} Agent!",
-                'order_details': {
-                    'store': store_name,
-                    'items_count': len(items)
-                }
-            }), 200
-        else:
-            return jsonify({'status': 'error', 'message': 'Checkout failed'}), 500
-
-    except Exception as e:
-        logger.exception("Failed to execute order")
-        return jsonify({'status': 'error', 'message': str(e)}), 500
+    # [PHASE 0]: Disabled simulated live ordering
+    return jsonify({
+        'status': 'error', 
+        'message': 'NOT_IMPLEMENTED: Live ordering is disabled in fixture/demo mode.'
+    }), 501
 
 
 # ---------------------------------------------
@@ -780,13 +754,30 @@ def execute_order():
 
 @app.route('/api/shopping-list', methods=['GET'])
 def get_shopping_list():
-    """Return the editable shopping list"""
+    """Return the editable shopping list from SQLModel repository"""
     try:
-        list_path = LANGRAPH_DIR / "data" / "shopping_list.json"
-        if not list_path.exists():
-            return jsonify([{"item": "Oat Milk", "quantity": 1}, {"item": "Eggs", "quantity": 1}])
-        with open(list_path, 'r', encoding='utf-8') as f:
-            return jsonify(json.load(f))
+        with Session(engine) as session:
+            repo = ShoppingListRepository(session)
+            # Find the default list, or create one
+            lists = repo.list_all()
+            if not lists:
+                sl = repo.create("Default List")
+                # Seed it with something for now if empty? Or just return empty.
+                repo.add_item(sl.id, "Oat Milk", 1)
+                repo.add_item(sl.id, "Eggs", 1)
+                lists = [sl]
+            
+            sl = lists[0]
+            # Convert items to dict for frontend
+            items = []
+            for item in sl.items:
+                items.append({
+                    "id": str(item.id),
+                    "item": item.keyword,
+                    "quantity": item.quantity,
+                    "must_have": item.must_have
+                })
+            return jsonify(items)
     except Exception as e:
         logger.error(f"Error reading shopping list: {e}")
         return jsonify({"error": str(e)}), 500
@@ -795,97 +786,125 @@ def get_shopping_list():
 @app.route('/api/orchestrate', methods=['POST'])
 def orchestrate_shopping():
     """
-    Run agents across stores to fetch prices and calculate delivery fees.
+    Run shopping list through the new domain model to generate StoreQuotes.
     """
     try:
-        from agents.store_agents import FairPriceAgent, RedMartAgent, ShengSiongAgent, LittleFarmsAgent
+        from sqlmodel import select
+        from domain.models.core import ProductCandidate, StoreSKUPreference
+        from uuid import UUID
         
-        # 1. Load Shopping List
-        list_path = LANGRAPH_DIR / "data" / "shopping_list.json"
-        if not list_path.exists():
-            return jsonify({"error": "No shopping list found."}), 400
-        with open(list_path, 'r', encoding='utf-8') as f:
-            shopping_list = json.load(f)
+        with Session(engine) as session:
+            repo = ShoppingListRepository(session)
+            quote_repo = QuoteRepository(session)
             
-        general_keywords = [item['item'] for item in shopping_list if "salmon" not in item['item'].lower()]
-        salmon_keywords = [item['item'] for item in shopping_list if "salmon" in item['item'].lower()]
-        
-        # Default mock LLM for basic scraping instantiation
-        mock_llm = "mock"
-        
-        # Instantiate agents
-        fp_agent = FairPriceAgent(mock_llm)
-        rm_agent = RedMartAgent(mock_llm)
-        ss_agent = ShengSiongAgent(mock_llm)
-        lf_agent = LittleFarmsAgent(mock_llm)
-        
-        results = {}
-        
-        def calc_delivery(subtotal, threshold, fee):
-            if subtotal >= threshold:
-                return 0.0
-            return fee
-
-        # 2. Pull Pricing
-        if general_keywords:
-            fp_cart = fp_agent.get_cart(general_keywords)
-            fp_fee = calc_delivery(fp_cart['subtotal'], 79.00, 3.99)
-            results["FairPrice"] = {
-                "items": fp_cart['items'],
-                "missing_items": fp_cart.get('missing_items', []),
-                "subtotal": fp_cart['subtotal'],
-                "delivery_fee": fp_fee,
-                "free_delivery_threshold": 79.00,
-                "total": fp_cart['subtotal'] + fp_fee
-            }
+            # 1. Get the current shopping list
+            lists = repo.list_all()
+            if not lists:
+                return jsonify({"error": "No shopping list found."}), 400
+            shopping_list = lists[0]
             
-            rm_cart = rm_agent.get_cart(general_keywords)
-            rm_fee = calc_delivery(rm_cart['subtotal'], 60.00, 5.99)
-            results["RedMart"] = {
-                "items": rm_cart['items'],
-                "missing_items": rm_cart.get('missing_items', []),
-                "subtotal": rm_cart['subtotal'],
-                "delivery_fee": rm_fee,
-                "free_delivery_threshold": 60.00,
-                "total": rm_cart['subtotal'] + rm_fee
-            }
-
-            ss_cart = ss_agent.get_cart(general_keywords)
-            ss_fee = calc_delivery(ss_cart['subtotal'], 100.00, 6.00)
-            results["ShengSiong"] = {
-                "items": ss_cart['items'],
-                "missing_items": ss_cart.get('missing_items', []),
-                "subtotal": ss_cart['subtotal'],
-                "delivery_fee": ss_fee,
-                "free_delivery_threshold": 100.00,
-                "total": ss_cart['subtotal'] + ss_fee
-            }
+            # 2. Create Comparison Run
+            run = quote_repo.create_run(shopping_list.id)
             
-        if salmon_keywords:
-            lf_cart = lf_agent.get_cart(salmon_keywords)
-            lf_fee = calc_delivery(lf_cart['subtotal'], 100.00, 14.98)
-            results["LittleFarms"] = {
-                "items": lf_cart['items'],
-                "missing_items": lf_cart.get('missing_items', []),
-                "subtotal": lf_cart['subtotal'],
-                "delivery_fee": lf_fee,
-                "free_delivery_threshold": 100.00,
-                "total": lf_cart['subtotal'] + lf_fee
-            }
+            # We'll support FairPrice and Little Farms
+            results = {}
+            for store_name in ["FairPrice", "Little Farms"]:
+                items_data = []
+                missing_items = []
+                subtotal_cents = 0
+                
+                # Check each item
+                for item in shopping_list.items:
+                    # Find preferred sku
+                    pref = session.exec(
+                        select(StoreSKUPreference)
+                        .where(StoreSKUPreference.keyword == item.keyword)
+                        .where(StoreSKUPreference.store_name == store_name)
+                    ).first()
+                    
+                    candidate = None
+                    if pref:
+                        candidate = session.exec(
+                            select(ProductCandidate)
+                            .where(ProductCandidate.retailer_sku == pref.preferred_retailer_sku)
+                        ).first()
+                    else:
+                        # Fallback if no pref, just find cheapest candidate for this keyword in this store
+                        # In the seed script, we used title containing keyword.
+                        # For simplicity, we just check all candidates for the store whose title contains the keyword
+                        candidates = session.exec(
+                            select(ProductCandidate)
+                            .where(ProductCandidate.store_name == store_name)
+                        ).all()
+                        
+                        # Very simple match: keyword in title (case insensitive)
+                        matches = [c for c in candidates if item.keyword.lower() in c.title.lower()]
+                        if matches:
+                            matches.sort(key=lambda c: c.price_cents)
+                            candidate = matches[0]
+                    
+                    if candidate:
+                        line_total = candidate.price_cents * item.quantity
+                        subtotal_cents += line_total
+                        items_data.append({
+                            "candidate_id": str(candidate.id),
+                            "raw_candidate_id": candidate.id,
+                            "title": candidate.title,
+                            "price_cents": candidate.price_cents,
+                            "quantity": item.quantity,
+                            "line_total_cents": line_total
+                        })
+                    else:
+                        missing_items.append(item.keyword)
+                
+                # Use domain logic to calc delivery fee
+                if store_name == "Little Farms":
+                    # LF free delivery threshold $100
+                    delivery_fee_cents = calculate_delivery_fee(subtotal_cents, 10000, 1498)
+                else:
+                    # FP free delivery threshold $79
+                    delivery_fee_cents = calculate_delivery_fee(subtotal_cents, 7900, 399)
+                
+                is_complete = len(missing_items) == 0
+                
+                # Only create quote if we found some items (or maybe always?)
+                if items_data:
+                    quote = quote_repo.create_quote(run.id, store_name, subtotal_cents, delivery_fee_cents, is_complete)
+                    for i_data in items_data:
+                        quote_repo.add_line_item(
+                            quote_id=quote.id,
+                            candidate_id=UUID(str(i_data["raw_candidate_id"])),
+                            quantity=i_data["quantity"],
+                            line_total_cents=i_data["line_total_cents"]
+                        )
+                        
+                    results[store_name] = {
+                        "quote_id": str(quote.id),
+                        "items": items_data,
+                        "missing_items": missing_items,
+                        "subtotal_cents": quote.subtotal_cents,
+                        "delivery_fee_cents": quote.delivery_fee_cents,
+                        "total_cents": quote.total_cents,
+                        "is_complete": quote.is_complete,
+                        # Display friendly formatting for the legacy frontend to use while it transitions
+                        "subtotal": cents_to_display(quote.subtotal_cents),
+                        "delivery_fee": cents_to_display(quote.delivery_fee_cents),
+                        "total": cents_to_display(quote.total_cents)
+                    }
+                    
+            # Use eligibility.py rank_quotes to rank them
+            all_quotes = quote_repo.get_run_quotes(run.id)
+            ranked_quotes = rank_quotes(all_quotes)
             
-        # Determine cheapest general store
-        cheapest_store = "FairPrice"
-        lowest_total = float('inf')
-        for store in ["FairPrice", "RedMart", "ShengSiong"]:
-            if store in results and results[store]['total'] < lowest_total:
-                lowest_total = results[store]['total']
-                cheapest_store = store
-
-        return jsonify({
-            "shopping_list": shopping_list,
-            "comparisons": results,
-            "cheapest_store": cheapest_store
-        })
+            # Sort the results dictionary by the ranked order (just for frontend)
+            cheapest_store = ranked_quotes[0].store_name if ranked_quotes else None
+            
+            return jsonify({
+                "run_id": str(run.id),
+                "shopping_list_id": str(shopping_list.id),
+                "comparisons": results,
+                "cheapest_store": cheapest_store
+            })
 
     except Exception as e:
         logger.error(f"Error orchestrating shopping: {e}")
@@ -987,6 +1006,15 @@ def confirm_checkout():
 # --------------------------
 if __name__ == '__main__':
     print("🚀 Starting Python API server...")
+    
+    # [PHASE 0]: Refuse live ordering unless explicit flag is set
+    import os
+    live_purchase = os.environ.get("LIVE_PURCHASE_ENABLED", "false").lower() == "true"
+    if not live_purchase:
+        print("⚠️  LIVE_PURCHASE_ENABLED is false. Server starting in FIXTURE/DEMO mode.")
+    else:
+        print("🚨 LIVE_PURCHASE_ENABLED is true. Real transactions are allowed.")
+    
     print("📍 API endpoints:")
     print("   - GET  /health")
     print("   - POST /api/search")
