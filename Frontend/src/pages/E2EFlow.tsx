@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { ShoppingCart, PackageCheck, Loader2, ArrowRight } from "lucide-react";
+import { formatCents } from "../lib/utils";
 
 export default function E2EFlow() {
   const [step, setStep] = useState<"CONFIRM_LIST" | "ORCHESTRATING" | "COMPARISON" | "CONFIRM_CHECKOUT" | "CHECKOUT">("CONFIRM_LIST");
@@ -50,14 +51,14 @@ export default function E2EFlow() {
   const handleCheckout = async (store: string) => {
     toast(`Fetching checkout summary for ${store}...`);
     try {
-      const total = comparisonData.comparisons[store]?.total || 0;
-      const subtotal = comparisonData.comparisons[store]?.subtotal || 0;
-      const delivery_fee = comparisonData.comparisons[store]?.delivery_fee || 0;
+      const total_cents = comparisonData.comparisons[store]?.total_cents || 0;
+      const subtotal_cents = comparisonData.comparisons[store]?.subtotal_cents || 0;
+      const delivery_fee_cents = comparisonData.comparisons[store]?.delivery_fee_cents || 0;
       
       const res = await fetch("http://localhost:3004/api/prepare_checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ store, total, subtotal, delivery_fee })
+        body: JSON.stringify({ store, total_cents, subtotal_cents, delivery_fee_cents })
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
@@ -139,8 +140,8 @@ export default function E2EFlow() {
 
       {step === "COMPARISON" && comparisonData && (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {["FairPrice", "RedMart", "ShengSiong"].map(store => {
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {Object.keys(comparisonData.comparisons).map(store => {
               const data = comparisonData.comparisons[store];
               if (!data) return null;
               const isCheapest = comparisonData.cheapest_store === store;
@@ -156,16 +157,13 @@ export default function E2EFlow() {
                   <div className="space-y-2 mb-4 flex-grow">
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Subtotal:</span>
-                      <span>${data.subtotal.toFixed(2)}</span>
+                      <span>{formatCents(data.subtotal_cents)}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Delivery Fee:</span>
-                      <span className={data.delivery_fee === 0 ? "text-green-600 font-medium" : ""}>
-                        {data.delivery_fee === 0 ? "FREE" : `$${data.delivery_fee.toFixed(2)}`}
+                      <span className={data.delivery_fee_cents === 0 ? "text-green-600 font-medium" : ""}>
+                        {data.delivery_fee_cents === 0 ? "FREE" : formatCents(data.delivery_fee_cents)}
                       </span>
-                    </div>
-                    <div className="text-xs text-muted-foreground pt-1 border-t mt-2">
-                      Free delivery over ${data.free_delivery_threshold.toFixed(2)}
                     </div>
                   </div>
                   
@@ -175,7 +173,7 @@ export default function E2EFlow() {
                       data.items.map((item: any, idx: number) => (
                         <div key={idx} className="flex justify-between items-start gap-2 text-xs">
                           <span className="truncate flex-1" title={item.title || item.item}>{item.title || item.item}</span>
-                          <span className="font-medium shrink-0">${(item.price_sgd || item.price || 0).toFixed(2)}</span>
+                          <span className="font-medium shrink-0">{formatCents(item.price_cents)}</span>
                         </div>
                       ))
                     ) : (
@@ -196,7 +194,7 @@ export default function E2EFlow() {
                   <div className="pt-4 border-t mt-auto">
                     <div className="flex justify-between font-bold text-lg mb-4">
                       <span>Total:</span>
-                      <span>${data.total.toFixed(2)}</span>
+                      <span>{formatCents(data.total_cents)}</span>
                     </div>
                     <button 
                       onClick={() => handleCheckout(store)}
@@ -209,30 +207,6 @@ export default function E2EFlow() {
               )
             })}
           </div>
-          
-           {comparisonData.comparisons["LittleFarms"] && (
-            <div className="border border-blue-200 bg-blue-50/50 rounded-xl p-6 shadow-sm">
-               <h3 className="text-lg font-bold mb-2 flex items-center gap-2 text-blue-900">
-                <ShoppingCart className="w-5 h-5" />
-                Specialty Order: Little Farms (Salmon)
-               </h3>
-               <div className="flex items-center justify-between mb-4">
-                 <div className="text-sm text-blue-800">
-                   Subtotal: ${comparisonData.comparisons["LittleFarms"].subtotal.toFixed(2)} | 
-                   Delivery: ${comparisonData.comparisons["LittleFarms"].delivery_fee.toFixed(2)} (Free over $100)
-                 </div>
-                 <div className="font-bold text-blue-900">
-                   Total: ${comparisonData.comparisons["LittleFarms"].total.toFixed(2)}
-                 </div>
-               </div>
-               <button 
-                 onClick={() => handleCheckout("LittleFarms")}
-                 className="w-full py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 transition-colors"
-               >
-                 Order from Little Farms
-               </button>
-            </div>
-          )}
         </div>
       )}
 
@@ -254,15 +228,15 @@ export default function E2EFlow() {
             </div>
             <div className="flex justify-between border-b border-amber-200 pb-2 mt-4">
               <span className="font-medium text-amber-800">Subtotal:</span>
-              <span>${checkoutDetails.subtotal.toFixed(2)}</span>
+              <span>{formatCents(checkoutDetails.subtotal_cents)}</span>
             </div>
             <div className="flex justify-between border-b border-amber-200 pb-2">
               <span className="font-medium text-amber-800">Delivery Fee:</span>
-              <span>${checkoutDetails.delivery_fee.toFixed(2)}</span>
+              <span>{formatCents(checkoutDetails.delivery_fee_cents)}</span>
             </div>
             <div className="flex justify-between font-bold text-xl pt-2">
               <span>Total:</span>
-              <span>${checkoutDetails.total.toFixed(2)}</span>
+              <span>{formatCents(checkoutDetails.total_cents)}</span>
             </div>
           </div>
           

@@ -921,9 +921,9 @@ def prepare_checkout():
     try:
         data = request.get_json()
         store = data.get("store")
-        total = data.get("total", 0)
-        delivery_fee = data.get("delivery_fee", 0)
-        subtotal = data.get("subtotal", 0)
+        total_cents = data.get("total_cents", 0)
+        delivery_fee_cents = data.get("delivery_fee_cents", 0)
+        subtotal_cents = data.get("subtotal_cents", 0)
         
         if not store:
             return jsonify({"error": "Store is required"}), 400
@@ -945,9 +945,9 @@ def prepare_checkout():
             
         # Dynamically fetch details via Playwright
         details = agent.get_checkout_details()
-        details["subtotal"] = subtotal
-        details["delivery_fee"] = delivery_fee
-        details["total"] = total
+        details["subtotal_cents"] = subtotal_cents
+        details["delivery_fee_cents"] = delivery_fee_cents
+        details["total_cents"] = total_cents
             
         return jsonify({
             "status": "success",
