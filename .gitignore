@@ -10,6 +10,9 @@
 *.pem
 secrets/
 config/secrets/
+auth_sessions/
+*_auth.json
+*_debug.html
 
 # Dependency directories
 Frontend/node_modules/
