@@ -928,23 +928,29 @@ def prepare_checkout():
         if not store:
             return jsonify({"error": "Store is required"}), 400
             
-        from agents.store_agents import FairPriceAgent, RedMartAgent, ShengSiongAgent, LittleFarmsAgent
-        mock_llm = "mock"
+        import sys
+        sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
+        from packages.domain.adapters.fairprice import FairPriceAdapter
+        from packages.domain.adapters.littlefarms import LittleFarmsAdapter
+        # Currently RedMart and ShengSiong are mocked out or not fully ported
+        # We can fall back to the old ones or just error for now.
         
-        agent = None
+        adapter = None
         if store == "FairPrice":
-            agent = FairPriceAgent(mock_llm)
-        elif store == "RedMart":
-            agent = RedMartAgent(mock_llm)
-        elif store == "ShengSiong":
-            agent = ShengSiongAgent(mock_llm)
+            adapter = FairPriceAdapter()
         elif store == "LittleFarms":
-            agent = LittleFarmsAgent(mock_llm)
+            adapter = LittleFarmsAdapter()
+        elif store == "RedMart":
+            from agents.store_agents import RedMartAgent
+            adapter = RedMartAgent("mock")
+        elif store == "ShengSiong":
+            from agents.store_agents import ShengSiongAgent
+            adapter = ShengSiongAgent("mock")
         else:
             return jsonify({"error": f"Unknown store {store}"}), 400
             
         # Dynamically fetch details via Playwright
-        details = agent.get_checkout_details()
+        details = adapter.get_checkout_details()
         details["subtotal_cents"] = subtotal_cents
         details["delivery_fee_cents"] = delivery_fee_cents
         details["total_cents"] = total_cents
@@ -972,22 +978,26 @@ def confirm_checkout():
         if not store:
             return jsonify({"error": "Store is required"}), 400
             
-        from agents.store_agents import FairPriceAgent, RedMartAgent, ShengSiongAgent, LittleFarmsAgent
-        mock_llm = "mock"
+        import sys
+        sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
+        from packages.domain.adapters.fairprice import FairPriceAdapter
+        from packages.domain.adapters.littlefarms import LittleFarmsAdapter
         
-        agent = None
+        adapter = None
         if store == "FairPrice":
-            agent = FairPriceAgent(mock_llm)
-        elif store == "RedMart":
-            agent = RedMartAgent(mock_llm)
-        elif store == "ShengSiong":
-            agent = ShengSiongAgent(mock_llm)
+            adapter = FairPriceAdapter()
         elif store == "LittleFarms":
-            agent = LittleFarmsAgent(mock_llm)
+            adapter = LittleFarmsAdapter()
+        elif store == "RedMart":
+            from agents.store_agents import RedMartAgent
+            adapter = RedMartAgent("mock")
+        elif store == "ShengSiong":
+            from agents.store_agents import ShengSiongAgent
+            adapter = ShengSiongAgent("mock")
         else:
             return jsonify({"error": f"Unknown store {store}"}), 400
             
-        success = agent.checkout(items)
+        success = adapter.checkout(items)
         if success:
             return jsonify({"status": "success", "message": f"Successfully placed order at {store}!"})
         else:
