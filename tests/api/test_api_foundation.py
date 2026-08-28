@@ -1,42 +1,19 @@
 import pytest
-from fastapi.testclient import TestClient
-from sqlmodel import SQLModel, create_engine, Session
-from sqlalchemy.pool import StaticPool
+from sqlmodel import Session
 import uuid
 
-from apps.api.main import app, get_session
 from domain.models.core import ShoppingList, ShoppingListItem, StoreQuote, Approval
 from domain.services.fingerprint import compute_quote_fingerprint
+from tests.conftest import test_engine
 
-# Use isolated in-memory SQLite database with StaticPool for test isolation
-test_engine = create_engine(
-    "sqlite:///:memory:",
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
-)
-
-def override_get_session():
-    with Session(test_engine) as session:
-        yield session
-
-app.dependency_overrides[get_session] = override_get_session
-
-@pytest.fixture(autouse=True)
-def setup_db():
-    SQLModel.metadata.create_all(test_engine)
-    yield
-    SQLModel.metadata.drop_all(test_engine)
-
-client = TestClient(app)
-
-def test_health_endpoint():
+def test_health_endpoint(client):
     response = client.get("/health")
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "ok"
     assert "live_purchase_enabled" in data
 
-def test_shopping_list_crud():
+def test_shopping_list_crud(client):
     # 1. Create list
     create_resp = client.post("/shopping-lists", json={"name": "Weekly Test List", "description": "Testing"})
     assert create_resp.status_code == 201
@@ -76,7 +53,7 @@ def test_shopping_list_crud():
     del_resp = client.delete(f"/shopping-lists/{list_id}/items/{item_id}")
     assert del_resp.status_code == 204
 
-def test_comparison_run_and_approval_flow():
+def test_comparison_run_and_approval_flow(client):
     # 1. Create list and item
     list_resp = client.post("/shopping-lists", json={"name": "Run List"})
     list_id = list_resp.json()["id"]
@@ -97,8 +74,7 @@ def test_comparison_run_and_approval_flow():
     get_run_resp = client.get(f"/comparison-runs/{run_id}")
     assert get_run_resp.status_code == 200
 
-def test_live_purchase_safety_guard():
-    # Attempting to submit without live purchase enabled must return 403 Forbidden
+def test_live_purchase_safety_guard(client):
     list_resp = client.post("/shopping-lists", json={"name": "Safety List"})
     list_id = list_resp.json()["id"]
     item_resp = client.post(f"/shopping-lists/{list_id}/items", json={"name": "Lemons", "desired_quantity": 2})
@@ -147,8 +123,7 @@ def test_quote_fingerprint_determinism():
         {"retailer_sku": "SKU_B", "quantity": 1, "unit_price_cents": 500, "line_total_cents": 500},
         {"retailer_sku": "SKU_A", "quantity": 2, "unit_price_cents": 300, "line_total_cents": 600},
     ]
-    # Reversing lines array order should produce the EXACT same fingerprint
     fp1 = compute_quote_fingerprint("fairprice", lines, "slot_1", 1100, 0, 1100)
     fp2 = compute_quote_fingerprint("fairprice", list(reversed(lines)), "slot_1", 1100, 0, 1100)
     assert fp1 == fp2
-    assert len(fp1) == 64  # SHA-256 hex string
+    assert len(fp1) == 64

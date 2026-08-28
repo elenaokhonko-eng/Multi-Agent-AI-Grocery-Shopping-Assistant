@@ -1,23 +1,100 @@
-const API_BASE_URL = 'http://127.0.0.1:3005/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
-export interface InventoryItem {
-  _id?: string;
-  id?: number;
+export interface ShoppingListItem {
+  id: string;
   name: string;
-  quantity: number;
-  unit: string;
-  category: string;
-  expiry?: string;
-  createdAt?: string;
-  updatedAt?: string;
+  category?: string;
+  desired_quantity: number;
+  unit_measure: string;
+  must_have: boolean;
+  is_enabled: boolean;
+  substitution_policy: string;
+  preferred_brands: string[];
+  exclusions: string[];
+  pinned_skus: Record<string, string>;
 }
 
-class ApiService {
+export interface ShoppingList {
+  id: string;
+  name: string;
+  description?: string;
+  version: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  items_count?: number;
+  items?: ShoppingListItem[];
+}
+
+export interface ComparisonRunInit {
+  run_id: string;
+  snapshot_id: string;
+  status: string;
+  retailers: string[];
+  items_count: number;
+  created_at: string;
+}
+
+export interface QuoteLineItem {
+  shopping_item_id: string;
+  retailer_sku: string;
+  product_title: string;
+  product_brand?: string;
+  unit_price_cents: number;
+  packs_added: number;
+  line_total_cents: number;
+  is_in_stock: boolean;
+  is_exact_match: boolean;
+}
+
+export interface StoreQuoteSummary {
+  quote_id: string;
+  retailer_id: string;
+  cart_fingerprint: string;
+  subtotal_cents: number;
+  delivery_fee_cents: number;
+  service_fee_cents: number;
+  gross_total_cents: number;
+  derived_net_cents: number;
+  gst_cents: number;
+  is_complete: boolean;
+  selected_delivery_slot_id?: string;
+  selected_delivery_slot_window?: string;
+  expires_at: string;
+  lines: QuoteLineItem[];
+}
+
+export interface ComparisonRunDetails {
+  run_id: string;
+  status: string;
+  cheapest_complete_store?: string;
+  quotes: StoreQuoteSummary[];
+}
+
+export interface ApprovalResponse {
+  approval_id: string;
+  approval_token: string;
+  quote_id: string;
+  retailer_id: string;
+  gross_total_cents: number;
+  delivery_slot_id: string;
+  expires_at: string;
+}
+
+export interface OrderConfirmationResponse {
+  order_id: string;
+  retailer_order_id: string;
+  retailer_id: string;
+  confirmed_total_cents: number;
+  confirmed_delivery_slot: string;
+  receipt_url?: string;
+  status: string;
+  placed_at: string;
+}
+
+class ApiClient {
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;
-    
-    console.log('Making API request to:', url);
-    
     const config: RequestInit = {
       headers: {
         'Content-Type': 'application/json',
@@ -26,79 +103,91 @@ class ApiService {
       ...options,
     };
 
-    try {
-      const response = await fetch(url, config);
-      
-      console.log('API response status:', response.status);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      console.log('API response data:', data);
-      return data;
-    } catch (error) {
-      console.error('API request failed:', error);
-      throw error;
+    const response = await fetch(url, config);
+    if (!response.ok) {
+      let errorMessage = `HTTP ${response.status} ${response.statusText}`;
+      try {
+        const errorJson = await response.json();
+        if (errorJson.detail) {
+          errorMessage = typeof errorJson.detail === 'string' ? errorJson.detail : JSON.stringify(errorJson.detail);
+        }
+      } catch (_) {}
+      throw new Error(errorMessage);
     }
+
+    if (response.status === 204) {
+      return null as unknown as T;
+    }
+
+    return response.json();
   }
 
-  // Get all inventory items
-  getInventoryItems = async (): Promise<InventoryItem[]> => {
-    return this.request<InventoryItem[]>('/inventory');
-  }
+  getShoppingLists = (): Promise<ShoppingList[]> => {
+    return this.request<ShoppingList[]>('/shopping-lists');
+  };
 
-  // Get a single inventory item by ID
-  getInventoryItem = async (id: string): Promise<InventoryItem> => {
-    return this.request<InventoryItem>(`/inventory/${id}`);
-  }
+  getShoppingList = (id: string): Promise<ShoppingList> => {
+    return this.request<ShoppingList>(`/shopping-lists/${id}`);
+  };
 
-  // Create a new inventory item
-  createInventoryItem = async (item: Omit<InventoryItem, '_id' | 'id' | 'createdAt' | 'updatedAt'>): Promise<InventoryItem> => {
-    return this.request<InventoryItem>('/inventory', {
+  createShoppingList = (name: string, description?: string): Promise<ShoppingList> => {
+    return this.request<ShoppingList>('/shopping-lists', {
+      method: 'POST',
+      body: JSON.stringify({ name, description }),
+    });
+  };
+
+  addItemToList = (listId: string, item: Partial<ShoppingListItem>): Promise<ShoppingListItem> => {
+    return this.request<ShoppingListItem>(`/shopping-lists/${listId}/items`, {
       method: 'POST',
       body: JSON.stringify(item),
     });
-  }
+  };
 
-  // Update an existing inventory item
-  updateInventoryItem = async (id: string, item: Partial<InventoryItem>): Promise<InventoryItem> => {
-    return this.request<InventoryItem>(`/inventory/${id}`, {
-      method: 'PUT',
+  updateItem = (listId: string, itemId: string, item: Partial<ShoppingListItem>): Promise<ShoppingListItem> => {
+    return this.request<ShoppingListItem>(`/shopping-lists/${listId}/items/${itemId}`, {
+      method: 'PATCH',
       body: JSON.stringify(item),
     });
-  }
+  };
 
-  // Delete an inventory item
-  deleteInventoryItem = async (id: string): Promise<void> => {
-    return this.request<void>(`/inventory/${id}`, {
+  deleteItem = (listId: string, itemId: string): Promise<void> => {
+    return this.request<void>(`/shopping-lists/${listId}/items/${itemId}`, {
       method: 'DELETE',
     });
-  }
+  };
 
-  // Update quantity of an inventory item
-  updateQuantity = async (id: string, quantity: number): Promise<InventoryItem> => {
-    return this.request<InventoryItem>(`/inventory/${id}/quantity`, {
-      method: 'PATCH',
-      body: JSON.stringify({ quantity }),
+  startComparisonRun = (shoppingListId: string, retailerIds?: string[]): Promise<ComparisonRunInit> => {
+    return this.request<ComparisonRunInit>('/comparison-runs', {
+      method: 'POST',
+      body: JSON.stringify({
+        shopping_list_id: shoppingListId,
+        retailer_ids: retailerIds || ['fairprice', 'shengsiong', 'littlefarms', 'redmart'],
+      }),
     });
-  }
+  };
 
-  // Get inventory items by category
-  getInventoryByCategory = async (category: string): Promise<InventoryItem[]> => {
-    return this.request<InventoryItem[]>(`/inventory/category/${category}`);
-  }
+  getComparisonRun = (runId: string): Promise<ComparisonRunDetails> => {
+    return this.request<ComparisonRunDetails>(`/comparison-runs/${runId}`);
+  };
 
-  // Get low stock items
-  getLowStockItems = async (threshold: number = 2): Promise<InventoryItem[]> => {
-    return this.request<InventoryItem[]>(`/inventory/low-stock?threshold=${threshold}`);
-  }
+  approveQuote = (quoteId: string, deliverySlotId: string): Promise<ApprovalResponse> => {
+    return this.request<ApprovalResponse>(`/quotes/${quoteId}/approve`, {
+      method: 'POST',
+      body: JSON.stringify({ delivery_slot_id: deliverySlotId }),
+    });
+  };
 
-  // Get expiring items
-  getExpiringItems = async (days: number = 7): Promise<InventoryItem[]> => {
-    return this.request<InventoryItem[]>(`/inventory/expiring?days=${days}`);
-  }
+  submitApproval = (approvalId: string, approvalToken: string): Promise<OrderConfirmationResponse> => {
+    return this.request<OrderConfirmationResponse>(`/approvals/${approvalId}/submit`, {
+      method: 'POST',
+      body: JSON.stringify({ approval_token: approvalToken }),
+    });
+  };
+
+  getOrder = (orderId: string): Promise<OrderConfirmationResponse> => {
+    return this.request<OrderConfirmationResponse>(`/orders/${orderId}`);
+  };
 }
 
-export const apiService = new ApiService();
+export const api = new ApiClient();

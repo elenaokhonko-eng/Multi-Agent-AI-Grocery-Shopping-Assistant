@@ -6,13 +6,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import AppLayout from "@/layouts/AppLayout";
 import ScrollToTop from "@/components/ScrollToTop";
-import Index from "./pages/Index";
-import Orders from "./pages/Orders";
-import OrderPlacement from "./pages/OrderPlacement";
-import KitchenInventoryPage from "./pages/KitchenInventoryPage";
+import CanonicalShoppingJourney from "./pages/CanonicalShoppingJourney";
 import NotFound from "./pages/NotFound";
-import UserProfilePage from "./pages/UserProfile";
-import E2EFlow from "./pages/E2EFlow";
 
 const queryClient = new QueryClient();
 
@@ -24,14 +19,9 @@ const App = () => (
       <BrowserRouter>
         <ScrollToTop />
         <Routes>
-          {/* Everything below shares Sidebar + Header */}
           <Route element={<AppLayout />}>
-            <Route path="/" element={<Index />} />
-            <Route path="/inventory" element={<KitchenInventoryPage />} />
-            <Route path="/orders" element={<Orders />} />
-            <Route path="/order-placement" element={<OrderPlacement />} />
-            <Route path="/profile" element={<UserProfilePage />} />
-            <Route path="/e2e" element={<E2EFlow />} />
+            {/* Canonical Single-Page Shopping Workflow */}
+            <Route path="/" element={<CanonicalShoppingJourney />} />
             <Route path="*" element={<NotFound />} />
           </Route>
         </Routes>

@@ -1,0 +1,51 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main, refactor/*, feat/*, test/*, review/* ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  backend-checks:
+    name: Backend Lint, TypeCheck & PyTest
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -e .
+
+      - name: Run Alembic Migration Check
+        run: |
+          alembic -c packages/domain/alembic.ini upgrade head
+
+      - name: Run PyTest Test Suite
+        env:
+          PYTHONPATH: "packages:apps"
+          LIVE_PURCHASE_ENABLED: "false"
+        run: |
+          pytest -v tests/
+
+  secret-scanning:
+    name: Secrets & Credentials Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Scan for committed secrets or session tokens
+        run: |
+          echo "Scanning for accidental hardcoded credentials..."
+          ! grep -r -i -E "(LIVE_API_KEY\s*=\s*['\"][a-zA-Z0-9_\-]{20,}['\"]|cvv|card_number|password\s*=\s*['\"][^'\"]+['\"])" packages/ apps/
