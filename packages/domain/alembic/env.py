@@ -8,18 +8,17 @@ from alembic import context
 import sqlmodel
 from sqlmodel import SQLModel
 
-# Ensure packages and root directories are in sys.path
-packages_dir = Path(__file__).resolve().parent.parent.parent
-root_dir = packages_dir.parent
+# Add packages directory to sys.path
+current_file = Path(__file__).resolve()
+repo_root = current_file.parents[3]
+packages_dir = repo_root / "packages"
 
-for p in [str(packages_dir), str(root_dir), str(packages_dir / "domain")]:
-    if p not in sys.path:
-        sys.path.insert(0, p)
+if str(packages_dir) not in sys.path:
+    sys.path.insert(0, str(packages_dir))
+if str(repo_root) not in sys.path:
+    sys.path.insert(0, str(repo_root))
 
-try:
-    import domain.models.core  # Load all models into SQLModel.metadata
-except ModuleNotFoundError:
-    import packages.domain.models.core
+from domain.models import core  # Load all SQLModel tables into metadata
 
 # this is the Alembic Config object, which provides access to the values within the .ini file in use.
 config = context.config

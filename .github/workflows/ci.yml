@@ -32,11 +32,11 @@ jobs:
 
       - name: Run Alembic Migration Check
         run: |
-          alembic -c packages/domain/alembic.ini upgrade head
+          python -m alembic -c packages/domain/alembic.ini upgrade head
 
       - name: Run PyTest Test Suite
         run: |
-          pytest -v tests/
+          python -m pytest -v tests/
 
   secret-scanning:
     name: Secrets & Credentials Scan
