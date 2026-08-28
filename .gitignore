@@ -108,16 +108,10 @@ htmlcov/
 rag/index/
 rag/corpus/
 
-# Model files
+# Machine Learning Large Binary Models (Root level only)
 *.model
 *.bin
-models/
-# Environment files with secrets
-.env
-.env.local
-.env.*.local
-.env.production
-.env.staging
+/ml_models/
 
 # MongoDB dumps
 *.dump
