@@ -1,41 +1,44 @@
 # ------------------------------------------------------------
-# Dockerfile – Ubuntu‑based, Python 3.11, minimal image
+# Dockerfile – Ubuntu-based, Python 3.11, FastAPI Backend
 # ------------------------------------------------------------
 FROM python:3.11-slim
 
-# 1. System‑level deps that some Python packages need
+# 1. System-level dependencies for PostgreSQL & compilation
 RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
         gcc \
         libpq-dev \
         && rm -rf /var/lib/apt/lists/*
 
-# 2. Create a non‑root user (optional but good practice)
+# 2. Set work directory
+WORKDIR /app
+
+# 3. Copy dependencies and install
+COPY requirements.txt pyproject.toml ./
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+# 4. Copy source code
+COPY packages /app/packages
+COPY apps /app/apps
+COPY tests /app/tests
+COPY docs /app/docs
+
+# 5. Install local editable packages
+RUN pip install --no-cache-dir -e .
+
+# 6. Create non-root user
 ARG USERNAME=appuser
 ARG UID=1000
 ARG GID=1000
 RUN groupadd --gid $GID $USERNAME \
-    && useradd --uid $UID --gid $GID -m $USERNAME
+    && useradd --uid $UID --gid $GID -m $USERNAME \
+    && mkdir -p /app/data && chown -R $UID:$GID /app
 
-# 3. Set work directory
-WORKDIR /app
-
-# 4. Copy only the source code (ignore .venv, .git, __pycache__, etc.)
-# Ensure the log directory exists and is writable by the non‑root user (or root)
-RUN mkdir -p /app/data && chmod -R 777 /app/data
-
-# Ensure the log directory exists and is writable by the non‑root user
-RUN mkdir -p /app/data && chown $UID:$GID /app/data
-RUN touch /app/data/scraper.log && chown $UID:$GID /app/data/scraper.log
-
-# 5. Install Python dependencies.
-#    If you have a requirements.txt file, you can replace the inline list.
-RUN pip install --upgrade pip && \
-    pip install -r requirements.txt
-
-# 6. Switch to the non‑root user
 USER $USERNAME
 
-# 7. Default command – runs the test that validates the Singapore pipeline.
-#    Adjust if you want to start the API server instead.
-CMD ["python", "Web_scraper/test_singapore_pipeline.py"]
+# 7. Expose FastAPI port
+EXPOSE 8000
+
+# 8. Start FastAPI backend
+CMD ["uvicorn", "apps.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
