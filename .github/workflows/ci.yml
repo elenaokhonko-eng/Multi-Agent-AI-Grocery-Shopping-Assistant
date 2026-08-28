@@ -10,6 +10,9 @@ jobs:
   backend-checks:
     name: Backend Lint, TypeCheck & PyTest
     runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: "packages:apps:."
+      LIVE_PURCHASE_ENABLED: "false"
 
     steps:
       - name: Checkout Code
@@ -32,9 +35,6 @@ jobs:
           alembic -c packages/domain/alembic.ini upgrade head
 
       - name: Run PyTest Test Suite
-        env:
-          PYTHONPATH: "packages:apps"
-          LIVE_PURCHASE_ENABLED: "false"
         run: |
           pytest -v tests/
 
