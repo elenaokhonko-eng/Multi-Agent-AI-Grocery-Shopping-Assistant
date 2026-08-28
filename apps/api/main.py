@@ -27,6 +27,13 @@ from domain.models.core import (
 from domain.services.fingerprint import compute_quote_fingerprint
 from domain.services.pricing import calculate_gst_inclusive
 from orchestration.state_machine import StateMachine, StoreState, StoreStateEvent
+from packages.retailers import (
+    FairPriceAdapter,
+    LittleFarmsAdapter,
+    RedMartAdapter,
+    RetailerAdapter,
+    ShengSiongAdapter,
+)
 
 # -----------------------------------------------------------------------------
 # Database Configuration
@@ -47,6 +54,14 @@ def ensure_utc(dt: datetime) -> datetime:
     return dt
 
 
+# Adapter Registry
+ADAPTER_MAP: Dict[str, type[RetailerAdapter]] = {
+    "fairprice": FairPriceAdapter,
+    "shengsiong": ShengSiongAdapter,
+    "littlefarms": LittleFarmsAdapter,
+    "redmart": RedMartAdapter,
+}
+
 # In-memory SSE event bus per comparison run
 RUN_EVENT_QUEUES: Dict[str, List[asyncio.Queue]] = {}
 
@@ -62,11 +77,9 @@ def broadcast_run_event(run_id: str, event: StoreStateEvent):
 # -----------------------------------------------------------------------------
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # For SQLite local dev/tests, initialize schema if not present
     if DATABASE_URL.startswith("sqlite"):
         SQLModel.metadata.create_all(engine)
     
-    # Auto-seed default canonical shopping list if empty
     with Session(engine) as session:
         existing = session.exec(select(ShoppingList)).first()
         if not existing:
@@ -108,7 +121,6 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Enable CORS for frontend clients
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -345,122 +357,191 @@ def delete_shopping_list_item(list_id: UUID, item_id: UUID, session: Session = D
 
 
 # -----------------------------------------------------------------------------
-# Comparison Runs & Orchestration (GE-04, GE-06)
+# Comparison Runs & Orchestration with Live Retailer Adapters (GE-04, SS-01..08)
 # -----------------------------------------------------------------------------
-async def execute_mock_retailer_worker(run_id: str, retailer_id: str, items: List[Dict[str, Any]], session_factory):
-    sm = StateMachine(run_id=run_id, retailer_id=retailer_id, event_callback=lambda evt: broadcast_run_event(run_id, evt))
-    
-    # 1. Session Check
-    await sm.transition(StoreState.SESSION_CHECK, progress_pct=15, detail="Validating store session")
-    await asyncio.sleep(0.3)
-    
-    # 2. Searching
-    await sm.transition(StoreState.SEARCHING, progress_pct=40, detail=f"Searching catalog for {len(items)} items")
-    await asyncio.sleep(0.4)
-    
-    # 3. Matching
-    await sm.transition(StoreState.MATCHING, progress_pct=65, detail="Applying brand & pack filters")
-    await asyncio.sleep(0.3)
-    
-    # 4. Cart Preparing & Reading
-    await sm.transition(StoreState.CART_PREPARING, progress_pct=85, detail="Building store basket")
-    await asyncio.sleep(0.3)
-    await sm.transition(StoreState.CART_READING, progress_pct=95, detail="Reading authoritative lines & fees")
-    
-    # Build Store Quote
-    with session_factory() as session:
-        quote_lines_payload = []
-        subtotal_cents = 0
-        all_must_have_found = True
-        
-        # Price table simulation per store
-        store_multiplier = {"fairprice": 1.0, "shengsiong": 0.94, "littlefarms": 1.35, "redmart": 1.02}.get(retailer_id, 1.0)
-        
-        for idx, item in enumerate(items):
-            base_unit_price = 450 + (idx * 150)
-            item_price = int(base_unit_price * store_multiplier)
-            qty = item.get("desired_quantity", 1)
-            line_total = item_price * qty
-            subtotal_cents += line_total
-            
-            quote_lines_payload.append({
-                "shopping_item_id": UUID(item["id"]) if isinstance(item["id"], str) else item["id"],
-                "retailer_sku": item.get("pinned_skus", {}).get(retailer_id, f"{retailer_id.upper()}_{idx+1000}"),
-                "product_title": f"{item['name']} ({retailer_id.capitalize()})",
-                "product_brand": item.get("preferred_brands", ["StoreBrand"])[0] if item.get("preferred_brands") else "Generic",
-                "product_url": f"https://www.{retailer_id}.com.sg/p/{idx+1000}",
-                "image_url": f"https://images.{retailer_id}.com.sg/{idx+1000}.jpg",
-                "pack_size": "Standard",
-                "requested_quantity": qty,
-                "packs_added": qty,
-                "is_in_stock": True,
-                "is_exact_match": True,
-                "is_substituted": False,
-                "missing_reason": None,
-                "unit_price_cents": item_price,
-                "unit_measure": item.get("unit_measure", "pack"),
-                "line_total_cents": line_total
-            })
+async def execute_live_retailer_worker(
+    run_id: str,
+    retailer_id: str,
+    items: List[Dict[str, Any]],
+    session_factory,
+    adapter_override: Optional[RetailerAdapter] = None
+):
+    sm = StateMachine(
+        run_id=run_id,
+        retailer_id=retailer_id,
+        event_callback=lambda evt: broadcast_run_event(run_id, evt)
+    )
 
-        delivery_fee = 0 if subtotal_cents >= 7900 else 550
-        service_fee = 0
-        bag_fee = 20
-        slot_fee = 0
-        fees_total = delivery_fee + service_fee + bag_fee + slot_fee
-        gross_total = subtotal_cents + fees_total
-        
-        tax_info = calculate_gst_inclusive(gross_total)
-        default_slot_id = f"slot_{retailer_id}_tomorrow_am"
-        
-        fingerprint = compute_quote_fingerprint(
-            retailer_id=retailer_id,
-            lines=quote_lines_payload,
-            delivery_slot_id=default_slot_id,
-            subtotal_cents=subtotal_cents,
-            fees_total_cents=fees_total,
-            gross_total_cents=gross_total
-        )
-        
-        db_quote = StoreQuote(
-            run_id=UUID(run_id),
-            retailer_id=retailer_id,
-            retailer_cart_id=f"cart_{retailer_id}_{uuid4().hex[:6]}",
-            cart_url=f"https://www.{retailer_id}.com.sg/cart",
-            cart_fingerprint=fingerprint,
-            subtotal_cents=subtotal_cents,
-            promotions_discount_cents=0,
-            delivery_fee_cents=delivery_fee,
-            service_fee_cents=service_fee,
-            bag_fee_cents=bag_fee,
-            slot_fee_cents=slot_fee,
-            gross_total_cents=gross_total,
-            derived_net_cents=tax_info["net_cents"],
-            gst_cents=tax_info["gst_cents"],
-            free_delivery_threshold_cents=7900,
-            amount_needed_for_free_delivery_cents=max(0, 7900 - subtotal_cents),
-            is_complete=all_must_have_found,
-            missing_must_have_count=0,
-            selected_delivery_slot_id=default_slot_id,
-            selected_delivery_slot_window="Tomorrow 09:00 - 11:00",
-            expires_at=datetime.now(timezone.utc) + timedelta(minutes=30)
-        )
-        session.add(db_quote)
-        session.commit()
-        session.refresh(db_quote)
-        
-        for ql in quote_lines_payload:
-            db_line = QuoteLine(
-                quote_id=db_quote.id,
-                **ql
+    try:
+        adapter_cls = ADAPTER_MAP.get(retailer_id, FairPriceAdapter)
+        adapter: RetailerAdapter = adapter_override or adapter_cls()
+
+        # 1. Session Check
+        await sm.transition(StoreState.SESSION_CHECK, progress_pct=15, detail="Validating store session")
+        session_status = await adapter.check_session()
+        if session_status.requires_action:
+            await sm.transition(
+                StoreState.USER_ACTION_REQUIRED,
+                progress_pct=20,
+                detail=session_status.detail or "User action required",
+                challenge_type=session_status.action_type,
+                resume_token=session_status.resume_token
             )
-            session.add(db_line)
-        session.commit()
-        
+            return
+
+        # 2. Searching & Candidate Resolution
+        await sm.transition(StoreState.SEARCHING, progress_pct=35, detail=f"Searching store catalog for {len(items)} items")
+        matched_lines: List[Dict[str, Any]] = []
+        all_must_haves_found = True
+        missing_must_have_count = 0
+
+        for item in items:
+            pinned_sku = item.get("pinned_skus", {}).get(retailer_id)
+            candidate = None
+            if pinned_sku:
+                candidate = await adapter.resolve_pinned_sku(pinned_sku)
+
+            if not candidate:
+                candidates = await adapter.search_candidates(item["name"], item.get("category"))
+                for c in candidates:
+                    if adapter.validate_candidate(c, item):
+                        candidate = c
+                        break
+
+            if candidate and candidate.in_stock:
+                qty = item.get("desired_quantity", 1)
+                await adapter.add_exact_item(candidate.retailer_sku, qty)
+                line_total = candidate.price_cents * qty
+                matched_lines.append({
+                    "shopping_item_id": UUID(item["id"]) if isinstance(item["id"], str) else item["id"],
+                    "retailer_sku": candidate.retailer_sku,
+                    "product_title": candidate.title,
+                    "product_brand": candidate.brand,
+                    "product_url": candidate.product_url,
+                    "image_url": candidate.image_url,
+                    "pack_size": candidate.pack_size or "Standard",
+                    "requested_quantity": qty,
+                    "packs_added": qty,
+                    "is_in_stock": True,
+                    "is_exact_match": candidate.is_exact_match,
+                    "is_substituted": not candidate.is_exact_match,
+                    "missing_reason": None,
+                    "unit_price_cents": candidate.price_cents,
+                    "unit_measure": candidate.unit_measure,
+                    "line_total_cents": line_total,
+                })
+            else:
+                if item.get("must_have", True):
+                    all_must_haves_found = False
+                    missing_must_have_count += 1
+                matched_lines.append({
+                    "shopping_item_id": UUID(item["id"]) if isinstance(item["id"], str) else item["id"],
+                    "retailer_sku": "NOT_FOUND",
+                    "product_title": f"{item['name']} (Out of Stock / Not Found)",
+                    "product_brand": None,
+                    "product_url": "",
+                    "image_url": None,
+                    "pack_size": None,
+                    "requested_quantity": item.get("desired_quantity", 1),
+                    "packs_added": 0,
+                    "is_in_stock": False,
+                    "is_exact_match": False,
+                    "is_substituted": False,
+                    "missing_reason": "No valid in-stock product match found",
+                    "unit_price_cents": 0,
+                    "unit_measure": item.get("unit_measure", "pack"),
+                    "line_total_cents": 0,
+                })
+
+        # 3. Matching Complete
+        await sm.transition(StoreState.MATCHING, progress_pct=60, detail="Product matching complete")
+
+        # 4. Cart Preparing & Reading Authoritative Basket
+        await sm.transition(StoreState.CART_PREPARING, progress_pct=75, detail="Preparing cart lines")
+        cart = await adapter.read_cart()
+        await sm.transition(StoreState.CART_READING, progress_pct=90, detail="Reading authoritative lines and fees")
+
+        if cart.unowned_items_detected:
+            await sm.transition(
+                StoreState.BLOCKED,
+                progress_pct=90,
+                detail="Cart conflict: unowned items exist in retailer basket",
+                error_code="CART_CONFLICT"
+            )
+            return
+
+        # 5. List and Select Default Delivery Slot
+        slots = await adapter.list_delivery_slots()
+        default_slot = slots[0] if slots else None
+        if default_slot:
+            await adapter.select_delivery_slot(default_slot.slot_id)
+
+        # 6. Build and Persist Normalized Store Quote
+        with session_factory() as session:
+            subtotal_cents = cart.subtotal_cents
+            fees_total = cart.delivery_fee_cents + cart.service_fee_cents + cart.bag_fee_cents + cart.slot_fee_cents
+            gross_total = subtotal_cents + fees_total
+            tax_info = calculate_gst_inclusive(gross_total)
+
+            slot_id_val = default_slot.slot_id if default_slot else "default_slot"
+            fingerprint = compute_quote_fingerprint(
+                retailer_id=retailer_id,
+                lines=matched_lines,
+                delivery_slot_id=slot_id_val,
+                subtotal_cents=subtotal_cents,
+                fees_total_cents=fees_total,
+                gross_total_cents=gross_total,
+            )
+
+            db_quote = StoreQuote(
+                run_id=UUID(run_id),
+                retailer_id=retailer_id,
+                retailer_cart_id=cart.cart_id or f"cart_{retailer_id}_{uuid4().hex[:6]}",
+                cart_url=cart.cart_url or f"https://www.{retailer_id}.com.sg/cart",
+                cart_fingerprint=fingerprint,
+                subtotal_cents=subtotal_cents,
+                promotions_discount_cents=0,
+                delivery_fee_cents=cart.delivery_fee_cents,
+                service_fee_cents=cart.service_fee_cents,
+                bag_fee_cents=cart.bag_fee_cents,
+                slot_fee_cents=cart.slot_fee_cents,
+                gross_total_cents=gross_total,
+                derived_net_cents=tax_info["net_cents"],
+                gst_cents=tax_info["gst_cents"],
+                free_delivery_threshold_cents=cart.free_delivery_threshold_cents,
+                amount_needed_for_free_delivery_cents=max(0, (cart.free_delivery_threshold_cents or 0) - subtotal_cents),
+                is_complete=all_must_haves_found,
+                missing_must_have_count=missing_must_have_count,
+                selected_delivery_slot_id=slot_id_val,
+                selected_delivery_slot_window=default_slot.display_label if default_slot else "Standard Window",
+                expires_at=datetime.now(timezone.utc) + timedelta(minutes=30),
+            )
+            session.add(db_quote)
+            session.commit()
+            session.refresh(db_quote)
+
+            for ql in matched_lines:
+                db_line = QuoteLine(
+                    quote_id=db_quote.id,
+                    **ql
+                )
+                session.add(db_line)
+            session.commit()
+
+            final_state = StoreState.QUOTED if all_must_haves_found else StoreState.PARTIAL
+            await sm.transition(
+                final_state,
+                progress_pct=100,
+                detail=f"Authoritative quote ready: S${gross_total/100:.2f}",
+                quote_id=str(db_quote.id)
+            )
+
+    except Exception as exc:
         await sm.transition(
-            StoreState.QUOTED,
+            StoreState.FAILED,
             progress_pct=100,
-            detail=f"Quote ready: S${gross_total/100:.2f}",
-            quote_id=str(db_quote.id)
+            detail=f"Store adapter error: {str(exc)}",
+            error_code="ADAPTER_FAILURE"
         )
 
 
@@ -478,7 +559,6 @@ async def create_comparison_run(payload: ComparisonRunCreate, session: Session =
     if not items:
         raise HTTPException(status_code=400, detail="Shopping list has no enabled items")
 
-    # Create immutable ComparisonSnapshot (GE-03)
     frozen_items = [
         {
             "id": str(item.id),
@@ -502,7 +582,6 @@ async def create_comparison_run(payload: ComparisonRunCreate, session: Session =
     session.commit()
     session.refresh(snapshot)
 
-    # Initialize ComparisonRun
     run = ComparisonRun(snapshot_id=snapshot.id, status="QUEUED")
     session.add(run)
     session.commit()
@@ -513,7 +592,7 @@ async def create_comparison_run(payload: ComparisonRunCreate, session: Session =
 
     # Launch background concurrent retailer workers
     for ret_id in payload.retailer_ids:
-        asyncio.create_task(execute_mock_retailer_worker(run_id_str, ret_id, frozen_items, lambda: Session(engine)))
+        asyncio.create_task(execute_live_retailer_worker(run_id_str, ret_id, frozen_items, lambda: Session(engine)))
 
     return {
         "run_id": run_id_str,
@@ -642,7 +721,7 @@ def approve_quote(quote_id: UUID, payload: QuoteApproveRequest, session: Session
 
 
 @app.post("/approvals/{approval_id}/submit")
-def submit_approval(approval_id: UUID, payload: ApprovalSubmitRequest, session: Session = Depends(get_session)):
+async def submit_approval(approval_id: UUID, payload: ApprovalSubmitRequest, session: Session = Depends(get_session)):
     approval = session.get(Approval, approval_id)
     if not approval:
         raise HTTPException(status_code=404, detail="Approval not found")
@@ -660,6 +739,24 @@ def submit_approval(approval_id: UUID, payload: ApprovalSubmitRequest, session: 
     if not quote:
         raise HTTPException(status_code=404, detail="Underlying quote not found")
 
+    adapter_cls = ADAPTER_MAP.get(quote.retailer_id, FairPriceAdapter)
+    adapter = adapter_cls()
+
+    # Pre-submission cart revalidation (ADR-004)
+    diff = await adapter.revalidate_cart(approval.expected_fingerprint)
+    if diff.has_changes:
+        approval.is_used = True
+        session.add(approval)
+        session.commit()
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "error": "REAPPROVAL_REQUIRED",
+                "message": "Cart contents or prices changed prior to submission.",
+                "diff": diff.model_dump()
+            }
+        )
+
     # Safety Guard (GE-08)
     live_enabled = os.getenv("LIVE_PURCHASE_ENABLED", "false").lower() == "true"
     if not live_enabled:
@@ -668,18 +765,19 @@ def submit_approval(approval_id: UUID, payload: ApprovalSubmitRequest, session: 
             detail="LIVE_PURCHASE_DISABLED: Live transactions are disabled until architectural release sign-off."
         )
 
-    # In live mode, simulate deterministic order confirmation
+    # Execute final order submission via adapter
+    confirmation = await adapter.submit_order(approval.approval_token)
     approval.is_used = True
     session.add(approval)
 
-    retailer_order_num = f"{quote.retailer_id.upper()}-{datetime.now().strftime('%Y%m%d')}-{uuid4().hex[:6].upper()}"
     receipt = OrderReceipt(
         approval_id=approval.id,
-        retailer_order_id=retailer_order_num,
+        retailer_order_id=confirmation.retailer_order_id,
         retailer_id=quote.retailer_id,
-        confirmed_total_cents=quote.gross_total_cents,
-        confirmed_delivery_slot=quote.selected_delivery_slot_window or "Default Slot",
-        receipt_url=f"https://www.{quote.retailer_id}.com.sg/receipts/{retailer_order_num}"
+        confirmed_total_cents=confirmation.confirmed_total_cents,
+        confirmed_delivery_slot=confirmation.delivery_slot,
+        receipt_url=confirmation.receipt_url,
+        placed_at=confirmation.placed_at
     )
     session.add(receipt)
     session.commit()
