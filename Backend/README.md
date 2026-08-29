@@ -34,7 +34,7 @@ backend/
 
 Create a `.env` file:
 ```env
-MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/
+MONGODB_URI=mongodb+srv://<username>:<password>@<cluster>.mongodb.net/
 PORT=3001
 NODE_ENV=development
 ```

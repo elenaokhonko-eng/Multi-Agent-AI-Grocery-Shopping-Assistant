@@ -50,7 +50,7 @@ cd backend
 npm install
 
 # Create environment file
-echo "MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/
+echo "MONGODB_URI=mongodb+srv://<username>:<password>@<cluster>.mongodb.net/
 PORT=3001
 NODE_ENV=development" > .env
 
@@ -334,7 +334,7 @@ cat backend/.env
 ### Backend Deployment (Recommended: Railway/Render)
 ```bash
 # Environment variables needed:
-MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/kitchen-inventory
+MONGODB_URI=mongodb+srv://<username>:<password>@<cluster>.mongodb.net/kitchen-inventory
 PORT=8080
 NODE_ENV=production
 ```

@@ -13,7 +13,7 @@ class Config:
     GROQ_MODEL: str = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 
     # Database Configuration
-    MONGO_URI: str = os.getenv("MONGO_URI", "mongodb+srv://user:pass@cluster.mongodb.net/")
+    MONGO_URI: str = os.getenv("MONGO_URI", "mongodb://127.0.0.1:27017/")
     DATABASE_NAME: str = os.getenv("DATABASE_NAME", "ecommerce_db")
     
     # Scraping Configuration

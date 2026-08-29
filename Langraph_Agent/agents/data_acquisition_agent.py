@@ -58,7 +58,8 @@ class MongoDBTextSearcher:
         """Initialize MongoDB connection"""
         try:
             print("[MONGODB] Connecting to MongoDB...")
-            self.client = MongoClient("mongodb+srv://user:pass@cluster.mongodb.net/", serverSelectionTimeoutMS=5000)
+            mongo_uri = os.getenv("MONGODB_URI", "mongodb://127.0.0.1:27017/")
+            self.client = MongoClient(mongo_uri, serverSelectionTimeoutMS=5000)
             # Test connection
             self.client.server_info()
             self.db = self.client["ecommerce_db"]

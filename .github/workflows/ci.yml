@@ -14,10 +14,14 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
       - name: Global Scan for Leaked Credentials & Tokens
         run: |
-          echo "Scanning entire repository for accidental credentials or passwords..."
-          ! grep -r -i -E "(mongodb\+srv://[a-zA-Z0-9_\-]+:[^@\s]+@|gsk_[a-zA-Z0-9]{30,}|sk-[a-zA-Z0-9]{30,}|card_number|cvv)" --exclude-dir=".git" --exclude-dir=".venv" --exclude-dir="node_modules" .
+          python scripts/scan_secrets.py
 
   backend-checks:
     name: Backend Lint, TypeCheck & PyTest
@@ -50,7 +54,7 @@ jobs:
 
       - name: Run MyPy Type Check
         run: |
-          python -m mypy packages/ apps/
+          python -m mypy packages/domain packages/retailers apps/api
 
       - name: Run Alembic Migration Check
         run: |

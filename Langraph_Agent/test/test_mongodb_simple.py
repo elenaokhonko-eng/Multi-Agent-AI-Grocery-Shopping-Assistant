@@ -9,10 +9,9 @@ print("🔍 Testing MongoDB connection...")
 try:
     from pymongo import MongoClient
     
-    print("✅ PyMongo imported successfully")
-    
-    # Try to connect
-    client = MongoClient("mongodb+srv://user:pass@cluster.mongodb.net/", serverSelectionTimeoutMS=5000)
+    import os
+    mongo_uri = os.getenv("MONGODB_URI", "mongodb://127.0.0.1:27017/")
+    client = MongoClient(mongo_uri, serverSelectionTimeoutMS=5000)
     
     # Test connection
     server_info = client.server_info()
