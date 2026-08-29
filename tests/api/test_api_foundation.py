@@ -1,10 +1,11 @@
-import pytest
-from sqlmodel import Session
 import uuid
+from datetime import UTC
 
-from domain.models.core import ShoppingList, ShoppingListItem, StoreQuote, Approval
 from domain.services.fingerprint import compute_quote_fingerprint
+from sqlmodel import Session
+
 from tests.conftest import test_engine
+
 
 def test_health_endpoint(client):
     response = client.get("/health")
@@ -77,17 +78,18 @@ def test_comparison_run_and_approval_flow(client):
 def test_live_purchase_safety_guard(client):
     list_resp = client.post("/shopping-lists", json={"name": "Safety List"})
     list_id = list_resp.json()["id"]
-    item_resp = client.post(f"/shopping-lists/{list_id}/items", json={"name": "Lemons", "desired_quantity": 2})
+    client.post(f"/shopping-lists/{list_id}/items", json={"name": "Lemons", "desired_quantity": 2})
 
     # Create dummy quote in DB
     with Session(test_engine) as session:
-        from domain.models.core import ComparisonSnapshot, ComparisonRun, StoreQuote
-        from datetime import datetime, timezone, timedelta
-        
+        from datetime import datetime, timedelta
+
+        from domain.models.core import ComparisonRun, ComparisonSnapshot, StoreQuote
+
         snapshot = ComparisonSnapshot(shopping_list_id=uuid.UUID(list_id), list_version=1, frozen_items_json=[])
         session.add(snapshot)
         session.commit()
-        
+
         run = ComparisonRun(snapshot_id=snapshot.id, status="QUEUED")
         session.add(run)
         session.commit()
@@ -100,7 +102,7 @@ def test_live_purchase_safety_guard(client):
             gross_total_cents=1000,
             derived_net_cents=917,
             gst_cents=83,
-            expires_at=datetime.now(timezone.utc) + timedelta(minutes=30)
+            expires_at=datetime.now(UTC) + timedelta(minutes=30)
         )
         session.add(quote)
         session.commit()

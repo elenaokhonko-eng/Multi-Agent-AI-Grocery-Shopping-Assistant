@@ -6,20 +6,22 @@ from domain.models.core import (
     QuoteLine,
     ShoppingList,
     ShoppingListItem,
+    StoreEventLog,
     StoreQuote,
     SubstitutionPolicy,
     UserProductCorrection,
 )
 
 __all__ = [
+    "Approval",
+    "ComparisonRun",
+    "ComparisonSnapshot",
+    "OrderReceipt",
+    "QuoteLine",
     "ShoppingList",
     "ShoppingListItem",
-    "SubstitutionPolicy",
-    "ComparisonSnapshot",
-    "ComparisonRun",
+    "StoreEventLog",
     "StoreQuote",
-    "QuoteLine",
-    "Approval",
-    "OrderReceipt",
+    "SubstitutionPolicy",
     "UserProductCorrection",
 ]

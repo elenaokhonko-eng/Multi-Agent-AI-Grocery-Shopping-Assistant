@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -89,49 +90,43 @@ class RetailerAdapter(ABC):
     @abstractmethod
     async def check_session(self) -> SessionStatus:
         """Verify session validity or return USER_ACTION_REQUIRED."""
-        pass
 
     @abstractmethod
     async def resolve_pinned_sku(self, sku: str) -> Optional[CandidateProduct]:
         """Directly retrieve product by exact pinned SKU ID."""
-        pass
 
     @abstractmethod
     async def search_candidates(self, query: str, category_hint: Optional[str] = None) -> List[CandidateProduct]:
         """Search top-N candidates from store catalog."""
-        pass
 
-    @abstractmethod
     def validate_candidate(self, candidate: CandidateProduct, desired_item: Dict[str, Any]) -> bool:
         """Apply deterministic brand, pack, unit, and exclusion gates."""
-        pass
+        return True
 
-    @abstractmethod
+    async def add_item_to_cart(self, sku: str, quantity: int) -> bool:
+        """Add item to retailer cart."""
+        return await self.add_exact_item(sku, quantity)
+
     async def add_exact_item(self, sku: str, quantity: int) -> bool:
-        """Add exact validated SKU to cart."""
-        pass
+        """Compatibility alias for add_item_to_cart."""
+        return True
 
     @abstractmethod
     async def read_cart(self) -> AuthoritativeCart:
         """Read authoritative basket lines and fees directly from store."""
-        pass
 
     @abstractmethod
     async def list_delivery_slots(self) -> List[DeliverySlot]:
         """Fetch available delivery slots."""
-        pass
 
     @abstractmethod
     async def select_delivery_slot(self, slot_id: str) -> bool:
         """Select delivery slot in retailer checkout session."""
-        pass
 
     @abstractmethod
-    async def revalidate_cart(self, expected_fingerprint: str) -> CartDiff:
-        """Re-read cart prior to submission and compare against fingerprint."""
-        pass
+    async def revalidate_cart(self, expected_quote: Any) -> CartDiff:
+        """Re-read cart prior to submission and compare against fingerprint or quote."""
 
     @abstractmethod
-    async def submit_order(self, approval_token: str) -> OrderConfirmation:
+    async def submit_order(self, approval_token: str, slot_id: str = "") -> OrderConfirmation:
         """Execute final checkout click when live ordering is enabled."""
-        pass

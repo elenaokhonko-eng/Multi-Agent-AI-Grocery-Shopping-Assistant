@@ -1,11 +1,11 @@
 import hashlib
 import json
-from typing import Any, Dict, List
+from typing import Any
 
 
 def compute_quote_fingerprint(
     retailer_id: str,
-    lines: List[Dict[str, Any]],
+    lines: list[dict[str, Any]],
     delivery_slot_id: str,
     subtotal_cents: int,
     fees_total_cents: int,

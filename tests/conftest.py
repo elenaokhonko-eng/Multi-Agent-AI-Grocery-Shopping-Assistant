@@ -1,9 +1,10 @@
-import pytest
-from fastapi.testclient import TestClient
-from sqlmodel import SQLModel, create_engine, Session
-from sqlalchemy.pool import StaticPool
 import sys
 from pathlib import Path
+
+import pytest
+from fastapi.testclient import TestClient
+from sqlalchemy.pool import StaticPool
+from sqlmodel import Session, SQLModel, create_engine
 
 # Ensure packages and apps are in sys.path
 root_dir = Path(__file__).resolve().parent.parent
@@ -12,7 +13,7 @@ if str(root_dir / "packages") not in sys.path:
 if str(root_dir / "apps") not in sys.path:
     sys.path.insert(0, str(root_dir / "apps"))
 
-from apps.api.main import app, get_session
+from apps.api.main import app, get_session  # noqa: E402
 
 # In-memory shared engine per test session with StaticPool
 test_engine = create_engine(

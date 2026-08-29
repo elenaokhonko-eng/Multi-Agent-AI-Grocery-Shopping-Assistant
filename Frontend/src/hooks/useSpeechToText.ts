@@ -1,5 +1,42 @@
 import { useEffect, useRef, useState } from "react";
 
+interface SpeechRecognitionAlternative {
+  transcript: string;
+}
+
+interface SpeechRecognitionResult {
+  [index: number]: SpeechRecognitionAlternative;
+  isFinal: boolean;
+  length: number;
+}
+
+interface SpeechRecognitionResultList {
+  [index: number]: SpeechRecognitionResult;
+  length: number;
+}
+
+interface SpeechRecognitionEvent extends Event {
+  resultIndex: number;
+  results: SpeechRecognitionResultList;
+}
+
+interface SpeechRecognitionInstance extends EventTarget {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onstart: (() => void) | null;
+  onresult: ((event: SpeechRecognitionEvent) => void) | null;
+  onerror: ((event: { error: string }) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+}
+
+interface WindowWithSpeech extends Window {
+  SpeechRecognition?: new () => SpeechRecognitionInstance;
+  webkitSpeechRecognition?: new () => SpeechRecognitionInstance;
+}
+
 export function useSpeechToText(opts?: { lang?: string; continuous?: boolean }) {
   const { lang = "en-US", continuous = true } = opts || {};
 
@@ -8,13 +45,12 @@ export function useSpeechToText(opts?: { lang?: string; continuous?: boolean }) 
   const [interim, setInterim] = useState("");
   const [finalText, setFinalText] = useState("");
 
-  const recognitionRef = useRef<any>(null);
+  const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const manualStopRef = useRef(false);
 
   useEffect(() => {
-    const SR =
-      (window as any).webkitSpeechRecognition ||
-      (window as any).SpeechRecognition;
+    const win = window as WindowWithSpeech;
+    const SR = win.SpeechRecognition || win.webkitSpeechRecognition;
 
     if (!SR) {
       setIsSupported(false);
@@ -28,7 +64,7 @@ export function useSpeechToText(opts?: { lang?: string; continuous?: boolean }) 
 
     rec.onstart = () => setIsRecording(true);
 
-    rec.onresult = (e: any) => {
+    rec.onresult = (e: SpeechRecognitionEvent) => {
       let interimBuf = "";
       let finalBuf = "";
       for (let i = e.resultIndex; i < e.results.length; i++) {
@@ -40,7 +76,7 @@ export function useSpeechToText(opts?: { lang?: string; continuous?: boolean }) 
       setInterim(interimBuf);
     };
 
-    rec.onerror = (e: any) => {
+    rec.onerror = (e: { error: string }) => {
       if (e?.error !== "no-speech") console.warn("Speech error:", e);
     };
 
@@ -48,7 +84,7 @@ export function useSpeechToText(opts?: { lang?: string; continuous?: boolean }) 
       setIsRecording(false);
       setInterim("");
       if (!manualStopRef.current) {
-        try { rec.start(); } catch {}
+        try { rec.start(); } catch (err) { console.debug("Speech restart skipped", err); }
       }
     };
 
@@ -66,7 +102,7 @@ export function useSpeechToText(opts?: { lang?: string; continuous?: boolean }) 
     manualStopRef.current = false;
     setFinalText("");
     setInterim("");
-    try { recognitionRef.current.start(); } catch {}
+    try { recognitionRef.current.start(); } catch (err) { console.debug("Speech start skipped", err); }
   };
 
   const stop = () => {

@@ -1,10 +1,10 @@
-import pytest
-from sqlmodel import Session
-from datetime import datetime, timezone, timedelta
-import uuid
+from datetime import UTC, datetime, timedelta
 
-from domain.models.core import ShoppingList, ComparisonSnapshot, ComparisonRun, StoreQuote, Approval
+from domain.models.core import Approval, ComparisonRun, ComparisonSnapshot, ShoppingList, StoreQuote
+from sqlmodel import Session
+
 from tests.conftest import test_engine
+
 
 def test_tamper_approval_payload_rejects_extra_fields(client):
     with Session(test_engine) as session:
@@ -28,7 +28,7 @@ def test_tamper_approval_payload_rejects_extra_fields(client):
             gross_total_cents=2500,
             derived_net_cents=2294,
             gst_cents=206,
-            expires_at=datetime.now(timezone.utc) + timedelta(minutes=15)
+            expires_at=datetime.now(UTC) + timedelta(minutes=15)
         )
         session.add(quote)
         session.commit()
@@ -62,7 +62,7 @@ def test_expired_quote_rejection(client):
             gross_total_cents=1000,
             derived_net_cents=917,
             gst_cents=83,
-            expires_at=datetime.now(timezone.utc) - timedelta(minutes=5)
+            expires_at=datetime.now(UTC) - timedelta(minutes=5)
         )
         session.add(expired_quote)
         session.commit()
@@ -95,7 +95,7 @@ def test_reused_approval_token_rejection(client):
             gross_total_cents=1000,
             derived_net_cents=917,
             gst_cents=83,
-            expires_at=datetime.now(timezone.utc) + timedelta(minutes=15)
+            expires_at=datetime.now(UTC) + timedelta(minutes=15)
         )
         session.add(quote)
         session.commit()
@@ -107,7 +107,7 @@ def test_reused_approval_token_rejection(client):
             delivery_slot_id="slot_1",
             expected_fingerprint="fp_reused",
             is_used=True,
-            expires_at=datetime.now(timezone.utc) + timedelta(minutes=15)
+            expires_at=datetime.now(UTC) + timedelta(minutes=15)
         )
         session.add(approval)
         session.commit()
@@ -140,7 +140,7 @@ def test_invalid_token_rejection(client):
             gross_total_cents=1000,
             derived_net_cents=917,
             gst_cents=83,
-            expires_at=datetime.now(timezone.utc) + timedelta(minutes=15)
+            expires_at=datetime.now(UTC) + timedelta(minutes=15)
         )
         session.add(quote)
         session.commit()
@@ -152,7 +152,7 @@ def test_invalid_token_rejection(client):
             delivery_slot_id="slot_1",
             expected_fingerprint="fp_auth",
             is_used=False,
-            expires_at=datetime.now(timezone.utc) + timedelta(minutes=15)
+            expires_at=datetime.now(UTC) + timedelta(minutes=15)
         )
         session.add(approval)
         session.commit()

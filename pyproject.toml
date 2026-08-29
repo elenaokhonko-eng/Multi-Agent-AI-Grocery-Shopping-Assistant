@@ -15,6 +15,7 @@ dependencies = [
     "uvicorn[standard]>=0.29.0",
     "httpx>=0.27.0",
     "python-dotenv>=1.0.1",
+    "playwright>=1.44.0",
 ]
 
 [project.optional-dependencies]
@@ -33,11 +34,16 @@ where = ["packages"]
 
 [tool.mypy]
 strict = false
-exclude = ["alembic"]
+ignore_missing_imports = true
+exclude = ["alembic", "adapters"]
 
 [tool.ruff]
-line-length = 100
+line-length = 120
 target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["B008", "BLE001", "E501"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

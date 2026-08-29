@@ -1,7 +1,6 @@
 import asyncio
 import os
 from pathlib import Path
-from typing import Dict, Optional
 
 
 class SessionManager:
@@ -10,10 +9,10 @@ class SessionManager:
     Enforces one concurrency lock per store and never uses stealth or WAF bypass hacks.
     """
 
-    def __init__(self, base_profile_dir: Optional[str] = None):
+    def __init__(self, base_profile_dir: str | None = None):
         self.base_profile_dir = Path(base_profile_dir or os.path.expanduser("~/.profiles"))
         self.base_profile_dir.mkdir(parents=True, exist_ok=True)
-        self._locks: Dict[str, asyncio.Lock] = {}
+        self._locks: dict[str, asyncio.Lock] = {}
 
     def get_profile_path(self, retailer_id: str) -> Path:
         profile_path = self.base_profile_dir / retailer_id.lower().strip()

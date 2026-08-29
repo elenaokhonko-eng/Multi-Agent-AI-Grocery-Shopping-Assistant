@@ -14,16 +14,16 @@ from packages.retailers.redmart.adapter import RedMartAdapter
 from packages.retailers.shengsiong.adapter import ShengSiongAdapter
 
 __all__ = [
+    "AuthoritativeCart",
+    "CandidateProduct",
+    "CartDiff",
+    "CartLine",
+    "DeliverySlot",
+    "FairPriceAdapter",
+    "LittleFarmsAdapter",
+    "OrderConfirmation",
+    "RedMartAdapter",
     "RetailerAdapter",
     "SessionStatus",
-    "CandidateProduct",
-    "CartLine",
-    "AuthoritativeCart",
-    "DeliverySlot",
-    "CartDiff",
-    "OrderConfirmation",
-    "FairPriceAdapter",
     "ShengSiongAdapter",
-    "LittleFarmsAdapter",
-    "RedMartAdapter",
 ]

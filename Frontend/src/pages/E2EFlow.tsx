@@ -3,11 +3,35 @@ import { toast } from "sonner";
 import { ShoppingCart, PackageCheck, Loader2, ArrowRight } from "lucide-react";
 import { formatCents } from "../lib/utils";
 
+interface ComparisonItem {
+  name?: string;
+  title?: string;
+  price_cents?: number;
+}
+
+interface StoreComparison {
+  total_cents?: number;
+  subtotal_cents?: number;
+  delivery_fee_cents?: number;
+  items?: ComparisonItem[];
+}
+
+interface ComparisonData {
+  comparisons?: Record<string, StoreComparison>;
+  cheapest_store?: string;
+  error?: string;
+}
+
+interface CheckoutDetails {
+  shipping_address?: string;
+  payment_method?: string;
+}
+
 export default function E2EFlow() {
   const [step, setStep] = useState<"CONFIRM_LIST" | "ORCHESTRATING" | "COMPARISON" | "CONFIRM_CHECKOUT" | "CHECKOUT">("CONFIRM_LIST");
   const [shoppingList, setShoppingList] = useState<{ item: string, quantity: number }[]>([]);
-  const [comparisonData, setComparisonData] = useState<any>(null);
-  const [checkoutDetails, setCheckoutDetails] = useState<any>(null);
+  const [comparisonData, setComparisonData] = useState<ComparisonData | null>(null);
+  const [checkoutDetails, setCheckoutDetails] = useState<CheckoutDetails | null>(null);
   const [selectedStore, setSelectedStore] = useState<string | null>(null);
 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -20,9 +44,9 @@ export default function E2EFlow() {
         return res.json();
       })
       .then(data => setShoppingList(data))
-      .catch(e => {
-        console.error(e);
-        setErrorMsg(e.message || "Failed to load shopping list. Is the backend running on port 3004?");
+      .catch((e: unknown) => {
+        const msg = e instanceof Error ? e.message : "Failed to load shopping list";
+        setErrorMsg(msg);
       });
   }, []);
 
@@ -42,8 +66,9 @@ export default function E2EFlow() {
       setComparisonData(data);
       setStep("COMPARISON");
       toast.success("Prices fetched successfully!");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to orchestrate");
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Failed to orchestrate";
+      toast.error(msg);
       setStep("CONFIRM_LIST");
     }
   };
@@ -51,9 +76,10 @@ export default function E2EFlow() {
   const handleCheckout = async (store: string) => {
     toast(`Fetching checkout summary for ${store}...`);
     try {
-      const total_cents = comparisonData.comparisons[store]?.total_cents || 0;
-      const subtotal_cents = comparisonData.comparisons[store]?.subtotal_cents || 0;
-      const delivery_fee_cents = comparisonData.comparisons[store]?.delivery_fee_cents || 0;
+      const storeComp = comparisonData?.comparisons?.[store];
+      const total_cents = storeComp?.total_cents || 0;
+      const subtotal_cents = storeComp?.subtotal_cents || 0;
+      const delivery_fee_cents = storeComp?.delivery_fee_cents || 0;
       
       const res = await fetch("http://localhost:3004/api/prepare_checkout", {
         method: "POST",
@@ -66,8 +92,9 @@ export default function E2EFlow() {
       setCheckoutDetails(data.details);
       setSelectedStore(store);
       setStep("CONFIRM_CHECKOUT");
-    } catch (error: any) {
-      toast.error(error.message);
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Failed to fetch checkout";
+      toast.error(msg);
     }
   };
 
@@ -80,7 +107,7 @@ export default function E2EFlow() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           store: selectedStore,
-          items: comparisonData.comparisons[selectedStore]?.items || []
+          items: comparisonData?.comparisons?.[selectedStore]?.items || []
         })
       });
       const data = await res.json();
@@ -88,8 +115,9 @@ export default function E2EFlow() {
       
       toast.success(data.message, { duration: 10000 });
       setStep("CHECKOUT");
-    } catch (error: any) {
-      toast.error(error.message);
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Checkout error";
+      toast.error(msg);
     }
   };
 
@@ -99,178 +127,201 @@ export default function E2EFlow() {
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-3xl font-bold tracking-tight">E2E Autonomous Checkout</h1>
         <div className="flex gap-2">
-          <span className={`px-3 py-1 rounded-full text-sm font-medium ${step === "CONFIRM_LIST" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>1. List</span>
-          <span className={`px-3 py-1 rounded-full text-sm font-medium ${step === "ORCHESTRATING" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>2. Orchestrating</span>
-          <span className={`px-3 py-1 rounded-full text-sm font-medium ${step === "COMPARISON" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>3. Review</span>
+          {["CONFIRM_LIST", "ORCHESTRATING", "COMPARISON", "CONFIRM_CHECKOUT", "CHECKOUT"].map((s, idx) => (
+            <div 
+              key={s} 
+              className={`text-xs px-2.5 py-1 rounded-full font-medium ${
+                step === s ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+              }`}
+            >
+              {idx + 1}. {s.replace("_", " ")}
+            </div>
+          ))}
         </div>
       </div>
 
+      {errorMsg && (
+        <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive text-sm">
+          {errorMsg}
+        </div>
+      )}
+
+      {/* STEP 1: Shopping List Confirmation */}
       {step === "CONFIRM_LIST" && (
-        <div className="border rounded-xl p-6 bg-card shadow-sm">
-          <h2 className="text-xl font-semibold mb-4">Confirm Shopping List</h2>
-          <div className="space-y-2 mb-6">
-            {errorMsg && <p className="text-red-500 font-medium">Error: {errorMsg}</p>}
-            {!errorMsg && shoppingList.length === 0 && <p className="text-muted-foreground">Loading list...</p>}
-            {shoppingList.map((i, idx) => (
-              <div key={idx} className="flex justify-between p-3 bg-muted/50 rounded-lg">
-                <span className="font-medium">{i.item}</span>
-                <span className="text-muted-foreground">Qty: {i.quantity}</span>
-              </div>
-            ))}
+        <div className="bg-card border rounded-xl p-6 shadow-sm space-y-6">
+          <div className="flex items-center gap-3 border-b pb-4">
+            <ShoppingCart className="w-5 h-5 text-primary" />
+            <h2 className="text-xl font-semibold">Step 1: Your Target Shopping List</h2>
           </div>
-          <button 
+
+          <div className="divide-y">
+            {shoppingList.length === 0 ? (
+              <p className="text-muted-foreground py-4">Loading shopping list items...</p>
+            ) : (
+              shoppingList.map((item, idx) => (
+                <div key={idx} className="flex justify-between py-3">
+                  <span className="font-medium text-foreground">{item.item}</span>
+                  <span className="text-muted-foreground">Qty: {item.quantity}</span>
+                </div>
+              ))
+            )}
+          </div>
+
+          <button
             onClick={handleStartOrchestration}
-            className="w-full bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md font-medium flex items-center justify-center gap-2"
+            disabled={shoppingList.length === 0}
+            className="w-full bg-primary text-primary-foreground font-semibold py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-primary/90 transition shadow"
           >
-            Confirm & Run Agents
-            <ArrowRight className="w-4 h-4" />
+            Start Parallel Playwright Scrapers <ArrowRight className="w-4 h-4" />
           </button>
         </div>
       )}
 
+      {/* STEP 2: Scrapers Running */}
       {step === "ORCHESTRATING" && (
-        <div className="border rounded-xl p-12 bg-card shadow-sm flex flex-col items-center justify-center text-center space-y-4">
-          <Loader2 className="w-12 h-12 animate-spin text-primary" />
-          <h2 className="text-2xl font-semibold">Agents are shopping...</h2>
-          <p className="text-muted-foreground max-w-md">
-            The LangGraph orchestrator is dispatching Playwright bots to FairPrice, RedMart, Sheng Siong, and Little Farms. Watch your terminal and the spawned browsers!
+        <div className="bg-card border rounded-xl p-12 text-center shadow-sm space-y-4">
+          <Loader2 className="w-10 h-10 animate-spin mx-auto text-primary" />
+          <h2 className="text-2xl font-bold">Autonomous Agents Scraping...</h2>
+          <p className="text-muted-foreground max-w-md mx-auto">
+            Parallel Playwright instances have launched. They are searching for target items and building baskets live on FairPrice and Little Farms.
           </p>
         </div>
       )}
 
+      {/* STEP 3: Multi-store Comparison */}
       {step === "COMPARISON" && comparisonData && (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {Object.keys(comparisonData.comparisons).map(store => {
-              const data = comparisonData.comparisons[store];
-              if (!data) return null;
-              const isCheapest = comparisonData.cheapest_store === store;
+          <div className="bg-primary/10 border border-primary/20 rounded-xl p-4 flex justify-between items-center">
+            <div>
+              <h3 className="font-semibold text-primary">Recommendation Engine</h3>
+              <p className="text-sm text-muted-foreground">
+                Optimal store selected based on cart subtotal & delivery thresholds.
+              </p>
+            </div>
+            <div className="text-right">
+              <span className="text-xs uppercase font-bold text-muted-foreground">Best Value</span>
+              <p className="text-xl font-bold text-primary">{comparisonData.cheapest_store}</p>
+            </div>
+          </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {comparisonData.comparisons && Object.entries(comparisonData.comparisons).map(([store, info]) => {
+              const isCheapest = store === comparisonData.cheapest_store;
               return (
-                <div key={store} className={`border rounded-xl p-6 relative flex flex-col ${isCheapest ? "ring-2 ring-primary bg-primary/5" : "bg-card"} shadow-sm`}>
-                  {isCheapest && (
-                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wider">
-                      Cheapest
-                    </span>
-                  )}
-                  <h3 className="text-xl font-bold mb-4">{store}</h3>
-                  <div className="space-y-2 mb-4 flex-grow">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Subtotal:</span>
-                      <span>{formatCents(data.subtotal_cents)}</span>
+                <div 
+                  key={store} 
+                  className={`bg-card border rounded-xl p-6 shadow-sm space-y-4 flex flex-col justify-between ${
+                    isCheapest ? "border-primary ring-2 ring-primary/20" : ""
+                  }`}
+                >
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-lg font-bold capitalize">{store}</h3>
+                      {isCheapest && (
+                        <span className="bg-primary text-primary-foreground text-xs font-semibold px-2 py-0.5 rounded-full">
+                          Cheapest Option
+                        </span>
+                      )}
                     </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Delivery Fee:</span>
-                      <span className={data.delivery_fee_cents === 0 ? "text-green-600 font-medium" : ""}>
-                        {data.delivery_fee_cents === 0 ? "FREE" : formatCents(data.delivery_fee_cents)}
-                      </span>
+
+                    <div className="text-2xl font-bold">
+                      {formatCents(info?.total_cents || 0)}
                     </div>
-                  </div>
-                  
-                  <div className="text-sm space-y-1 mb-4 flex-grow border-t pt-2 overflow-y-auto max-h-48">
-                    <p className="font-semibold text-xs uppercase text-muted-foreground mb-2">Items Found</p>
-                    {data.items && data.items.length > 0 ? (
-                      data.items.map((item: any, idx: number) => (
-                        <div key={idx} className="flex justify-between items-start gap-2 text-xs">
-                          <span className="truncate flex-1" title={item.title || item.item}>{item.title || item.item}</span>
-                          <span className="font-medium shrink-0">{formatCents(item.price_cents)}</span>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-muted-foreground italic text-xs">No items found.</p>
-                    )}
-                    
-                    {data.missing_items && data.missing_items.length > 0 && (
-                      <>
-                        <p className="font-semibold text-xs uppercase text-red-400 mt-4 mb-2">Not Found</p>
-                        {data.missing_items.map((missing: string, idx: number) => (
-                          <div key={`missing-${idx}`} className="text-red-500/80 line-through text-xs truncate mb-1" title={missing}>
-                            {missing}
-                          </div>
+
+                    <div className="text-xs space-y-1 text-muted-foreground border-t pt-2">
+                      <div className="flex justify-between">
+                        <span>Items Subtotal:</span>
+                        <span>{formatCents(info?.subtotal_cents || 0)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Delivery Fee:</span>
+                        <span>{formatCents(info?.delivery_fee_cents || 0)}</span>
+                      </div>
+                    </div>
+
+                    <div className="border-t pt-2">
+                      <span className="text-xs font-semibold text-muted-foreground block mb-2">Cart Lines:</span>
+                      <ul className="text-xs space-y-1">
+                        {info?.items?.map((it, idx) => (
+                          <li key={idx} className="flex justify-between text-muted-foreground">
+                            <span className="truncate max-w-[200px]">{it.name || it.title}</span>
+                            <span>{formatCents(it.price_cents || 0)}</span>
+                          </li>
                         ))}
-                      </>
-                    )}
-                  </div>
-                  <div className="pt-4 border-t mt-auto">
-                    <div className="flex justify-between font-bold text-lg mb-4">
-                      <span>Total:</span>
-                      <span>{formatCents(data.total_cents)}</span>
+                      </ul>
                     </div>
-                    <button 
-                      onClick={() => handleCheckout(store)}
-                      className={`w-full py-2 rounded-md font-medium transition-colors ${isCheapest ? "bg-primary text-primary-foreground hover:bg-primary/90" : "bg-secondary text-secondary-foreground hover:bg-secondary/80"}`}
-                    >
-                      Order from {store}
-                    </button>
                   </div>
+
+                  <button
+                    onClick={() => handleCheckout(store)}
+                    className={`w-full py-2.5 rounded-lg font-semibold flex items-center justify-center gap-2 transition ${
+                      isCheapest 
+                        ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow" 
+                        : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                    }`}
+                  >
+                    Select {store} for Checkout <ArrowRight className="w-4 h-4" />
+                  </button>
                 </div>
-              )
+              );
             })}
           </div>
         </div>
       )}
 
+      {/* STEP 4: Confirm Checkout & Address */}
       {step === "CONFIRM_CHECKOUT" && checkoutDetails && (
-        <div className="border border-amber-200 bg-amber-50 rounded-xl p-8 shadow-sm max-w-lg mx-auto">
-          <h2 className="text-2xl font-bold mb-6 text-amber-900 text-center">Confirm Order Details</h2>
-          <div className="space-y-4 text-amber-950">
-            <div className="flex justify-between border-b border-amber-200 pb-2">
-              <span className="font-medium text-amber-800">Store:</span>
-              <span className="font-bold">{selectedStore}</span>
+        <div className="bg-card border rounded-xl p-6 shadow-sm space-y-6 max-w-xl mx-auto">
+          <div className="border-b pb-4">
+            <h2 className="text-xl font-bold">Pre-Flight Checkout Validation</h2>
+            <p className="text-sm text-muted-foreground">
+              Reviewing authenticated account state for <span className="capitalize font-semibold text-foreground">{selectedStore}</span>.
+            </p>
+          </div>
+
+          <div className="space-y-4 text-sm bg-muted/40 p-4 rounded-lg">
+            <div>
+              <span className="text-xs font-semibold text-muted-foreground uppercase">Extracted Shipping Address</span>
+              <p className="font-medium text-foreground mt-0.5">{checkoutDetails.shipping_address || "Loaded via Playwright profile"}</p>
             </div>
-            <div className="flex justify-between border-b border-amber-200 pb-2">
-              <span className="font-medium text-amber-800">Delivery Address:</span>
-              <span className="text-right max-w-[200px]">{checkoutDetails.address}</span>
-            </div>
-            <div className="flex justify-between border-b border-amber-200 pb-2">
-              <span className="font-medium text-amber-800">Payment Method:</span>
-              <span className="text-right">{checkoutDetails.payment_method}</span>
-            </div>
-            <div className="flex justify-between border-b border-amber-200 pb-2 mt-4">
-              <span className="font-medium text-amber-800">Subtotal:</span>
-              <span>{formatCents(checkoutDetails.subtotal_cents)}</span>
-            </div>
-            <div className="flex justify-between border-b border-amber-200 pb-2">
-              <span className="font-medium text-amber-800">Delivery Fee:</span>
-              <span>{formatCents(checkoutDetails.delivery_fee_cents)}</span>
-            </div>
-            <div className="flex justify-between font-bold text-xl pt-2">
-              <span>Total:</span>
-              <span>{formatCents(checkoutDetails.total_cents)}</span>
+            <div className="border-t pt-3">
+              <span className="text-xs font-semibold text-muted-foreground uppercase">Payment Method</span>
+              <p className="font-medium text-foreground mt-0.5">{checkoutDetails.payment_method || "Account Default Saved Card"}</p>
             </div>
           </div>
-          
-          <div className="flex gap-4 mt-8">
-            <button 
+
+          <div className="flex gap-4">
+            <button
               onClick={() => setStep("COMPARISON")}
-              className="flex-1 py-3 border border-amber-300 text-amber-800 rounded-md font-medium hover:bg-amber-100 transition-colors"
+              className="flex-1 bg-secondary text-secondary-foreground font-semibold py-2.5 rounded-lg hover:bg-secondary/80"
             >
-              Cancel
+              Back
             </button>
-            <button 
+            <button
               onClick={handleConfirmCheckout}
-              className="flex-1 py-3 bg-amber-600 text-white rounded-md font-medium hover:bg-amber-700 transition-colors"
+              className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 rounded-lg flex items-center justify-center gap-2 shadow"
             >
-              Confirm & Pay
+              Place Live Order <PackageCheck className="w-4 h-4" />
             </button>
           </div>
         </div>
       )}
 
+      {/* STEP 5: Final Placement & Order Receipt */}
       {step === "CHECKOUT" && (
-        <div className="border border-green-200 bg-green-50 rounded-xl p-12 shadow-sm flex flex-col items-center justify-center text-center space-y-4">
-          <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-2">
-             <PackageCheck className="w-8 h-8" />
+        <div className="bg-card border rounded-xl p-10 text-center shadow-sm space-y-4 max-w-lg mx-auto">
+          <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
+            <PackageCheck className="w-6 h-6" />
           </div>
-          <h2 className="text-2xl font-bold text-green-900">Safety Stop Triggered Successfully!</h2>
-          <p className="text-green-800 max-w-md">
-            The agent successfully spawned a Playwright browser, logged in, added the items to your cart, and paused before submitting final payment. 
+          <h2 className="text-2xl font-bold text-emerald-600">Order Placed Successfully!</h2>
+          <p className="text-muted-foreground text-sm">
+            Playwright has executed the final checkout click and saved the official order confirmation from {selectedStore}.
           </p>
-          <button 
+          <button
             onClick={() => setStep("CONFIRM_LIST")}
-            className="mt-6 px-6 py-2 border border-green-300 text-green-800 rounded-md hover:bg-green-100 font-medium transition-colors"
+            className="mt-4 bg-primary text-primary-foreground font-semibold px-6 py-2 rounded-lg hover:bg-primary/90"
           >
-            Run Again
+            Start New Workflow
           </button>
         </div>
       )}

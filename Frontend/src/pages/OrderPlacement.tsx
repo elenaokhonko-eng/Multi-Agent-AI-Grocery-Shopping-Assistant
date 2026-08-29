@@ -55,6 +55,7 @@ const OrderPlacement = () => {
         setQuery(parsed.originalQuery);
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.key]);
 
   const handleConfirmOrder = async () => {

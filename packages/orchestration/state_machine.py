@@ -1,7 +1,9 @@
 import asyncio
+from collections.abc import Callable
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Optional, Dict, Any, Callable, List
-from datetime import datetime, timezone
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 
@@ -30,32 +32,32 @@ class StoreStateEvent(BaseModel):
     retailer_id: str
     run_id: str
     state: StoreState
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
     progress_pct: int = 0
-    detail: Optional[str] = None
-    challenge_type: Optional[str] = None
-    resume_token: Optional[str] = None
-    quote_id: Optional[str] = None
-    error_code: Optional[str] = None
+    detail: str | None = None
+    challenge_type: str | None = None
+    resume_token: str | None = None
+    quote_id: str | None = None
+    error_code: str | None = None
 
 
 class StateMachine:
-    def __init__(self, run_id: str, retailer_id: str, event_callback: Optional[Callable[[StoreStateEvent], Any]] = None):
+    def __init__(self, run_id: str, retailer_id: str, event_callback: Callable[[StoreStateEvent], Any] | None = None):
         self.run_id = run_id
         self.retailer_id = retailer_id
         self.current_state = StoreState.QUEUED
         self.event_callback = event_callback
-        self.history: List[StoreStateEvent] = []
+        self.history: list[StoreStateEvent] = []
 
     async def transition(
         self,
         new_state: StoreState,
         progress_pct: int = 0,
-        detail: Optional[str] = None,
-        challenge_type: Optional[str] = None,
-        resume_token: Optional[str] = None,
-        quote_id: Optional[str] = None,
-        error_code: Optional[str] = None
+        detail: str | None = None,
+        challenge_type: str | None = None,
+        resume_token: str | None = None,
+        quote_id: str | None = None,
+        error_code: str | None = None
     ) -> StoreStateEvent:
         self.current_state = new_state
         event = StoreStateEvent(

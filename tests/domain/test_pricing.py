@@ -1,11 +1,11 @@
-from domain.services.pricing import calculate_gst_inclusive, add_money, multiply_money
+from domain.services.pricing import add_money, calculate_gst_inclusive, multiply_money
 
 
 def test_calculate_gst_inclusive():
     # S$40.00 gross total -> 4000 cents
     # net = 4000 / 1.09 = 3669.72... -> 3670 cents (S$36.70)
     # gst = 4000 - 3670 = 330 cents (S$3.30)
-    
+
     result = calculate_gst_inclusive(4000, 9.0)
     assert result["gross_total_cents"] == 4000
     assert result["net_cents"] == 3670

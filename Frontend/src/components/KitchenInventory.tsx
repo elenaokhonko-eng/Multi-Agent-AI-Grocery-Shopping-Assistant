@@ -54,9 +54,19 @@ const isExpired = (dateStr?: string) => {
   return target < today;
 };
 
+export interface InventoryItem {
+  _id?: string;
+  id?: string | number;
+  name: string;
+  quantity: number | string;
+  unit?: string;
+  category?: string;
+  expiry?: string;
+}
+
 /* ---------- Item row component ---------- */
 type RowProps = {
-  item: any;
+  item: InventoryItem;
   busy?: boolean;
   onInc: () => void;
   onDec: () => void;
@@ -247,7 +257,7 @@ export const KitchenInventory = ({ showHeader = true }: KitchenInventoryProps) =
 
   // Filtered and sorted inventory
   const filteredInventory = useMemo(() => {
-    let filtered = inventory.filter((item: any) => {
+    const filtered = inventory.filter((item: InventoryItem) => {
       // Search filter
       const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
       
@@ -270,7 +280,7 @@ export const KitchenInventory = ({ showHeader = true }: KitchenInventoryProps) =
     });
 
     // Sorting
-    filtered.sort((a: any, b: any) => {
+    filtered.sort((a: InventoryItem, b: InventoryItem) => {
       let compareValue = 0;
       
       switch (sortBy) {
@@ -333,7 +343,7 @@ export const KitchenInventory = ({ showHeader = true }: KitchenInventoryProps) =
     setNewItem((s) => ({ ...s, quantity: String(Math.max(0, Number(s.quantity || 0) + delta)) }));
 
   const updateQuantity = async (id: string, change: number) => {
-    const item = inventory.find((it: any) => it._id === id || it.id?.toString() === id);
+    const item = inventory.find((it: InventoryItem) => it._id === id || it.id?.toString() === id);
     if (!item) return;
     const next = Math.max(0, Number(item.quantity) + change);
 
@@ -360,16 +370,16 @@ export const KitchenInventory = ({ showHeader = true }: KitchenInventoryProps) =
     }
   };
 
-  const categories = Array.from(new Set(inventory.map((it: any) => it.category || 'Other')));
-  const totalItems = inventory.reduce((sum: number, it: any) => sum + Number(it.quantity || 0), 0);
+  const categories = Array.from(new Set(inventory.map((it: InventoryItem) => it.category || 'Other')));
+  const totalItems = inventory.reduce((sum: number, it: InventoryItem) => sum + Number(it.quantity || 0), 0);
   const filteredItemsCount = filteredInventory.length;
   const hasActiveFilters = searchTerm || selectedCategories.length > 0 || 
     statusFilters.lowStock || statusFilters.expiringSoon || statusFilters.expired;
 
   // Count items by status
-  const lowStockCount = inventory.filter((it: any) => Number(it.quantity) < LOW_STOCK_THRESHOLD).length;
-  const expiringSoonCount = inventory.filter((it: any) => isSoon(it.expiry)).length;
-  const expiredCount = inventory.filter((it: any) => isExpired(it.expiry)).length;
+  const lowStockCount = inventory.filter((it: InventoryItem) => Number(it.quantity) < LOW_STOCK_THRESHOLD).length;
+  const expiringSoonCount = inventory.filter((it: InventoryItem) => isSoon(it.expiry)).length;
+  const expiredCount = inventory.filter((it: InventoryItem) => isExpired(it.expiry)).length;
 
   if (isLoading) return <div className="w-full p-4 text-center text-muted-foreground">Loading inventory...</div>;
   if (error) {
@@ -543,7 +553,7 @@ export const KitchenInventory = ({ showHeader = true }: KitchenInventoryProps) =
 
             {/* Sort */}
             <div className="flex gap-2">
-              <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
+              <Select value={sortBy} onValueChange={(value: 'name' | 'quantity' | 'expiry' | 'category') => setSortBy(value)}>
                 <SelectTrigger className="w-32">
                   <SelectValue />
                 </SelectTrigger>
@@ -786,13 +796,13 @@ export const KitchenInventory = ({ showHeader = true }: KitchenInventoryProps) =
           {/* Group by category only if no search/filters are active, otherwise show flat list */}
           {!hasActiveFilters ? (
             // Grouped by category
-            Array.from(new Set(filteredInventory.map((it: any) => it.category || 'Other'))).map((category) => (
+            Array.from(new Set(filteredInventory.map((it: InventoryItem) => it.category || 'Other'))).map((category) => (
               <div key={category} className="space-y-2">
                 <h4 className="font-medium text-sm text-accent">{category}</h4>
                 <div className="space-y-2">
                   {filteredInventory
-                    .filter((it: any) => (it.category || 'Other') === category)
-                    .map((it: any) => {
+                    .filter((it: InventoryItem) => (it.category || 'Other') === category)
+                    .map((it: InventoryItem) => {
                       const itemId = (it._id as string) || it.id?.toString() || '';
                       return (
                         <InventoryItemRow
@@ -811,7 +821,7 @@ export const KitchenInventory = ({ showHeader = true }: KitchenInventoryProps) =
           ) : (
             // Flat list when filters are active
             <div className="space-y-2">
-              {filteredInventory.map((it: any) => {
+              {filteredInventory.map((it: InventoryItem) => {
                 const itemId = (it._id as string) || it.id?.toString() || '';
                 return (
                   <InventoryItemRow

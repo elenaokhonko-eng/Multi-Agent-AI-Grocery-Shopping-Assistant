@@ -3,9 +3,8 @@ import sys
 from logging.config import fileConfig
 from pathlib import Path
 
-from sqlalchemy import engine_from_config, pool
 from alembic import context
-import sqlmodel
+from sqlalchemy import engine_from_config, pool
 from sqlmodel import SQLModel
 
 # Add packages directory to sys.path
@@ -18,7 +17,6 @@ if str(packages_dir) not in sys.path:
 if str(repo_root) not in sys.path:
     sys.path.insert(0, str(repo_root))
 
-from domain.models import core  # Load all SQLModel tables into metadata
 
 # this is the Alembic Config object, which provides access to the values within the .ini file in use.
 config = context.config

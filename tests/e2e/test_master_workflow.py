@@ -1,35 +1,27 @@
 import asyncio
-import os
-import pytest
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
+
+from domain.models.core import (
+    ComparisonSnapshot,
+)
 from sqlmodel import Session
 
 from apps.api.main import (
-    app,
     execute_live_retailer_worker,
 )
-from domain.models.core import (
-    ShoppingList,
-    ShoppingListItem,
-    ComparisonSnapshot,
-    ComparisonRun,
-    StoreQuote,
-    QuoteLine,
-    Approval,
-    OrderReceipt,
-)
 from packages.retailers.base import (
-    RetailerAdapter,
-    SessionStatus,
-    CandidateProduct,
     AuthoritativeCart,
+    CandidateProduct,
+    CartDiff,
     CartLine,
     DeliverySlot,
-    CartDiff,
     OrderConfirmation,
+    RetailerAdapter,
+    SessionStatus,
 )
 from tests.conftest import test_engine
+
 
 # -----------------------------------------------------------------------------
 # Mock / Test Adapters specifically configured for the QA-06 Scenario
@@ -90,7 +82,7 @@ class MockStoreA_ShengSiong(RetailerAdapter):
         )
 
     async def list_delivery_slots(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         return [DeliverySlot(slot_id="slot_ss_1", start_time=now, end_time=now+timedelta(hours=2), display_label="Morning")]
 
     async def select_delivery_slot(self, slot_id):
@@ -172,7 +164,7 @@ class MockStoreB_FairPrice(RetailerAdapter):
         )
 
     async def list_delivery_slots(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         return [DeliverySlot(slot_id="slot_fp_1", start_time=now, end_time=now+timedelta(hours=2), display_label="Tomorrow Morning")]
 
     async def select_delivery_slot(self, slot_id):
@@ -311,7 +303,7 @@ def test_master_scenario_qa_06(client, monkeypatch):
     run_data = get_run_resp.json()
 
     quotes = {q["retailer_id"]: q for q in run_data["quotes"]}
-    
+
     # Store A (Sheng Siong) is present but incomplete
     assert "shengsiong" in quotes
     assert quotes["shengsiong"]["is_complete"] is False

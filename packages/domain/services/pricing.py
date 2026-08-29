@@ -1,5 +1,4 @@
-import math
-from typing import Dict, TypedDict
+from typing import TypedDict
 
 
 class MoneyBreakdown(TypedDict):
@@ -10,13 +9,13 @@ class MoneyBreakdown(TypedDict):
 
 
 def calculate_gst_inclusive(
-    gross_total_cents: int, 
+    gross_total_cents: int,
     gst_rate_percent: float = 9.0
 ) -> MoneyBreakdown:
     """
     Singapore GST is currently 9%. Prices are generally GST-inclusive.
     This extracts the exact GST amount embedded in the gross total.
-    
+
     Uses standard half-even rounding for tax calculation.
     net + gst = gross
     gst = gross - (gross / (1 + gst_rate_percent / 100))
@@ -28,14 +27,14 @@ def calculate_gst_inclusive(
             "gst_cents": 0,
             "source_currency": "SGD"
         }
-        
+
     gst_multiplier = gst_rate_percent / 100.0
     net_float = gross_total_cents / (1 + gst_multiplier)
-    
+
     # Standard half-even rounding
-    net_cents = int(round(net_float))
+    net_cents = round(net_float)
     gst_cents = gross_total_cents - net_cents
-    
+
     return {
         "gross_total_cents": gross_total_cents,
         "net_cents": net_cents,

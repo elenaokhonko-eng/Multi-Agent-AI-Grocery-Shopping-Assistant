@@ -1,8 +1,7 @@
-from typing import List, Optional
 from uuid import UUID
 
-from sqlmodel import Session, select
 from domain.models.core import ShoppingList, ShoppingListItem
+from sqlmodel import Session, select
 
 
 class ShoppingListRepository:
@@ -16,18 +15,18 @@ class ShoppingListRepository:
         self.session.refresh(sl)
         return sl
 
-    def get_by_id(self, shopping_list_id: UUID) -> Optional[ShoppingList]:
+    def get_by_id(self, shopping_list_id: UUID) -> ShoppingList | None:
         return self.session.get(ShoppingList, shopping_list_id)
 
-    def list_all(self) -> List[ShoppingList]:
-        return self.session.exec(select(ShoppingList)).all()
+    def list_all(self) -> list[ShoppingList]:
+        return list(self.session.exec(select(ShoppingList)).all())
 
-    def add_item(self, shopping_list_id: UUID, keyword: str, quantity: int, must_have: bool = False) -> ShoppingListItem:
+    def add_item(self, shopping_list_id: UUID, name: str, quantity: int = 1, must_have: bool = True) -> ShoppingListItem:
         item = ShoppingListItem(
             shopping_list_id=shopping_list_id,
-            keyword=keyword,
-            quantity=quantity,
-            must_have=must_have
+            name=name,
+            desired_quantity=quantity,
+            must_have=must_have,
         )
         self.session.add(item)
         self.session.commit()

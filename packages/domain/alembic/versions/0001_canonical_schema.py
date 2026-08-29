@@ -1,21 +1,21 @@
 """Canonical Schema - ADR-001
 
 Revision ID: 0001_canonical_schema
-Revises: 
+Revises:
 Create Date: 2026-08-28 21:50:00.000000
 
 """
-from typing import Sequence, Union
-from alembic import op
+from collections.abc import Sequence
+
 import sqlalchemy as sa
 import sqlmodel
-from sqlmodel import Column, JSON
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = '0001_canonical_schema'
-down_revision: Union[str, Sequence[str], None] = None
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | Sequence[str] | None = None
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
@@ -84,7 +84,26 @@ def upgrade() -> None:
     op.create_index(op.f('ix_comparison_runs_snapshot_id'), 'comparison_runs', ['snapshot_id'], unique=False)
     op.create_index(op.f('ix_comparison_runs_status'), 'comparison_runs', ['status'], unique=False)
 
-    # 5. store_quotes
+    # 5. store_event_logs
+    op.create_table(
+        'store_event_logs',
+        sa.Column('id', sa.Uuid(), nullable=False),
+        sa.Column('run_id', sa.Uuid(), nullable=False),
+        sa.Column('retailer_id', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column('from_state', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column('to_state', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column('progress_pct', sa.Integer(), nullable=False),
+        sa.Column('message', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column('action_type', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+        sa.Column('resume_token', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+        sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
+        sa.ForeignKeyConstraint(['run_id'], ['comparison_runs.id'], ondelete='CASCADE'),
+        sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_store_event_logs_run_id'), 'store_event_logs', ['run_id'], unique=False)
+    op.create_index(op.f('ix_store_event_logs_retailer_id'), 'store_event_logs', ['retailer_id'], unique=False)
+
+    # 6. store_quotes
     op.create_table(
         'store_quotes',
         sa.Column('id', sa.Uuid(), nullable=False),
@@ -113,11 +132,11 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(['run_id'], ['comparison_runs.id'], ondelete='CASCADE'),
         sa.PrimaryKeyConstraint('id')
     )
-    op.create_index(op.f('ix_store_quotes_run_id'), 'store_quotes', ['run_id'], unique=False)
-    op.create_index(op.f('ix_store_quotes_retailer_id'), 'store_quotes', ['retailer_id'], unique=False)
     op.create_index(op.f('ix_store_quotes_cart_fingerprint'), 'store_quotes', ['cart_fingerprint'], unique=False)
+    op.create_index(op.f('ix_store_quotes_retailer_id'), 'store_quotes', ['retailer_id'], unique=False)
+    op.create_index(op.f('ix_store_quotes_run_id'), 'store_quotes', ['run_id'], unique=False)
 
-    # 6. quote_lines
+    # 7. quote_lines
     op.create_table(
         'quote_lines',
         sa.Column('id', sa.Uuid(), nullable=False),
@@ -144,7 +163,7 @@ def upgrade() -> None:
     op.create_index(op.f('ix_quote_lines_quote_id'), 'quote_lines', ['quote_id'], unique=False)
     op.create_index(op.f('ix_quote_lines_shopping_item_id'), 'quote_lines', ['shopping_item_id'], unique=False)
 
-    # 7. approvals
+    # 8. approvals
     op.create_table(
         'approvals',
         sa.Column('id', sa.Uuid(), nullable=False),
@@ -163,7 +182,7 @@ def upgrade() -> None:
     op.create_index(op.f('ix_approvals_idempotency_key'), 'approvals', ['idempotency_key'], unique=True)
     op.create_index(op.f('ix_approvals_quote_id'), 'approvals', ['quote_id'], unique=False)
 
-    # 8. order_receipts
+    # 9. order_receipts
     op.create_table(
         'order_receipts',
         sa.Column('id', sa.Uuid(), nullable=False),
@@ -180,7 +199,7 @@ def upgrade() -> None:
     op.create_index(op.f('ix_order_receipts_approval_id'), 'order_receipts', ['approval_id'], unique=True)
     op.create_index(op.f('ix_order_receipts_retailer_order_id'), 'order_receipts', ['retailer_order_id'], unique=False)
 
-    # 9. user_product_corrections
+    # 10. user_product_corrections
     op.create_table(
         'user_product_corrections',
         sa.Column('id', sa.Uuid(), nullable=False),
@@ -201,6 +220,7 @@ def downgrade() -> None:
     op.drop_table('approvals')
     op.drop_table('quote_lines')
     op.drop_table('store_quotes')
+    op.drop_table('store_event_logs')
     op.drop_table('comparison_runs')
     op.drop_table('comparison_snapshots')
     op.drop_table('shopping_list_items')

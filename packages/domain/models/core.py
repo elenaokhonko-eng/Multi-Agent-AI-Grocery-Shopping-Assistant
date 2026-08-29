@@ -1,8 +1,9 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import List, Optional, Dict, Any
+from typing import Any, Optional
 from uuid import UUID, uuid4
-from sqlmodel import Field, Relationship, SQLModel, Column, JSON
+
+from sqlmodel import JSON, Column, Field, Relationship, SQLModel
 
 
 class SubstitutionPolicy(str, Enum):
@@ -17,14 +18,14 @@ class ShoppingList(SQLModel, table=True):
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     name: str = Field(index=True)
-    description: Optional[str] = None
+    description: str | None = None
     version: int = Field(default=1)
     is_active: bool = Field(default=True)
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
-    items: List["ShoppingListItem"] = Relationship(back_populates="shopping_list", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
-    snapshots: List["ComparisonSnapshot"] = Relationship(back_populates="shopping_list", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+    items: list["ShoppingListItem"] = Relationship(back_populates="shopping_list", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+    snapshots: list["ComparisonSnapshot"] = Relationship(back_populates="shopping_list", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
 
 
 class ShoppingListItem(SQLModel, table=True):
@@ -33,19 +34,19 @@ class ShoppingListItem(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     shopping_list_id: UUID = Field(foreign_key="shopping_lists.id", index=True)
     name: str
-    category: Optional[str] = None
+    category: str | None = None
     desired_quantity: int = Field(default=1, ge=1)
     unit_measure: str = Field(default="pack")  # "kg", "g", "L", "ml", "pack", "pieces"
-    min_pack_size: Optional[str] = None
-    max_pack_size: Optional[str] = None
+    min_pack_size: str | None = None
+    max_pack_size: str | None = None
     must_have: bool = Field(default=True)
     is_enabled: bool = Field(default=True)
     substitution_policy: SubstitutionPolicy = Field(default=SubstitutionPolicy.SAME_BRAND_ONLY)
-    preferred_brands: List[str] = Field(default=[], sa_column=Column(JSON))
-    exclusions: List[str] = Field(default=[], sa_column=Column(JSON))
-    pinned_skus: Dict[str, str] = Field(default={}, sa_column=Column(JSON))  # e.g. {"fairprice": "FP_123"}
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    preferred_brands: list[str] = Field(default=[], sa_column=Column(JSON))
+    exclusions: list[str] = Field(default=[], sa_column=Column(JSON))
+    pinned_skus: dict[str, str] = Field(default={}, sa_column=Column(JSON))  # e.g. {"fairprice": "FP_123"}
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     shopping_list: ShoppingList = Relationship(back_populates="items")
 
@@ -56,11 +57,11 @@ class ComparisonSnapshot(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     shopping_list_id: UUID = Field(foreign_key="shopping_lists.id", index=True)
     list_version: int
-    frozen_items_json: List[Dict[str, Any]] = Field(sa_column=Column(JSON))
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    frozen_items_json: list[dict[str, Any]] = Field(sa_column=Column(JSON))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     shopping_list: ShoppingList = Relationship(back_populates="snapshots")
-    runs: List["ComparisonRun"] = Relationship(back_populates="snapshot", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+    runs: list["ComparisonRun"] = Relationship(back_populates="snapshot", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
 
 
 class ComparisonRun(SQLModel, table=True):
@@ -69,11 +70,29 @@ class ComparisonRun(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     snapshot_id: UUID = Field(foreign_key="comparison_snapshots.id", index=True)
     status: str = Field(default="QUEUED", index=True)
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    completed_at: Optional[datetime] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    completed_at: datetime | None = None
 
     snapshot: ComparisonSnapshot = Relationship(back_populates="runs")
-    quotes: List["StoreQuote"] = Relationship(back_populates="run", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+    quotes: list["StoreQuote"] = Relationship(back_populates="run", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+    event_logs: list["StoreEventLog"] = Relationship(back_populates="run", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+
+
+class StoreEventLog(SQLModel, table=True):
+    __tablename__ = "store_event_logs"
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    run_id: UUID = Field(foreign_key="comparison_runs.id", index=True)
+    retailer_id: str = Field(index=True)
+    from_state: str
+    to_state: str
+    progress_pct: int
+    message: str
+    action_type: str | None = None
+    resume_token: str | None = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+    run: ComparisonRun = Relationship(back_populates="event_logs")
 
 
 class StoreQuote(SQLModel, table=True):
@@ -82,10 +101,10 @@ class StoreQuote(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     run_id: UUID = Field(foreign_key="comparison_runs.id", index=True)
     retailer_id: str = Field(index=True)  # "fairprice", "shengsiong", "littlefarms", "redmart"
-    retailer_cart_id: Optional[str] = None
-    cart_url: Optional[str] = None
+    retailer_cart_id: str | None = None
+    cart_url: str | None = None
     cart_fingerprint: str = Field(index=True)
-    
+
     subtotal_cents: int
     promotions_discount_cents: int = Field(default=0)
     delivery_fee_cents: int = Field(default=0)
@@ -95,21 +114,21 @@ class StoreQuote(SQLModel, table=True):
     gross_total_cents: int
     derived_net_cents: int
     gst_cents: int
-    
-    free_delivery_threshold_cents: Optional[int] = None
+
+    free_delivery_threshold_cents: int | None = None
     amount_needed_for_free_delivery_cents: int = Field(default=0)
-    
+
     is_complete: bool = Field(default=False)
     missing_must_have_count: int = Field(default=0)
-    selected_delivery_slot_id: Optional[str] = None
-    selected_delivery_slot_window: Optional[str] = None
-    
+    selected_delivery_slot_id: str | None = None
+    selected_delivery_slot_window: str | None = None
+
     expires_at: datetime
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     run: ComparisonRun = Relationship(back_populates="quotes")
-    lines: List["QuoteLine"] = Relationship(back_populates="quote", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
-    approvals: List["Approval"] = Relationship(back_populates="quote", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+    lines: list["QuoteLine"] = Relationship(back_populates="quote", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+    approvals: list["Approval"] = Relationship(back_populates="quote", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
 
 
 class QuoteLine(SQLModel, table=True):
@@ -120,18 +139,18 @@ class QuoteLine(SQLModel, table=True):
     shopping_item_id: UUID = Field(index=True)
     retailer_sku: str
     product_title: str
-    product_brand: Optional[str] = None
+    product_brand: str | None = None
     product_url: str
-    image_url: Optional[str] = None
-    pack_size: Optional[str] = None
-    
+    image_url: str | None = None
+    pack_size: str | None = None
+
     requested_quantity: int
     packs_added: int
     is_in_stock: bool
     is_exact_match: bool
     is_substituted: bool = Field(default=False)
-    missing_reason: Optional[str] = None
-    
+    missing_reason: str | None = None
+
     unit_price_cents: int
     unit_measure: str = Field(default="pack")
     line_total_cents: int
@@ -149,7 +168,7 @@ class Approval(SQLModel, table=True):
     delivery_slot_id: str
     expected_fingerprint: str
     is_used: bool = Field(default=False)
-    approved_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    approved_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     expires_at: datetime
 
     quote: StoreQuote = Relationship(back_populates="approvals")
@@ -165,8 +184,8 @@ class OrderReceipt(SQLModel, table=True):
     retailer_id: str
     confirmed_total_cents: int
     confirmed_delivery_slot: str
-    receipt_url: Optional[str] = None
-    placed_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    receipt_url: str | None = None
+    placed_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     approval: Approval = Relationship(back_populates="receipt")
 
@@ -179,4 +198,4 @@ class UserProductCorrection(SQLModel, table=True):
     retailer_id: str = Field(index=True)
     preferred_sku: str
     preferred_title: str
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
