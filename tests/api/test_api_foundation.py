@@ -102,6 +102,7 @@ def test_live_purchase_safety_guard(client):
             gross_total_cents=1000,
             derived_net_cents=917,
             gst_cents=83,
+            is_complete=True,
             expires_at=datetime.now(UTC) + timedelta(minutes=30)
         )
         session.add(quote)
@@ -115,10 +116,10 @@ def test_live_purchase_safety_guard(client):
     approval_id = app_resp.json()["approval_id"]
     approval_token = app_resp.json()["approval_token"]
 
-    # Submit approval -> Must return 403 because LIVE_PURCHASE_ENABLED is False
+    # Submit approval -> Must return 503 because live checkout is not yet implemented
     sub_resp = client.post(f"/approvals/{approval_id}/submit", json={"approval_token": approval_token})
-    assert sub_resp.status_code == 403
-    assert "LIVE_PURCHASE_DISABLED" in sub_resp.json()["detail"]
+    assert sub_resp.status_code == 503
+    assert sub_resp.json()["detail"]["error"] == "LIVE_CHECKOUT_NOT_IMPLEMENTED"
 
 def test_quote_fingerprint_determinism():
     lines = [

@@ -270,15 +270,19 @@ export const CanonicalShoppingJourney: React.FC = () => {
     if (!approvalData) return;
     try {
       setIsApproving(true);
-      const confirmation = await api.submitApproval(approvalData.approval_id);
+      const confirmation = await api.submitApproval(approvalData.approval_id, approvalData.approval_token);
       setConfirmedOrder(confirmation);
       toast({
         title: 'Order Confirmed',
         description: `Retailer Order: ${confirmation.retailer_order_id}`,
       });
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Order submission failed';
-      toast({ title: 'Submission Error', description: msg, variant: 'destructive' });
+      // 503 means live checkout is not yet wired — show a clear, honest message
+      const isNotImplemented = err instanceof Error && err.message.includes('LIVE_CHECKOUT_NOT_IMPLEMENTED');
+      const msg = isNotImplemented
+        ? 'Live retailer checkout is not yet available. No order was placed. Your approval token is still valid.'
+        : err instanceof Error ? err.message : 'Order submission failed';
+      toast({ title: isNotImplemented ? 'Checkout Not Yet Available' : 'Submission Error', description: msg, variant: 'destructive' });
     } finally {
       setIsApproving(false);
     }
@@ -474,8 +478,9 @@ export const CanonicalShoppingJourney: React.FC = () => {
               Store Price & Basket Comparison
             </h2>
             {cheapest && (
-              <Badge className="bg-emerald-600 text-white px-3 py-1 text-sm font-semibold">
-                🏆 Best Complete Option: {cheapest.retailer_id.toUpperCase()} (${(cheapest.gross_total_cents / 100).toFixed(2)})
+              <Badge className={cheapest.is_complete ? "bg-emerald-600 text-white px-3 py-1 text-sm font-semibold" : "bg-amber-600 text-white px-3 py-1 text-sm font-semibold"}>
+                {cheapest.is_complete ? "🏆 Best Complete Option: " : "⚠️ Cheapest Incomplete Option: "}
+                {cheapest.retailer_id.toUpperCase()} (${(cheapest.gross_total_cents / 100).toFixed(2)})
               </Badge>
             )}
           </div>
@@ -504,11 +509,11 @@ export const CanonicalShoppingJourney: React.FC = () => {
                         <CardDescription className="text-xs">
                           {quote.is_complete ? (
                             <span className="text-emerald-600 font-medium flex items-center gap-1 mt-0.5">
-                              <CheckCircle2 className="w-3.5 h-3.5" /> 100% Items Matched
+                              <CheckCircle2 className="w-3.5 h-3.5" /> All Items Matched ({quote.lines.filter(l => l.is_in_stock).length}/{quote.lines.length})
                             </span>
                           ) : (
                             <span className="text-rose-500 font-medium flex items-center gap-1 mt-0.5">
-                              <AlertCircle className="w-3.5 h-3.5" /> {quote.missing_must_have_count} Missing Items
+                              <AlertCircle className="w-3.5 h-3.5" /> {quote.missing_must_have_count} Missing Items ({quote.lines.filter(l => l.is_in_stock).length}/{quote.lines.length} Matched)
                             </span>
                           )}
                         </CardDescription>
@@ -609,6 +614,7 @@ export const CanonicalShoppingJourney: React.FC = () => {
                             </div>
                             <div className="text-[10px] text-muted-foreground">
                               {line.pack_size && <span>Pack: {line.pack_size} | </span>}
+                              {line.unit_price_cents > 0 && <span>Unit: ${(line.unit_price_cents / 100).toFixed(2)}/{line.unit_measure || 'pk'} | </span>}
                               Qty: {line.packs_added} {line.unit_measure}
                               {line.missing_reason && (
                                 <span className="text-rose-500 font-semibold block">⚠️ {line.missing_reason}</span>
@@ -634,18 +640,24 @@ export const CanonicalShoppingJourney: React.FC = () => {
                   </CardContent>
 
                   <CardFooter className="pt-2">
-                    <Button 
-                      onClick={() => handleOpenApproval(quote)}
-                      disabled={isApproving}
-                      className={`w-full font-bold ${
-                        quote.is_complete 
-                          ? 'bg-emerald-600 hover:bg-emerald-500 text-white' 
-                          : 'bg-amber-600 hover:bg-amber-500 text-white'
-                      }`}
-                    >
-                      <ShieldCheck className="w-4 h-4 mr-1.5" />
-                      {quote.is_complete ? 'Lock & Approve Cart' : 'Approve Partial Cart'}
-                    </Button>
+                    {/* Finding #8: Only allow approval of complete carts */}
+                    {quote.is_complete ? (
+                      <Button 
+                        onClick={() => handleOpenApproval(quote)}
+                        disabled={isApproving}
+                        className="w-full font-bold bg-emerald-600 hover:bg-emerald-500 text-white"
+                      >
+                        <ShieldCheck className="w-4 h-4 mr-1.5" />
+                        Lock &amp; Approve Cart
+                      </Button>
+                    ) : (
+                      <div className="w-full text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 border border-amber-300 rounded-xl p-3 flex items-start gap-2">
+                        <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                        <span>
+                          <strong>{quote.missing_must_have_count} must-have item{quote.missing_must_have_count !== 1 ? 's' : ''} missing</strong> — approval is disabled until all items are found or removed from the list.
+                        </span>
+                      </div>
+                    )}
                   </CardFooter>
                 </Card>
               );
@@ -683,12 +695,22 @@ export const CanonicalShoppingJourney: React.FC = () => {
                 </div>
               </div>
 
-              {!selectedQuote.is_complete && (
-                <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-300 rounded-xl text-amber-800 dark:text-amber-200 text-xs flex gap-2">
-                  <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600" />
-                  <span>Warning: This cart has {selectedQuote.missing_must_have_count} missing must-have items. Proceeding will order only matched items.</span>
-                </div>
-              )}
+              {/* Itemized Basket in Modal */}
+              <div className="space-y-1.5 border rounded-xl p-3 bg-muted/20 max-h-40 overflow-y-auto">
+                <span className="text-xs font-semibold text-muted-foreground block">Itemized Approved Basket:</span>
+                {selectedQuote.lines.filter(l => l.is_in_stock).map(line => (
+                  <div key={line.retailer_sku} className="flex justify-between text-xs py-1 border-b last:border-0">
+                    <span className="truncate max-w-[240px]">{line.product_title} (x{line.packs_added})</span>
+                    <span className="font-medium shrink-0">${(line.line_total_cents / 100).toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Finding #3: Inform user that live checkout is not yet wired */}
+              <div className="p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-300 rounded-xl text-blue-800 dark:text-blue-200 text-xs flex gap-2">
+                <span className="font-semibold">ℹ️ Development status:</span>
+                <span>Live retailer checkout is not yet implemented. Clicking "Submit" will return a 503 and no order will be placed at any retailer.</span>
+              </div>
 
               <div className="text-xs text-muted-foreground">
                 Single-use Approval Token: <code className="bg-muted px-1.5 py-0.5 rounded">{approvalData.approval_token}</code>
@@ -702,6 +724,7 @@ export const CanonicalShoppingJourney: React.FC = () => {
                 onClick={handleConfirmOrder}
                 disabled={isApproving}
                 className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6"
+                title="Live checkout not yet implemented — will return 503"
               >
                 {isApproving ? 'Submitting to Retailer...' : 'Authorize & Submit Order'}
               </Button>

@@ -53,10 +53,10 @@ def test_adapter_contract_full_lifecycle(adapter_cls, store_id, expected_prefix)
         diff = await adapter.revalidate_cart(cart)
         assert diff.has_changes is False
 
-        # 6. Order Confirmation
-        conf = await adapter.submit_order("tok_test_approval")
-        assert conf.retailer_order_id.startswith(expected_prefix)
-        assert conf.confirmed_total_cents == cart.gross_total_cents
+        # 6. Order Confirmation - Must raise NotImplementedError until real checkout is wired
+        with pytest.raises(NotImplementedError) as exc_info:
+            await adapter.submit_order("tok_test_approval")
+        assert "Live checkout is not yet implemented" in str(exc_info.value)
 
     asyncio.run(_test())
 

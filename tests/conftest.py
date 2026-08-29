@@ -1,5 +1,9 @@
+import os
 import sys
 from pathlib import Path
+
+# Allow mock fallback only within the test suite
+os.environ["ALLOW_MOCK_FALLBACK"] = "true"
 
 import pytest
 from fastapi.testclient import TestClient

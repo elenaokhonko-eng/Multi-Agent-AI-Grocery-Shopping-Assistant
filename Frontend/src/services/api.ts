@@ -207,10 +207,12 @@ class ApiClient {
     });
   }
 
-  async submitApproval(approvalId: string): Promise<OrderConfirmationResponse> {
+  async submitApproval(approvalId: string, approvalToken: string): Promise<OrderConfirmationResponse> {
     return this.request<OrderConfirmationResponse>(`/approvals/${approvalId}/submit`, {
       method: 'POST',
-      body: JSON.stringify({}),
+      body: JSON.stringify({
+        approval_token: approvalToken,
+      }),
     });
   }
 }

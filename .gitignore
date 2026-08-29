@@ -45,6 +45,7 @@ MANIFEST
 
 # Virtual environments
 .venv
+uv.lock
 env/
 venv/
 ENV/

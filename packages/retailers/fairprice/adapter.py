@@ -82,8 +82,14 @@ class FairPriceAdapter(RetailerAdapter):
                 is_exact_match=True,
             ))
 
-        # 2. Resilient Recorded Supermarket Catalog (Ensures 100% Deterministic Offline Testing & Verification)
+        # 2. MOCK_FIXTURE — for offline/test use only.
+        # In live runs (ALLOW_MOCK_FALLBACK != true) a search miss is a hard failure.
         if not candidates:
+            if os.getenv("ALLOW_MOCK_FALLBACK", "false").lower() != "true":
+                raise RuntimeError(
+                    f"LIVE_RUN_MOCK_BLOCKED: FairPrice live search returned no results for '{query}'. "
+                    "Set ALLOW_MOCK_FALLBACK=true only in test environments."
+                )
             catalog = [
                 CandidateProduct(
                     store_id=self.retailer_id,
@@ -98,7 +104,7 @@ class FairPriceAdapter(RetailerAdapter):
                     product_url="https://www.fairprice.com.sg/product/meiji-fresh-milk-2l-102030",
                     image_url="https://images.fairprice.com.sg/102030.jpg",
                     in_stock=True,
-                    is_exact_match=True,
+                    is_exact_match=False,  # Mock fixture — not a verified live match
                 ),
                 CandidateProduct(
                     store_id=self.retailer_id,
@@ -113,7 +119,7 @@ class FairPriceAdapter(RetailerAdapter):
                     product_url="https://www.fairprice.com.sg/product/dasoon-fresh-eggs-112233",
                     image_url="https://images.fairprice.com.sg/112233.jpg",
                     in_stock=True,
-                    is_exact_match=True,
+                    is_exact_match=False,
                 ),
                 CandidateProduct(
                     store_id=self.retailer_id,
@@ -128,7 +134,7 @@ class FairPriceAdapter(RetailerAdapter):
                     product_url="https://www.fairprice.com.sg/product/fresh-lemons-123456",
                     image_url="https://images.fairprice.com.sg/123456.jpg",
                     in_stock=True,
-                    is_exact_match=True,
+                    is_exact_match=False,
                 ),
                 CandidateProduct(
                     store_id=self.retailer_id,
@@ -143,7 +149,7 @@ class FairPriceAdapter(RetailerAdapter):
                     product_url="https://www.fairprice.com.sg/product/san-pellegrino-1l-133445",
                     image_url="https://images.fairprice.com.sg/133445.jpg",
                     in_stock=True,
-                    is_exact_match=True,
+                    is_exact_match=False,
                 ),
             ]
             for p in catalog:
@@ -249,28 +255,7 @@ class FairPriceAdapter(RetailerAdapter):
         return CartDiff(has_changes=False, old_total_cents=old_total, new_total_cents=current_cart.gross_total_cents)
 
     async def submit_order(self, approval_token: str, slot_id: str = "") -> OrderConfirmation:
-        cart = await self.read_cart()
-        slot_label = self._selected_slot.display_label if self._selected_slot else "Next Available Standard"
-
-        # Check physical live purchase flag
-        live_enabled = os.getenv("LIVE_PURCHASE_ENABLED", "false").lower() == "true"
-        if not live_enabled:
-            return OrderConfirmation(
-                retailer_order_id=f"FP-DEMO-{uuid4().hex[:6].upper()}",
-                confirmed_total_cents=cart.gross_total_cents,
-                delivery_slot=slot_label,
-                receipt_url="https://www.fairprice.com.sg/orders/demo",
-                is_uncertain=True,
-                placed_at=datetime.now(UTC),
-            )
-
-        # In true live checkout, execute browser button click and parse confirmation from DOM
-        order_num = f"FP-ORD-{uuid4().hex[:8].upper()}"
-        return OrderConfirmation(
-            retailer_order_id=order_num,
-            confirmed_total_cents=cart.gross_total_cents,
-            delivery_slot=slot_label,
-            receipt_url=f"https://www.fairprice.com.sg/orders/{order_num}",
-            is_uncertain=False,
-            placed_at=datetime.now(UTC),
+        raise NotImplementedError(
+            "Live checkout is not yet implemented for FairPrice. "
+            "No retailer order was placed and no confirmation number was generated."
         )

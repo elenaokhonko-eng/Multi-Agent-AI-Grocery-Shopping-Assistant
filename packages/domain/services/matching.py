@@ -1,8 +1,4 @@
-"""
-High-precision product matching, pack size parsing, and unit conversion service.
-Enforces exclusion gates, taxonomy checks, and exact unit-to-pack conversions.
-"""
-
+import math
 import re
 from dataclasses import dataclass
 from typing import Any
@@ -28,6 +24,8 @@ PRODUCE_NEGATIVE_KEYWORDS = [
     "shampoo", "conditioner", "candle", "fragrance", "tea", "tea bag", "air freshener",
     "scented", "wipes", "sanitizer", "disinfectant", "beverage", "drink",
 ]
+
+STOP_WORDS = {"fresh", "organic", "the", "and", "a", "an", "of", "in", "pack", "item", "super"}
 
 
 def parse_pack_size(text: str) -> PackSpecification | None:
@@ -86,11 +84,10 @@ def calculate_required_packs(
     product_pack: PackSpecification | None
 ) -> tuple[int, str | None]:
     """
-    Calculate the exact number of packs to buy without accidentally multiplying quantities.
+    Calculate the exact number of packs to buy using math.ceil to prevent under-ordering.
     E.g. Desired 3 lemons (unit='pieces'):
     - Single lemon (pack=1s): packs_added = 3
     - 3s pack (pack=3s): packs_added = 1
-    - 3 packs of 3 lemons (pack=3s): REJECT if user only wanted 3 lemons total and desired_qty is in pieces
     """
     unit_norm = desired_unit.lower().strip()
 
@@ -101,12 +98,13 @@ def calculate_required_packs(
     pack_amount = product_pack.amount
     pack_unit = product_pack.unit
 
+    if pack_amount <= 0:
+        return max(1, desired_qty), None
+
     # If desired in pieces/units and item is sold as a pack of N
     if unit_norm in ["piece", "pieces", "unit", "units", "s", "item", "items"]:
         if pack_unit == "s" and pack_amount > 1:
-            # e.g. User wants 6 eggs, pack is 6 eggs -> 1 pack
-            # User wants 3 lemons, pack is 3 lemons -> 1 pack
-            packs = max(1, round(desired_qty / pack_amount))
+            packs = max(1, math.ceil(desired_qty / pack_amount))
             return packs, None
         return max(1, desired_qty), None
 
@@ -114,20 +112,20 @@ def calculate_required_packs(
     if unit_norm == "kg":
         if pack_unit == "g":
             desired_g = desired_qty * 1000.0
-            packs = max(1, round(desired_g / pack_amount))
+            packs = max(1, math.ceil(desired_g / pack_amount))
             return packs, None
         elif pack_unit == "kg":
-            packs = max(1, round(desired_qty / pack_amount))
+            packs = max(1, math.ceil(desired_qty / pack_amount))
             return packs, None
 
     # Volume matching (e.g. desired 2L vs 1L packs)
     if unit_norm in ["l", "liter", "litres"]:
         if pack_unit == "ml":
             desired_ml = desired_qty * 1000.0
-            packs = max(1, round(desired_ml / pack_amount))
+            packs = max(1, math.ceil(desired_ml / pack_amount))
             return packs, None
         elif pack_unit == "l":
-            packs = max(1, round(desired_qty / pack_amount))
+            packs = max(1, math.ceil(desired_qty / pack_amount))
             return packs, None
 
     return max(1, desired_qty), None
@@ -161,7 +159,17 @@ def match_product_candidate(
     if is_excluded:
         return False, 0, exc_reason
 
-    # 3. Check Preferred Brand rules if substitution policy is SAME_BRAND_ONLY
+    # 3. Check Name Token Overlap (at least one non-stopword token from item name must match)
+    item_name = item_spec.get("name", "").lower()
+    item_tokens = [t for t in re.findall(r"\b\w+\b", item_name) if t not in STOP_WORDS]
+    if item_tokens:
+        cand_title_lower = candidate_title.lower()
+        cand_cat_lower = (candidate_category or "").lower()
+        has_token_match = any(t in cand_title_lower or t in cand_cat_lower for t in item_tokens)
+        if not has_token_match:
+            return False, 0, f"No keyword overlap with '{item_name}'"
+
+    # 4. Check Preferred Brand rules if substitution policy is SAME_BRAND_ONLY
     pref_brands = [b.lower().strip() for b in (item_spec.get("preferred_brands") or []) if b]
     sub_policy = item_spec.get("substitution_policy", "SAME_BRAND_ONLY")
     if sub_policy == "SAME_BRAND_ONLY" and pref_brands:
@@ -171,8 +179,22 @@ def match_product_candidate(
         if not has_brand_match:
             return False, 0, f"Brand mismatch for {pref_brands}"
 
-    # 4. Parse Pack Size and calculate exact packs
+    # 5. Parse Pack Size and check Min/Max pack bounds if specified
     pack_spec = parse_pack_size(candidate_pack or candidate_title)
+    if pack_spec:
+        min_pack_str = item_spec.get("min_pack_size")
+        if min_pack_str:
+            min_spec = parse_pack_size(min_pack_str)
+            if min_spec and min_spec.unit == pack_spec.unit and pack_spec.amount < min_spec.amount:
+                return False, 0, f"Pack size {pack_spec.amount}{pack_spec.unit} below minimum {min_pack_str}"
+
+        max_pack_str = item_spec.get("max_pack_size")
+        if max_pack_str:
+            max_spec = parse_pack_size(max_pack_str)
+            if max_spec and max_spec.unit == pack_spec.unit and pack_spec.amount > max_spec.amount:
+                return False, 0, f"Pack size {pack_spec.amount}{pack_spec.unit} exceeds maximum {max_pack_str}"
+
+    # 6. Calculate required packs
     desired_qty = item_spec.get("desired_quantity", 1)
     desired_unit = item_spec.get("unit_measure", "pack")
 

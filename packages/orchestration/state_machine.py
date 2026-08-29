@@ -32,6 +32,8 @@ class StoreStateEvent(BaseModel):
     retailer_id: str
     run_id: str
     state: StoreState
+    from_state: StoreState | None = None
+    to_state: StoreState | None = None
     timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
     progress_pct: int = 0
     detail: str | None = None
@@ -39,6 +41,10 @@ class StoreStateEvent(BaseModel):
     resume_token: str | None = None
     quote_id: str | None = None
     error_code: str | None = None
+
+    @property
+    def store_id(self) -> str:
+        return self.retailer_id
 
 
 class StateMachine:
@@ -59,11 +65,14 @@ class StateMachine:
         quote_id: str | None = None,
         error_code: str | None = None
     ) -> StoreStateEvent:
+        prev_state = self.current_state
         self.current_state = new_state
         event = StoreStateEvent(
             retailer_id=self.retailer_id,
             run_id=self.run_id,
             state=new_state,
+            from_state=prev_state,
+            to_state=new_state,
             progress_pct=progress_pct,
             detail=detail,
             challenge_type=challenge_type,

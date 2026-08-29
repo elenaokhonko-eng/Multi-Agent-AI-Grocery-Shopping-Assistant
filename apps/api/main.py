@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -36,6 +37,8 @@ from packages.retailers import (
     RetailerAdapter,
     ShengSiongAdapter,
 )
+
+logger = logging.getLogger(__name__)
 
 # -----------------------------------------------------------------------------
 # Database Configuration
@@ -76,12 +79,15 @@ def broadcast_run_event(run_id: str, event: StoreStateEvent, session: Session | 
 
     # 2. Persist event to durable database log
     try:
+        from_st = str(event.from_state.value if isinstance(event.from_state, StoreState) else (event.from_state or event.state.value if isinstance(event.state, StoreState) else event.state))
+        to_st = str(event.to_state.value if isinstance(event.to_state, StoreState) else (event.to_state or event.state.value if isinstance(event.state, StoreState) else event.state))
+
         def persist(s: Session):
             db_event = StoreEventLog(
                 run_id=UUID(run_id),
-                retailer_id=event.store_id,
-                from_state=event.from_state,
-                to_state=event.to_state,
+                retailer_id=event.retailer_id,
+                from_state=from_st,
+                to_state=to_st,
                 progress_pct=event.progress_pct,
                 message=event.detail or "",
                 action_type=event.challenge_type,
@@ -96,8 +102,8 @@ def broadcast_run_event(run_id: str, event: StoreStateEvent, session: Session | 
         else:
             with Session(engine) as s:
                 persist(s)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("Failed to persist StoreEventLog for run %s: %s", run_id, e)
 
 
 # -----------------------------------------------------------------------------
@@ -180,12 +186,15 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+_cors_origins_raw = os.getenv("CORS_ALLOW_ORIGINS", "http://localhost:5173")
+_cors_origins = [o.strip() for o in _cors_origins_raw.split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=_cors_origins,
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-Idempotency-Key"],
 )
 
 
@@ -272,10 +281,17 @@ class ResumeStoreRequest(BaseModel):
 # Health & Status
 # -----------------------------------------------------------------------------
 @app.get("/health", tags=["System"])
-def health_check():
+def health_check(session: Session = Depends(get_session)):
     live_enabled = os.getenv("LIVE_PURCHASE_ENABLED", "false").lower() == "true"
+    db_status = "healthy"
+    try:
+        session.exec(select(ShoppingList).limit(1)).first()
+    except Exception as exc:
+        db_status = f"unhealthy: {exc}"
+
     return {
-        "status": "ok",
+        "status": "ok" if db_status == "healthy" else "degraded",
+        "database": db_status,
         "timestamp": datetime.now(UTC).isoformat(),
         "live_purchase_enabled": live_enabled,
         "live_purchasing_enabled": live_enabled,
@@ -678,15 +694,29 @@ async def start_comparison_run(payload: ComparisonRunCreate, session: Session = 
     run_id_str = str(crun.id)
     RUN_EVENT_QUEUES[run_id_str] = []
 
-    # Launch parallel store workers
-    for retailer_id in payload.target_retailers:
-        asyncio.create_task(
+    # Launch parallel store workers with completion tracking
+    async def coordinate_workers():
+        worker_tasks = [
             execute_live_retailer_worker(
-                retailer_id=retailer_id,
+                retailer_id=r_id,
                 run_id=run_id_str,
                 items=frozen_items,
             )
-        )
+            for r_id in payload.target_retailers
+        ]
+        await asyncio.gather(*worker_tasks, return_exceptions=True)
+        try:
+            with Session(engine) as s:
+                run_rec = s.get(ComparisonRun, UUID(run_id_str))
+                if run_rec:
+                    quotes_found = s.exec(select(StoreQuote).where(StoreQuote.run_id == UUID(run_id_str))).all()
+                    run_rec.status = "COMPLETED" if quotes_found else "FAILED"
+                    s.add(run_rec)
+                    s.commit()
+        except Exception as coord_err:
+            logger.warning("Error updating comparison run %s status: %s", run_id_str, coord_err)
+
+    asyncio.create_task(coordinate_workers())
 
     return {
         "run_id": crun.id,
@@ -711,6 +741,7 @@ def get_comparison_run(run_id: UUID, session: Session = Depends(get_session)):
             "quote_id": q.id,
             "retailer_id": q.retailer_id,
             "subtotal_cents": q.subtotal_cents,
+            "promotions_discount_cents": q.promotions_discount_cents,
             "delivery_fee_cents": q.delivery_fee_cents,
             "service_fee_cents": q.service_fee_cents,
             "bag_fee_cents": q.bag_fee_cents,
@@ -783,19 +814,23 @@ async def stream_comparison_events(run_id: UUID, request: Request, session: Sess
 
     async def event_generator() -> AsyncGenerator[str, None]:
         try:
-            # Replay historical events
+            # Replay historical events from DB (fields: retailer_id, from_state, to_state, state is not stored separately)
             for log in historical_logs:
-                evt = {
-                    "store_id": log.retailer_id,
-                    "from_state": log.from_state,
-                    "to_state": log.to_state,
-                    "progress_pct": log.progress_pct,
-                    "detail": log.message,
-                    "challenge_type": log.action_type,
-                    "resume_token": log.resume_token,
-                    "timestamp": log.created_at.isoformat(),
-                }
-                yield f"data: {json.dumps(evt)}\n\n"
+                try:
+                    evt = {
+                        "retailer_id": log.retailer_id,
+                        "state": log.to_state,
+                        "from_state": log.from_state,
+                        "to_state": log.to_state,
+                        "progress_pct": log.progress_pct,
+                        "detail": log.message,
+                        "challenge_type": log.action_type,
+                        "resume_token": log.resume_token,
+                        "timestamp": log.created_at.isoformat(),
+                    }
+                    yield f"data: {json.dumps(evt)}\n\n"
+                except Exception as replay_err:
+                    logger.warning("SSE historical replay error for run %s: %s", run_id_str, replay_err)
 
             # Stream real-time events
             while True:
@@ -803,17 +838,21 @@ async def stream_comparison_events(run_id: UUID, request: Request, session: Sess
                     break
                 try:
                     event: StoreStateEvent = await asyncio.wait_for(queue.get(), timeout=1.0)
-                    evt = {
-                        "store_id": event.store_id,
-                        "from_state": event.from_state,
-                        "to_state": event.to_state,
-                        "progress_pct": event.progress_pct,
-                        "detail": event.detail,
-                        "challenge_type": event.challenge_type,
-                        "resume_token": event.resume_token,
-                        "timestamp": event.timestamp.isoformat(),
-                    }
-                    yield f"data: {json.dumps(evt)}\n\n"
+                    try:
+                        evt = {
+                            "retailer_id": event.retailer_id,
+                            "state": event.state,
+                            "from_state": event.state,  # StoreStateEvent carries current state only
+                            "to_state": event.state,
+                            "progress_pct": event.progress_pct,
+                            "detail": event.detail,
+                            "challenge_type": event.challenge_type,
+                            "resume_token": event.resume_token,
+                            "timestamp": event.timestamp.isoformat(),
+                        }
+                        yield f"data: {json.dumps(evt)}\n\n"
+                    except Exception as ser_err:
+                        logger.warning("SSE serialization error for run %s: %s", run_id_str, ser_err)
                 except TimeoutError:
                     yield ": ping\n\n"
         finally:
@@ -899,6 +938,15 @@ def approve_quote_direct(quote_id: UUID, payload: QuoteApproveRequest, session: 
     if not quote:
         raise HTTPException(status_code=404, detail="Quote not found")
 
+    if not quote.is_complete:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "error": "INCOMPLETE_QUOTE_APPROVAL_FORBIDDEN",
+                "message": f"Cannot approve quote with {quote.missing_must_have_count} missing must-have items.",
+            },
+        )
+
     now = datetime.now(UTC)
     if ensure_utc(quote.expires_at) < now:
         raise HTTPException(status_code=400, detail="Quote has expired")
@@ -935,6 +983,15 @@ def create_approval(payload: ApprovalCreate, session: Session = Depends(get_sess
     quote = session.get(StoreQuote, payload.quote_id)
     if not quote:
         raise HTTPException(status_code=404, detail="Quote not found")
+
+    if not quote.is_complete:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "error": "INCOMPLETE_QUOTE_APPROVAL_FORBIDDEN",
+                "message": f"Cannot approve quote with {quote.missing_must_have_count} missing must-have items.",
+            },
+        )
 
     now = datetime.now(UTC)
     if ensure_utc(quote.expires_at) < now:
@@ -994,6 +1051,16 @@ async def submit_order_approval(approval_id: UUID, request: Request, session: Se
     if not quote:
         raise HTTPException(status_code=404, detail="Store quote not found")
 
+    # Finding #5: Fingerprint integrity check before any order action
+    if quote.cart_fingerprint != approval.expected_fingerprint:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "error": "FINGERPRINT_MISMATCH",
+                "message": "Cart fingerprint has changed since approval was created. Reapproval required.",
+            },
+        )
+
     # Authoritative Pre-Checkout Revalidation
     adapter_cls = ADAPTER_MAP.get(quote.retailer_id)
     if not adapter_cls:
@@ -1011,18 +1078,24 @@ async def submit_order_approval(approval_id: UUID, request: Request, session: Se
             },
         )
 
-    if os.getenv("LIVE_PURCHASE_ENABLED", "false").lower() != "true":
-        raise HTTPException(
-            status_code=403,
-            detail="LIVE_PURCHASE_DISABLED: Live transactions are disabled until architectural sign-off",
-        )
-
-    # Submit Order to Retailer
+    # Finding #3: Live checkout is not yet implemented — return 503 before any order is placed.
+    # This guard is unconditional: submit_order() raises NotImplementedError in all adapters.
+    # LIVE_PURCHASE_ENABLED check is removed; re-enable only when real browser checkout is wired.
     try:
-        confirmation = await adapter.submit_order(approval.approval_token, approval.delivery_slot_id)
-    except TypeError:
-        confirmation = await adapter.submit_order(approval.approval_token)
+        try:
+            confirmation = await adapter.submit_order(approval.approval_token, approval.delivery_slot_id)
+        except TypeError:
+            confirmation = await adapter.submit_order(approval.approval_token)
+    except NotImplementedError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "error": "LIVE_CHECKOUT_NOT_IMPLEMENTED",
+                "message": str(exc),
+            },
+        ) from exc
 
+    # Only reached once real browser checkout is wired and submit_order returns a genuine confirmation.
     receipt = OrderReceipt(
         approval_id=approval.id,
         retailer_order_id=confirmation.retailer_order_id,

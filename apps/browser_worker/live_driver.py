@@ -173,12 +173,4 @@ class LiveRetailerDriver:
     # RedMart Real Search & Scraper
     # -------------------------------------------------------------------------
     async def search_redmart(self, query: str) -> list[LiveProductResult]:
-        results: list[LiveProductResult] = []
-        try:
-            pass
-            # In live execution, Playwright or JSON API extracts RedMart listings
-            # Format results cleanly
-        except Exception as e:
-            logger.warning(f"Live RedMart search failed: {e}")
-
-        return results
+        raise NotImplementedError("Live RedMart scraping is not yet implemented.")

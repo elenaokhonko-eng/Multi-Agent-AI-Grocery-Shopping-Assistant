@@ -28,6 +28,7 @@ def test_tamper_approval_payload_rejects_extra_fields(client):
             gross_total_cents=2500,
             derived_net_cents=2294,
             gst_cents=206,
+            is_complete=True,
             expires_at=datetime.now(UTC) + timedelta(minutes=15)
         )
         session.add(quote)
@@ -62,6 +63,7 @@ def test_expired_quote_rejection(client):
             gross_total_cents=1000,
             derived_net_cents=917,
             gst_cents=83,
+            is_complete=True,
             expires_at=datetime.now(UTC) - timedelta(minutes=5)
         )
         session.add(expired_quote)
