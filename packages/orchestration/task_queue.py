@@ -151,9 +151,7 @@ class DurableTaskQueue:
     @staticmethod
     def reclaim_expired_leases(session: Session) -> int:
         now = datetime.now(UTC)
-        tasks = session.exec(
-            select(RetailerTask).where(RetailerTask.status.in_(["CLAIMED", "RUNNING"]))
-        ).all()
+        tasks = session.exec(select(RetailerTask).where(RetailerTask.status.in_(["CLAIMED", "RUNNING"]))).all()
         reclaimed_count = 0
         for task in tasks:
             if not task.lease_expires_at:

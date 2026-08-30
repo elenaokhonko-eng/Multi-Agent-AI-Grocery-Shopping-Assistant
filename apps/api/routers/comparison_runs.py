@@ -73,7 +73,9 @@ async def run_retailer_worker(
             if claimed_task_id:
                 try:
                     with session_factory() as s:
-                        DurableTaskQueue.fail_task(s, claimed_task_id, worker_id, f"Unsupported retailer: {retailer_id}")
+                        DurableTaskQueue.fail_task(
+                            s, claimed_task_id, worker_id, f"Unsupported retailer: {retailer_id}"
+                        )
                         DurableTaskQueue.aggregate_run_state(s, UUID(run_id))
                 except Exception:
                     pass

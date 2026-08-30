@@ -97,7 +97,9 @@ class RetailerTask(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     run_id: UUID = Field(foreign_key="comparison_runs.id", index=True)
     retailer_id: str = Field(index=True)
-    status: str = Field(default="QUEUED", index=True)  # QUEUED, CLAIMED, RUNNING, COMPLETED, FAILED, USER_ACTION_REQUIRED
+    status: str = Field(
+        default="QUEUED", index=True
+    )  # QUEUED, CLAIMED, RUNNING, COMPLETED, FAILED, USER_ACTION_REQUIRED
     lease_token: str | None = Field(default=None, index=True)
     lease_expires_at: datetime | None = Field(default=None, index=True)
     retry_count: int = Field(default=0)

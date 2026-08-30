@@ -3,7 +3,6 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import uuid4
 
-from apps.browser_worker.live_driver import LiveRetailerDriver
 from apps.browser_worker.session_manager import SessionManager
 from packages.domain.services.matching import is_excluded_by_negative_filter
 from packages.retailers.base import (
@@ -16,6 +15,7 @@ from packages.retailers.base import (
     RetailerAdapter,
     SessionStatus,
 )
+from packages.retailers.fairprice.page_objects import FairPricePageObject
 
 
 class FairPriceAdapter(RetailerAdapter):
@@ -26,18 +26,10 @@ class FairPriceAdapter(RetailerAdapter):
         self.session_profile_dir = session_profile_dir or str(sm.get_profile_path(self.retailer_id))
         self._cart_lines: dict[str, CartLine] = {}
         self._selected_slot: DeliverySlot | None = None
-        self._live_driver = LiveRetailerDriver(session_manager=sm)
+        self._page_object = FairPricePageObject()
 
     async def check_session(self) -> SessionStatus:
-        if not os.path.exists(self.session_profile_dir):
-            return SessionStatus(
-                is_authenticated=False,
-                requires_action=True,
-                action_type="LOGIN_REQUIRED",
-                resume_token=f"res_fp_{uuid4().hex[:8]}",
-                detail="FairPrice session profile not initialized. Run bootstrap login.",
-            )
-        return SessionStatus(is_authenticated=True, user_name="Elena")
+        return await self._page_object.check_session_status(self.session_profile_dir)
 
     async def resolve_pinned_sku(self, sku: str) -> CandidateProduct | None:
         if not sku or not sku.startswith("FP_"):
@@ -62,29 +54,13 @@ class FairPriceAdapter(RetailerAdapter):
         clean_query = query.lower().strip()
         candidates: list[CandidateProduct] = []
 
-        # 1. Attempt Live Online Search
-        live_items = await self._live_driver.search_fairprice(clean_query)
+        # 1. Live Online Search via FairPricePageObject
+        live_items = await self._page_object.search_products(clean_query)
         for item in live_items:
             is_excluded, _exc_reason = is_excluded_by_negative_filter(item.title, category=item.category)
             if is_excluded:
                 continue
-            candidates.append(
-                CandidateProduct(
-                    store_id=self.retailer_id,
-                    retailer_sku=item.retailer_sku,
-                    title=item.title,
-                    brand=item.brand,
-                    category=item.category,
-                    price_cents=item.price_cents,
-                    pack_size=item.pack_size,
-                    unit_measure=item.unit_measure,
-                    unit_price_cents=item.unit_price_cents,
-                    product_url=item.product_url,
-                    image_url=item.image_url,
-                    in_stock=item.in_stock,
-                    is_exact_match=True,
-                )
-            )
+            candidates.append(item)
 
         # 2. MOCK_FIXTURE — for offline/test use only.
         # In live runs (ALLOW_MOCK_FALLBACK != true) a search miss is a hard failure.
@@ -167,7 +143,6 @@ class FairPriceAdapter(RetailerAdapter):
     async def add_item_to_cart(self, sku: str, quantity: int) -> bool:
         if quantity <= 0:
             return False
-        # Calculate price based on sku
         unit_price = 345
         title = f"FairPrice Item {sku}"
         if "102030" in sku or "milk" in sku.lower():

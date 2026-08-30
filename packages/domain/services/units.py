@@ -55,6 +55,14 @@ class NormalizedPack:
     raw_text: str = ""
     parse_confidence: float = 1.0
 
+    @property
+    def unit(self) -> str:
+        return self.display_unit
+
+    @property
+    def amount(self) -> float:
+        return self.display_amount
+
 
 # Regex patterns
 MULTIPACK_RE = re.compile(r"(\d+)\s*x\s*(\d+(?:\.\d+)?)\s*(kg|g|l|ml|s|pcs|pieces|pack|pk)?", re.IGNORECASE)
@@ -206,3 +214,6 @@ def validate_pack_bounds(
                 )
 
     return True, None
+
+
+parse_pack_size = parse_normalized_pack
