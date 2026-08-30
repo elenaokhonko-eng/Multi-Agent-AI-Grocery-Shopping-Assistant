@@ -4,6 +4,7 @@ from typing import Any
 from uuid import uuid4
 
 from apps.browser_worker.live_driver import LiveRetailerDriver
+from apps.browser_worker.session_manager import SessionManager
 from packages.domain.services.matching import is_excluded_by_negative_filter
 from packages.retailers.base import (
     AuthoritativeCart,
@@ -21,10 +22,11 @@ class RedMartAdapter(RetailerAdapter):
     retailer_id = "redmart"
 
     def __init__(self, session_profile_dir: str | None = None):
-        self.session_profile_dir = session_profile_dir or os.path.expanduser("~/.profiles/redmart")
+        sm = SessionManager()
+        self.session_profile_dir = session_profile_dir or str(sm.get_profile_path(self.retailer_id))
         self._cart_lines: dict[str, CartLine] = {}
         self._selected_slot: DeliverySlot | None = None
-        self._live_driver = LiveRetailerDriver()
+        self._live_driver = LiveRetailerDriver(session_manager=sm)
 
     async def check_session(self) -> SessionStatus:
         if not os.path.exists(self.session_profile_dir):
@@ -69,21 +71,23 @@ class RedMartAdapter(RetailerAdapter):
             is_excluded, _ = is_excluded_by_negative_filter(item.title, category=item.category)
             if is_excluded:
                 continue
-            candidates.append(CandidateProduct(
-                store_id=self.retailer_id,
-                retailer_sku=item.retailer_sku,
-                title=item.title,
-                brand=item.brand,
-                category=item.category,
-                price_cents=item.price_cents,
-                pack_size=item.pack_size,
-                unit_measure=item.unit_measure,
-                unit_price_cents=item.unit_price_cents,
-                product_url=item.product_url,
-                image_url=item.image_url,
-                in_stock=item.in_stock,
-                is_exact_match=True,
-            ))
+            candidates.append(
+                CandidateProduct(
+                    store_id=self.retailer_id,
+                    retailer_sku=item.retailer_sku,
+                    title=item.title,
+                    brand=item.brand,
+                    category=item.category,
+                    price_cents=item.price_cents,
+                    pack_size=item.pack_size,
+                    unit_measure=item.unit_measure,
+                    unit_price_cents=item.unit_price_cents,
+                    product_url=item.product_url,
+                    image_url=item.image_url,
+                    in_stock=item.in_stock,
+                    is_exact_match=True,
+                )
+            )
 
         # 2. MOCK_FIXTURE — for offline/test use only.
         # In live runs (ALLOW_MOCK_FALLBACK != true) a search miss is a hard failure.
@@ -243,7 +247,11 @@ class RedMartAdapter(RetailerAdapter):
 
     async def revalidate_cart(self, expected_quote: Any) -> CartDiff:
         current_cart = await self.read_cart()
-        old_total = expected_quote.gross_total_cents if hasattr(expected_quote, "gross_total_cents") else current_cart.gross_total_cents
+        old_total = (
+            expected_quote.gross_total_cents
+            if hasattr(expected_quote, "gross_total_cents")
+            else current_cart.gross_total_cents
+        )
         if current_cart.gross_total_cents != old_total:
             return CartDiff(
                 has_changes=True,

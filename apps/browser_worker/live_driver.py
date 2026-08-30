@@ -58,29 +58,37 @@ class LiveRetailerDriver:
                     sku = str(p.get("sku") or p.get("id") or f"FP_{p.get('name', 'item')}")
                     title = p.get("name") or "Product"
                     brand = p.get("brand", {}).get("name") if isinstance(p.get("brand"), dict) else p.get("brand")
-                    price_num = float(p.get("storeSpecificData", [{}])[0].get("price") or p.get("finalPrice") or p.get("price") or 0.0)
+                    price_num = float(
+                        p.get("storeSpecificData", [{}])[0].get("price") or p.get("finalPrice") or p.get("price") or 0.0
+                    )
                     price_cents = round(price_num * 100)
-                    image = p.get("images", [None])[0] if isinstance(p.get("images"), list) and p.get("images") else None
+                    image = (
+                        p.get("images", [None])[0] if isinstance(p.get("images"), list) and p.get("images") else None
+                    )
                     pack = p.get("metaData", {}).get("DisplayUnit") or p.get("weight")
                     in_stock = not bool(p.get("outOfStock", False))
 
                     pack_spec = parse_pack_size(pack or title)
                     unit_measure = pack_spec.unit if pack_spec else "pack"
-                    unit_price = round(price_cents / pack_spec.amount) if pack_spec and pack_spec.amount > 0 else price_cents
+                    unit_price = (
+                        round(price_cents / pack_spec.amount) if pack_spec and pack_spec.amount > 0 else price_cents
+                    )
 
-                    results.append(LiveProductResult(
-                        retailer_sku=f"FP_{sku}",
-                        title=title,
-                        brand=brand,
-                        category="Groceries",
-                        price_cents=price_cents,
-                        pack_size=pack or (pack_spec.raw_text if pack_spec else None),
-                        unit_measure=unit_measure,
-                        unit_price_cents=unit_price,
-                        image_url=image,
-                        product_url=f"https://www.fairprice.com.sg/product/{sku}",
-                        in_stock=in_stock
-                    ))
+                    results.append(
+                        LiveProductResult(
+                            retailer_sku=f"FP_{sku}",
+                            title=title,
+                            brand=brand,
+                            category="Groceries",
+                            price_cents=price_cents,
+                            pack_size=pack or (pack_spec.raw_text if pack_spec else None),
+                            unit_measure=unit_measure,
+                            unit_price_cents=unit_price,
+                            image_url=image,
+                            product_url=f"https://www.fairprice.com.sg/product/{sku}",
+                            in_stock=in_stock,
+                        )
+                    )
         except Exception as e:
             logger.warning(f"Live FairPrice search failed: {e}")
 
@@ -108,21 +116,25 @@ class LiveRetailerDriver:
 
                     pack_spec = parse_pack_size(pack or title)
                     unit_measure = pack_spec.unit if pack_spec else "pack"
-                    unit_price = round(price_cents / pack_spec.amount) if pack_spec and pack_spec.amount > 0 else price_cents
+                    unit_price = (
+                        round(price_cents / pack_spec.amount) if pack_spec and pack_spec.amount > 0 else price_cents
+                    )
 
-                    results.append(LiveProductResult(
-                        retailer_sku=f"SS_{sku}",
-                        title=title,
-                        brand=item.get("brand", "Sheng Siong"),
-                        category=item.get("category", "Groceries"),
-                        price_cents=price_cents,
-                        pack_size=pack or (pack_spec.raw_text if pack_spec else None),
-                        unit_measure=unit_measure,
-                        unit_price_cents=unit_price,
-                        image_url=image,
-                        product_url=f"https://allforyou.sg/product/{sku}",
-                        in_stock=in_stock
-                    ))
+                    results.append(
+                        LiveProductResult(
+                            retailer_sku=f"SS_{sku}",
+                            title=title,
+                            brand=item.get("brand", "Sheng Siong"),
+                            category=item.get("category", "Groceries"),
+                            price_cents=price_cents,
+                            pack_size=pack or (pack_spec.raw_text if pack_spec else None),
+                            unit_measure=unit_measure,
+                            unit_price_cents=unit_price,
+                            image_url=image,
+                            product_url=f"https://allforyou.sg/product/{sku}",
+                            in_stock=in_stock,
+                        )
+                    )
         except Exception as e:
             logger.warning(f"Live Sheng Siong search failed: {e}")
 
@@ -149,21 +161,25 @@ class LiveRetailerDriver:
                     in_stock = bool(p.get("available", True))
                     pack_spec = parse_pack_size(title)
                     unit_measure = pack_spec.unit if pack_spec else "pack"
-                    unit_price = round(price_cents / pack_spec.amount) if pack_spec and pack_spec.amount > 0 else price_cents
+                    unit_price = (
+                        round(price_cents / pack_spec.amount) if pack_spec and pack_spec.amount > 0 else price_cents
+                    )
 
-                    results.append(LiveProductResult(
-                        retailer_sku=f"LF_{sku}",
-                        title=title,
-                        brand=p.get("vendor", "Little Farms"),
-                        category="Organic & Fresh",
-                        price_cents=price_cents,
-                        pack_size=pack_spec.raw_text if pack_spec else "1 unit",
-                        unit_measure=unit_measure,
-                        unit_price_cents=unit_price,
-                        image_url=image,
-                        product_url=f"https://littlefarms.com/products/{p.get('handle', sku)}",
-                        in_stock=in_stock
-                    ))
+                    results.append(
+                        LiveProductResult(
+                            retailer_sku=f"LF_{sku}",
+                            title=title,
+                            brand=p.get("vendor", "Little Farms"),
+                            category="Organic & Fresh",
+                            price_cents=price_cents,
+                            pack_size=pack_spec.raw_text if pack_spec else "1 unit",
+                            unit_measure=unit_measure,
+                            unit_price_cents=unit_price,
+                            image_url=image,
+                            product_url=f"https://littlefarms.com/products/{p.get('handle', sku)}",
+                            in_stock=in_stock,
+                        )
+                    )
         except Exception as e:
             logger.warning(f"Live Little Farms search failed: {e}")
 

@@ -9,6 +9,4 @@ class QuoteRepository:
         self.session = session
 
     def get_run_quotes(self, run_id: UUID) -> list[StoreQuote]:
-        return list(self.session.exec(
-            select(StoreQuote).where(StoreQuote.run_id == run_id)
-        ).all())
+        return list(self.session.exec(select(StoreQuote).where(StoreQuote.run_id == run_id)).all())

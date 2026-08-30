@@ -30,7 +30,7 @@ def test_approve_incomplete_quote_direct_rejected_with_422(client):
             gst_cents=124,
             is_complete=False,
             missing_must_have_count=2,
-            expires_at=datetime.now(UTC) + timedelta(minutes=15)
+            expires_at=datetime.now(UTC) + timedelta(minutes=15),
         )
         session.add(quote)
         session.commit()
@@ -67,7 +67,7 @@ def test_create_approval_incomplete_quote_rejected_with_422(client):
             gst_cents=99,
             is_complete=False,
             missing_must_have_count=1,
-            expires_at=datetime.now(UTC) + timedelta(minutes=15)
+            expires_at=datetime.now(UTC) + timedelta(minutes=15),
         )
         session.add(quote)
         session.commit()

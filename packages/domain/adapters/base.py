@@ -4,6 +4,7 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
+
 class RetailerAdapter(ABC):
     """
     Abstract interface for retailer adapters (e.g. FairPrice, Little Farms).

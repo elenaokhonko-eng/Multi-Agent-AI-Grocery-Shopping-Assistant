@@ -32,11 +32,12 @@ export interface ComparisonRunInit {
   run_id: string;
   snapshot_id: string;
   status: string;
-  retailers: string[];
+  target_retailers: string[];
   created_at: string;
 }
 
 export interface QuoteLineItem {
+  id?: string;
   shopping_item_id: string;
   retailer_sku: string;
   product_title: string;
@@ -65,51 +66,93 @@ export interface DeliverySlotItem {
 }
 
 export interface StoreQuoteSummary {
-  quote_id: string;
+  id: string;
+  quote_id?: string;
+  run_id: string;
   retailer_id: string;
+  cart_url?: string;
+  cart_fingerprint: string;
   subtotal_cents: number;
+  promotions_discount_cents: number;
   delivery_fee_cents: number;
   service_fee_cents: number;
   bag_fee_cents: number;
   slot_fee_cents: number;
   gross_total_cents: number;
+  derived_net_cents: number;
   gst_cents: number;
   free_delivery_threshold_cents?: number;
   amount_needed_for_free_delivery_cents: number;
   is_complete: boolean;
+  is_all_items_complete: boolean;
+  is_required_complete: boolean;
+  requested_item_count: number;
+  found_item_count: number;
+  missing_item_count: number;
   missing_must_have_count: number;
   selected_delivery_slot_id?: string;
   selected_delivery_slot_window?: string;
-  cart_url?: string;
-  lines: QuoteLineItem[];
+  expires_at: string;
+  lines?: QuoteLineItem[];
+}
+
+export interface StoreEventLog {
+  id: string;
+  run_id: string;
+  retailer_id: string;
+  from_state?: string;
+  to_state: string;
+  progress_pct: number;
+  message?: string;
+  action_type?: string;
+  resume_token?: string;
+  created_at: string;
 }
 
 export interface ComparisonRunDetails {
+  id: string;
   run_id: string;
   snapshot_id: string;
   status: string;
+  cheapest_complete_store?: string;
   created_at: string;
+  completed_at?: string;
   quotes: StoreQuoteSummary[];
+  event_logs?: StoreEventLog[];
 }
 
 export interface ApprovalResponse {
   approval_id: string;
   approval_token: string;
-  store_id: string;
+  quote_id: string;
+  retailer_id: string;
   gross_total_cents: number;
+  expected_fingerprint: string;
   delivery_slot_id: string;
   expires_at: string;
+  lines?: QuoteLineItem[];
 }
 
 export interface OrderConfirmationResponse {
   status: string;
+  order_id?: string;
   receipt_id: string;
   retailer_order_id: string;
   retailer_id: string;
   confirmed_total_cents: number;
-  delivery_slot: string;
+  confirmed_delivery_slot: string;
   receipt_url?: string;
   placed_at: string;
+}
+
+export interface SessionStatusResponse {
+  retailer_id: string;
+  is_authenticated: boolean;
+  user_name?: string;
+  requires_action: boolean;
+  action_type?: string;
+  resume_token?: string;
+  detail?: string;
 }
 
 class ApiClient {
@@ -152,6 +195,13 @@ class ApiClient {
     return this.request<ShoppingList>(`/shopping-lists/${id}`);
   }
 
+  async createShoppingList(name: string, description?: string): Promise<ShoppingList> {
+    return this.request<ShoppingList>('/shopping-lists', {
+      method: 'POST',
+      body: JSON.stringify({ name, description }),
+    });
+  }
+
   async addItem(listId: string, item: Omit<ShoppingListItem, 'id'>): Promise<ShoppingListItem> {
     return this.request<ShoppingListItem>(`/shopping-lists/${listId}/items`, {
       method: 'POST',
@@ -186,25 +236,40 @@ class ApiClient {
     return this.request<ComparisonRunDetails>(`/comparison-runs/${runId}`);
   }
 
-  async getDeliverySlots(runId: string, quoteId: string): Promise<DeliverySlotItem[]> {
-    return this.request<DeliverySlotItem[]>(`/comparison-runs/${runId}/quotes/${quoteId}/delivery-slots`);
+  async getQuote(quoteId: string): Promise<StoreQuoteSummary> {
+    return this.request<StoreQuoteSummary>(`/quotes/${quoteId}`);
   }
 
-  async selectDeliverySlot(runId: string, quoteId: string, slotId: string): Promise<StoreQuoteSummary> {
-    return this.request<StoreQuoteSummary>(`/comparison-runs/${runId}/quotes/${quoteId}/select-slot`, {
+  async selectQuoteSlot(quoteId: string, slotId: string): Promise<StoreQuoteSummary> {
+    return this.request<StoreQuoteSummary>(`/quotes/${quoteId}/select-slot`, {
       method: 'POST',
       body: JSON.stringify({ slot_id: slotId }),
     });
   }
 
-  async createApproval(quoteId: string, deliverySlotId: string): Promise<ApprovalResponse> {
+  async approveQuote(quoteId: string, deliverySlotId: string, idempotencyKey?: string): Promise<ApprovalResponse> {
+    return this.request<ApprovalResponse>(`/quotes/${quoteId}/approve`, {
+      method: 'POST',
+      body: JSON.stringify({
+        delivery_slot_id: deliverySlotId,
+        idempotency_key: idempotencyKey,
+      }),
+    });
+  }
+
+  async createApproval(quoteId: string, deliverySlotId: string, idempotencyKey?: string): Promise<ApprovalResponse> {
     return this.request<ApprovalResponse>('/approvals', {
       method: 'POST',
       body: JSON.stringify({
         quote_id: quoteId,
         delivery_slot_id: deliverySlotId,
+        idempotency_key: idempotencyKey,
       }),
     });
+  }
+
+  async getApproval(approvalId: string): Promise<ApprovalResponse> {
+    return this.request<ApprovalResponse>(`/approvals/${approvalId}`);
   }
 
   async submitApproval(approvalId: string, approvalToken: string): Promise<OrderConfirmationResponse> {
@@ -214,6 +279,31 @@ class ApiClient {
         approval_token: approvalToken,
       }),
     });
+  }
+
+  async checkRetailerSession(retailerId: string): Promise<SessionStatusResponse> {
+    return this.request<SessionStatusResponse>(`/retailer-sessions/${retailerId}/status`);
+  }
+
+  async launchRetailerSession(retailerId: string): Promise<{ status: string; message: string }> {
+    return this.request<{ status: string; message: string }>(`/retailer-sessions/${retailerId}/headed`, {
+      method: 'POST',
+    });
+  }
+
+  async resumeRetailerSession(runId: string, retailerId: string, resumeToken: string): Promise<{ status: string }> {
+    return this.request<{ status: string }>('/retailer-sessions/resume', {
+      method: 'POST',
+      body: JSON.stringify({
+        run_id: runId,
+        retailer_id: retailerId,
+        resume_token: resumeToken,
+      }),
+    });
+  }
+
+  async getOrderReceipt(orderId: string): Promise<OrderConfirmationResponse> {
+    return this.request<OrderConfirmationResponse>(`/orders/${orderId}`);
   }
 }
 

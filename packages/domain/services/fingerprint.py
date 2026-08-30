@@ -16,12 +16,14 @@ def compute_quote_fingerprint(
     """
     normalized_lines = []
     for line in sorted(lines, key=lambda x: str(x.get("retailer_sku", "")).strip()):
-        normalized_lines.append({
-            "sku": str(line.get("retailer_sku", "")).strip(),
-            "quantity": int(line.get("quantity", line.get("packs_added", 1))),
-            "unit_price_cents": int(line.get("unit_price_cents", 0)),
-            "line_total_cents": int(line.get("line_total_cents", 0)),
-        })
+        normalized_lines.append(
+            {
+                "sku": str(line.get("retailer_sku", "")).strip(),
+                "quantity": int(line.get("quantity", line.get("packs_added", 1))),
+                "unit_price_cents": int(line.get("unit_price_cents", 0)),
+                "line_total_cents": int(line.get("line_total_cents", 0)),
+            }
+        )
 
     canonical_payload = {
         "retailer_id": str(retailer_id).lower().strip(),

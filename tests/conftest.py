@@ -17,6 +17,8 @@ if str(root_dir / "packages") not in sys.path:
 if str(root_dir / "apps") not in sys.path:
     sys.path.insert(0, str(root_dir / "apps"))
 
+import domain.models.core  # noqa: E402, F401
+
 from apps.api.main import app, get_session  # noqa: E402
 
 # In-memory shared engine per test session with StaticPool
@@ -26,17 +28,21 @@ test_engine = create_engine(
     poolclass=StaticPool,
 )
 
+
 def override_get_session():
     with Session(test_engine) as session:
         yield session
 
+
 app.dependency_overrides[get_session] = override_get_session
+
 
 @pytest.fixture(autouse=True)
 def db_session():
     SQLModel.metadata.create_all(test_engine)
     yield
     SQLModel.metadata.drop_all(test_engine)
+
 
 @pytest.fixture
 def client():

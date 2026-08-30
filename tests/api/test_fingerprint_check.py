@@ -30,7 +30,7 @@ def test_submit_order_rejects_tampered_fingerprint_with_409(client):
             derived_net_cents=2294,
             gst_cents=206,
             is_complete=True,
-            expires_at=datetime.now(UTC) + timedelta(minutes=15)
+            expires_at=datetime.now(UTC) + timedelta(minutes=15),
         )
         session.add(quote)
         session.commit()
@@ -43,7 +43,7 @@ def test_submit_order_rejects_tampered_fingerprint_with_409(client):
             delivery_slot_id="slot_morning",
             expected_fingerprint="fp_original_111",
             is_used=False,
-            expires_at=datetime.now(UTC) + timedelta(minutes=15)
+            expires_at=datetime.now(UTC) + timedelta(minutes=15),
         )
         session.add(approval)
         session.commit()
@@ -51,10 +51,7 @@ def test_submit_order_rejects_tampered_fingerprint_with_409(client):
         approval_id = str(approval.id)
 
     # Submitting with mismatched fingerprint must return 409 FINGERPRINT_MISMATCH
-    resp = client.post(
-        f"/approvals/{approval_id}/submit",
-        json={"approval_token": "tok_fp_tamper"}
-    )
+    resp = client.post(f"/approvals/{approval_id}/submit", json={"approval_token": "tok_fp_tamper"})
     assert resp.status_code == 409
     data = resp.json()
     assert data["detail"]["error"] == "FINGERPRINT_MISMATCH"

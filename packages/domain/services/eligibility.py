@@ -1,11 +1,7 @@
-
 from domain.models.core import ShoppingList, StoreQuote
 
 
-def evaluate_quote_completeness(
-    shopping_list: ShoppingList,
-    quote: StoreQuote
-) -> bool:
+def evaluate_quote_completeness(shopping_list: ShoppingList, quote: StoreQuote) -> bool:
     """
     Evaluates whether a quote fulfills all 'must_have' items in the shopping list.
     """
@@ -25,6 +21,7 @@ def rank_quotes(quotes: list[StoreQuote]) -> list[StoreQuote]:
     1. Complete quotes always outrank incomplete quotes.
     2. Within the same completeness tier, rank by lowest gross_total_cents.
     """
+
     def sorting_key(q: StoreQuote) -> tuple[int, int]:
         total = getattr(q, "gross_total_cents", getattr(q, "total_cents", 0))
         return (not q.is_complete, total)

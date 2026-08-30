@@ -21,7 +21,9 @@ class ShoppingListRepository:
     def list_all(self) -> list[ShoppingList]:
         return list(self.session.exec(select(ShoppingList)).all())
 
-    def add_item(self, shopping_list_id: UUID, name: str, quantity: int = 1, must_have: bool = True) -> ShoppingListItem:
+    def add_item(
+        self, shopping_list_id: UUID, name: str, quantity: int = 1, must_have: bool = True
+    ) -> ShoppingListItem:
         item = ShoppingListItem(
             shopping_list_id=shopping_list_id,
             name=name,

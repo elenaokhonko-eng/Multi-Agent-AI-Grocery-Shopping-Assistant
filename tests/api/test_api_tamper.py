@@ -29,7 +29,7 @@ def test_tamper_approval_payload_rejects_extra_fields(client):
             derived_net_cents=2294,
             gst_cents=206,
             is_complete=True,
-            expires_at=datetime.now(UTC) + timedelta(minutes=15)
+            expires_at=datetime.now(UTC) + timedelta(minutes=15),
         )
         session.add(quote)
         session.commit()
@@ -40,6 +40,7 @@ def test_tamper_approval_payload_rejects_extra_fields(client):
     assert resp.status_code == 200
     approval_data = resp.json()
     assert approval_data["gross_total_cents"] == 2500
+
 
 def test_expired_quote_rejection(client):
     with Session(test_engine) as session:
@@ -64,7 +65,7 @@ def test_expired_quote_rejection(client):
             derived_net_cents=917,
             gst_cents=83,
             is_complete=True,
-            expires_at=datetime.now(UTC) - timedelta(minutes=5)
+            expires_at=datetime.now(UTC) - timedelta(minutes=5),
         )
         session.add(expired_quote)
         session.commit()
@@ -74,6 +75,7 @@ def test_expired_quote_rejection(client):
     resp = client.post(f"/quotes/{quote_id}/approve", json={"delivery_slot_id": "slot_1"})
     assert resp.status_code == 400
     assert "expired" in resp.json()["detail"].lower()
+
 
 def test_reused_approval_token_rejection(client):
     with Session(test_engine) as session:
@@ -97,7 +99,7 @@ def test_reused_approval_token_rejection(client):
             gross_total_cents=1000,
             derived_net_cents=917,
             gst_cents=83,
-            expires_at=datetime.now(UTC) + timedelta(minutes=15)
+            expires_at=datetime.now(UTC) + timedelta(minutes=15),
         )
         session.add(quote)
         session.commit()
@@ -109,7 +111,7 @@ def test_reused_approval_token_rejection(client):
             delivery_slot_id="slot_1",
             expected_fingerprint="fp_reused",
             is_used=True,
-            expires_at=datetime.now(UTC) + timedelta(minutes=15)
+            expires_at=datetime.now(UTC) + timedelta(minutes=15),
         )
         session.add(approval)
         session.commit()
@@ -119,6 +121,7 @@ def test_reused_approval_token_rejection(client):
     resp = client.post(f"/approvals/{approval_id}/submit", json={"approval_token": "tok_already_used"})
     assert resp.status_code == 409
     assert "already been used" in resp.json()["detail"].lower()
+
 
 def test_invalid_token_rejection(client):
     with Session(test_engine) as session:
@@ -142,7 +145,7 @@ def test_invalid_token_rejection(client):
             gross_total_cents=1000,
             derived_net_cents=917,
             gst_cents=83,
-            expires_at=datetime.now(UTC) + timedelta(minutes=15)
+            expires_at=datetime.now(UTC) + timedelta(minutes=15),
         )
         session.add(quote)
         session.commit()
@@ -154,7 +157,7 @@ def test_invalid_token_rejection(client):
             delivery_slot_id="slot_1",
             expected_fingerprint="fp_auth",
             is_used=False,
-            expires_at=datetime.now(UTC) + timedelta(minutes=15)
+            expires_at=datetime.now(UTC) + timedelta(minutes=15),
         )
         session.add(approval)
         session.commit()

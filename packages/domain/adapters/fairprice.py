@@ -35,15 +35,25 @@ class FairPriceAdapter(RetailerAdapter):
             with sync_playwright() as p:
                 browser = p.chromium.launch(headless=False)
 
-                auth_file = os.path.join(os.path.dirname(__file__), "..", "..", "..", "Backend", "auth_sessions", f"{self.store_name.lower()}_auth.json")
+                auth_file = os.path.join(
+                    os.path.dirname(__file__),
+                    "..",
+                    "..",
+                    "..",
+                    "Backend",
+                    "auth_sessions",
+                    f"{self.store_name.lower()}_auth.json",
+                )
                 if os.path.exists(auth_file):
                     logger.info(f"[{self.store_name} Adapter] Found saved auth session: {auth_file}")
                     context = browser.new_context(
                         user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-                        storage_state=auth_file
+                        storage_state=auth_file,
                     )
                 else:
-                    context = browser.new_context(user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+                    context = browser.new_context(
+                        user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+                    )
 
                 page = context.new_page()
                 Stealth().apply_stealth_sync(page)
@@ -59,13 +69,16 @@ class FairPriceAdapter(RetailerAdapter):
                     browser.close()
                     return {
                         "address": "Not logged in (Run save_fairprice_session.py)",
-                        "payment_method": "Not logged in"
+                        "payment_method": "Not logged in",
                     }
 
                 try:
                     from bs4 import BeautifulSoup
-                    soup = BeautifulSoup(page.content(), 'html.parser')
-                    address_divs = soup.find_all('div', attrs={"data-testid": lambda value: value and "address" in value.lower()})
+
+                    soup = BeautifulSoup(page.content(), "html.parser")
+                    address_divs = soup.find_all(
+                        "div", attrs={"data-testid": lambda value: value and "address" in value.lower()}
+                    )
                     if not address_divs:
                         text = soup.body.get_text(separator=" ", strip=True)
                         if "Elena" in text or "Singapore" in text:
@@ -81,16 +94,10 @@ class FairPriceAdapter(RetailerAdapter):
                     final_address = "Failed to extract address from HTML."
 
                 browser.close()
-                return {
-                    "address": final_address,
-                    "payment_method": "Visa (Saved on Account)"
-                }
+                return {"address": final_address, "payment_method": "Visa (Saved on Account)"}
         except Exception as e:
             logger.error(f"[{self.store_name} Adapter] Failed to fetch checkout details: {e}")
-            return {
-                "address": "Failed to scrape address",
-                "payment_method": "Failed to scrape payment"
-            }
+            return {"address": "Failed to scrape address", "payment_method": "Failed to scrape payment"}
 
     def checkout(self, items: list[dict[str, Any]]) -> bool:
         logger.info(f"[{self.store_name} Adapter] Proceeding to checkout safely...")
@@ -104,7 +111,9 @@ class FairPriceAdapter(RetailerAdapter):
                 Stealth().apply_stealth_sync(page)
                 self._login(page)
                 logger.info(f"[{self.store_name} Adapter] Navigated to cart page...")
-                logger.info(f"[{self.store_name} Adapter] [SAFETY STOP]: Stopping before final payment processing to prevent accidental charges.")
+                logger.info(
+                    f"[{self.store_name} Adapter] [SAFETY STOP]: Stopping before final payment processing to prevent accidental charges."
+                )
                 browser.close()
                 return True
         except Exception as e:

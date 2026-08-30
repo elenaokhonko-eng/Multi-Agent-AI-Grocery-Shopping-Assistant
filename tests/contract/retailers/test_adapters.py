@@ -10,12 +10,15 @@ from packages.retailers.redmart.adapter import RedMartAdapter
 from packages.retailers.shengsiong.adapter import ShengSiongAdapter
 
 
-@pytest.mark.parametrize("adapter_cls, store_id, expected_prefix", [
-    (FairPriceAdapter, "fairprice", "FP-"),
-    (ShengSiongAdapter, "shengsiong", "SS-"),
-    (LittleFarmsAdapter, "littlefarms", "LF-"),
-    (RedMartAdapter, "redmart", "RM-"),
-])
+@pytest.mark.parametrize(
+    "adapter_cls, store_id, expected_prefix",
+    [
+        (FairPriceAdapter, "fairprice", "FP-"),
+        (ShengSiongAdapter, "shengsiong", "SS-"),
+        (LittleFarmsAdapter, "littlefarms", "LF-"),
+        (RedMartAdapter, "redmart", "RM-"),
+    ],
+)
 def test_adapter_contract_full_lifecycle(adapter_cls, store_id, expected_prefix):
     async def _test():
         adapter: RetailerAdapter = adapter_cls()

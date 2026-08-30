@@ -7,9 +7,7 @@ from domain.models.core import (
 )
 from sqlmodel import Session
 
-from apps.api.main import (
-    execute_live_retailer_worker,
-)
+from apps.api.main import execute_live_retailer_worker
 from packages.retailers.base import (
     AuthoritativeCart,
     CandidateProduct,
@@ -28,6 +26,7 @@ from tests.conftest import test_engine
 # -----------------------------------------------------------------------------
 class MockStoreA_ShengSiong(RetailerAdapter):
     """Store A: Cheapest overall, but missing Eggs (partial)."""
+
     retailer_id = "shengsiong"
 
     async def check_session(self) -> SessionStatus:
@@ -38,25 +37,29 @@ class MockStoreA_ShengSiong(RetailerAdapter):
 
     async def search_candidates(self, query: str, category_hint=None):
         if "lemon" in query.lower():
-            return [CandidateProduct(
-                store_id="shengsiong",
-                retailer_sku="SS_LEMON",
-                title="Lemons 3s",
-                price_cents=150,
-                product_url="https://allforyou.sg/lemon",
-                in_stock=True,
-                is_exact_match=True
-            )]
+            return [
+                CandidateProduct(
+                    store_id="shengsiong",
+                    retailer_sku="SS_LEMON",
+                    title="Lemons 3s",
+                    price_cents=150,
+                    product_url="https://allforyou.sg/lemon",
+                    in_stock=True,
+                    is_exact_match=True,
+                )
+            ]
         elif "water" in query.lower():
-            return [CandidateProduct(
-                store_id="shengsiong",
-                retailer_sku="SS_WATER",
-                title="Sparkling Water 1L",
-                price_cents=200,
-                product_url="https://allforyou.sg/water",
-                in_stock=True,
-                is_exact_match=True
-            )]
+            return [
+                CandidateProduct(
+                    store_id="shengsiong",
+                    retailer_sku="SS_WATER",
+                    title="Sparkling Water 1L",
+                    price_cents=200,
+                    product_url="https://allforyou.sg/water",
+                    in_stock=True,
+                    is_exact_match=True,
+                )
+            ]
         # Eggs are NOT in stock!
         return []
 
@@ -72,18 +75,30 @@ class MockStoreA_ShengSiong(RetailerAdapter):
             retailer_id="shengsiong",
             cart_id="cart_ss_qa",
             lines=[
-                CartLine(retailer_sku="SS_LEMON", title="Lemons 3s", quantity=1, unit_price_cents=150, line_total_cents=150),
-                CartLine(retailer_sku="SS_WATER", title="Sparkling Water", quantity=1, unit_price_cents=200, line_total_cents=200),
+                CartLine(
+                    retailer_sku="SS_LEMON", title="Lemons 3s", quantity=1, unit_price_cents=150, line_total_cents=150
+                ),
+                CartLine(
+                    retailer_sku="SS_WATER",
+                    title="Sparkling Water",
+                    quantity=1,
+                    unit_price_cents=200,
+                    line_total_cents=200,
+                ),
             ],
             subtotal_cents=350,
             delivery_fee_cents=400,
             gross_total_cents=750,
-            unowned_items_detected=False
+            unowned_items_detected=False,
         )
 
     async def list_delivery_slots(self):
         now = datetime.now(UTC)
-        return [DeliverySlot(slot_id="slot_ss_1", start_time=now, end_time=now+timedelta(hours=2), display_label="Morning")]
+        return [
+            DeliverySlot(
+                slot_id="slot_ss_1", start_time=now, end_time=now + timedelta(hours=2), display_label="Morning"
+            )
+        ]
 
     async def select_delivery_slot(self, slot_id):
         return True
@@ -97,6 +112,7 @@ class MockStoreA_ShengSiong(RetailerAdapter):
 
 class MockStoreB_FairPrice(RetailerAdapter):
     """Store B: Complete and cheapest eligible."""
+
     retailer_id = "fairprice"
 
     def __init__(self, simulate_out_of_stock_on_revalidate=False):
@@ -110,35 +126,41 @@ class MockStoreB_FairPrice(RetailerAdapter):
 
     async def search_candidates(self, query: str, category_hint=None):
         if "lemon" in query.lower():
-            return [CandidateProduct(
-                store_id="fairprice",
-                retailer_sku="FP_LEMON",
-                title="Lemons 3s",
-                price_cents=200,
-                product_url="https://fairprice.com.sg/lemon",
-                in_stock=True,
-                is_exact_match=True
-            )]
+            return [
+                CandidateProduct(
+                    store_id="fairprice",
+                    retailer_sku="FP_LEMON",
+                    title="Lemons 3s",
+                    price_cents=200,
+                    product_url="https://fairprice.com.sg/lemon",
+                    in_stock=True,
+                    is_exact_match=True,
+                )
+            ]
         elif "egg" in query.lower():
-            return [CandidateProduct(
-                store_id="fairprice",
-                retailer_sku="FP_EGG",
-                title="Fresh Eggs 10s",
-                price_cents=320,
-                product_url="https://fairprice.com.sg/egg",
-                in_stock=True,
-                is_exact_match=True
-            )]
+            return [
+                CandidateProduct(
+                    store_id="fairprice",
+                    retailer_sku="FP_EGG",
+                    title="Fresh Eggs 10s",
+                    price_cents=320,
+                    product_url="https://fairprice.com.sg/egg",
+                    in_stock=True,
+                    is_exact_match=True,
+                )
+            ]
         elif "water" in query.lower():
-            return [CandidateProduct(
-                store_id="fairprice",
-                retailer_sku="FP_WATER",
-                title="Sparkling Water 1L",
-                price_cents=280,
-                product_url="https://fairprice.com.sg/water",
-                in_stock=True,
-                is_exact_match=True
-            )]
+            return [
+                CandidateProduct(
+                    store_id="fairprice",
+                    retailer_sku="FP_WATER",
+                    title="Sparkling Water 1L",
+                    price_cents=280,
+                    product_url="https://fairprice.com.sg/water",
+                    in_stock=True,
+                    is_exact_match=True,
+                )
+            ]
         return []
 
     def validate_candidate(self, candidate, desired_item):
@@ -153,19 +175,37 @@ class MockStoreB_FairPrice(RetailerAdapter):
             retailer_id="fairprice",
             cart_id="cart_fp_qa",
             lines=[
-                CartLine(retailer_sku="FP_LEMON", title="Lemons 3s", quantity=1, unit_price_cents=200, line_total_cents=200),
-                CartLine(retailer_sku="FP_EGG", title="Fresh Eggs 10s", quantity=1, unit_price_cents=320, line_total_cents=320),
-                CartLine(retailer_sku="FP_WATER", title="Sparkling Water", quantity=1, unit_price_cents=280, line_total_cents=280),
+                CartLine(
+                    retailer_sku="FP_LEMON", title="Lemons 3s", quantity=1, unit_price_cents=200, line_total_cents=200
+                ),
+                CartLine(
+                    retailer_sku="FP_EGG",
+                    title="Fresh Eggs 10s",
+                    quantity=1,
+                    unit_price_cents=320,
+                    line_total_cents=320,
+                ),
+                CartLine(
+                    retailer_sku="FP_WATER",
+                    title="Sparkling Water",
+                    quantity=1,
+                    unit_price_cents=280,
+                    line_total_cents=280,
+                ),
             ],
             subtotal_cents=800,
             delivery_fee_cents=550,
             gross_total_cents=1350,
-            unowned_items_detected=False
+            unowned_items_detected=False,
         )
 
     async def list_delivery_slots(self):
         now = datetime.now(UTC)
-        return [DeliverySlot(slot_id="slot_fp_1", start_time=now, end_time=now+timedelta(hours=2), display_label="Tomorrow Morning")]
+        return [
+            DeliverySlot(
+                slot_id="slot_fp_1", start_time=now, end_time=now + timedelta(hours=2), display_label="Tomorrow Morning"
+            )
+        ]
 
     async def select_delivery_slot(self, slot_id):
         return True
@@ -178,16 +218,19 @@ class MockStoreB_FairPrice(RetailerAdapter):
                 old_total_cents=1350,
                 new_total_cents=1030,
                 items_out_of_stock=["FP_EGG"],
-                detail="Fresh Eggs 10s went out of stock during pre-submission check."
+                detail="Fresh Eggs 10s went out of stock during pre-submission check.",
             )
         return CartDiff(has_changes=False, old_total_cents=1350, new_total_cents=1350)
 
     async def submit_order(self, approval_token):
-        return OrderConfirmation(retailer_order_id="FP-CONF-9876", confirmed_total_cents=1350, delivery_slot="Tomorrow Morning")
+        return OrderConfirmation(
+            retailer_order_id="FP-CONF-9876", confirmed_total_cents=1350, delivery_slot="Tomorrow Morning"
+        )
 
 
 class MockStoreC_RedMart(RetailerAdapter):
     """Store C: Requires human verification / login (USER_ACTION_REQUIRED)."""
+
     retailer_id = "redmart"
 
     async def check_session(self) -> SessionStatus:
@@ -196,31 +239,40 @@ class MockStoreC_RedMart(RetailerAdapter):
             requires_action=True,
             action_type="LOGIN_EXPIRED",
             resume_token="res_rm_test_challenge",
-            detail="RedMart login expired. Please authenticate in browser."
+            detail="RedMart login expired. Please authenticate in browser.",
         )
 
     async def resolve_pinned_sku(self, sku: str):
         return None
+
     async def search_candidates(self, query: str, category_hint=None):
         return []
+
     def validate_candidate(self, candidate, desired_item):
         return True
+
     async def add_exact_item(self, sku: str, quantity: int):
         return False
+
     async def read_cart(self):
         return AuthoritativeCart(retailer_id="redmart")
+
     async def list_delivery_slots(self):
         return []
+
     async def select_delivery_slot(self, slot_id):
         return False
+
     async def revalidate_cart(self, expected_fingerprint):
         return CartDiff(has_changes=False)
+
     async def submit_order(self, approval_token):
         return OrderConfirmation(retailer_order_id="RM-ERR", confirmed_total_cents=0, delivery_slot="")
 
 
 class MockStoreD_LittleFarms(RetailerAdapter):
     """Store D: Fails/errors without breaking other stores."""
+
     retailer_id = "littlefarms"
 
     async def check_session(self) -> SessionStatus:
@@ -228,20 +280,28 @@ class MockStoreD_LittleFarms(RetailerAdapter):
 
     async def resolve_pinned_sku(self, sku: str):
         return None
+
     async def search_candidates(self, query: str, category_hint=None):
         return []
+
     def validate_candidate(self, candidate, desired_item):
         return True
+
     async def add_exact_item(self, sku: str, quantity: int):
         return False
+
     async def read_cart(self):
         return AuthoritativeCart(retailer_id="littlefarms")
+
     async def list_delivery_slots(self):
         return []
+
     async def select_delivery_slot(self, slot_id):
         return False
+
     async def revalidate_cart(self, expected_fingerprint):
         return CartDiff(has_changes=False)
+
     async def submit_order(self, approval_token):
         return OrderConfirmation(retailer_order_id="LF-ERR", confirmed_total_cents=0, delivery_slot="")
 
@@ -268,15 +328,21 @@ def test_master_scenario_qa_06(client, monkeypatch):
     list_id = list_resp.json()["id"]
 
     # Add lemons, eggs, and water (lemons and eggs are must_have)
-    client.post(f"/shopping-lists/{list_id}/items", json={"name": "Fresh Lemons", "desired_quantity": 1, "must_have": True})
-    client.post(f"/shopping-lists/{list_id}/items", json={"name": "Fresh Eggs 10s", "desired_quantity": 1, "must_have": True})
-    client.post(f"/shopping-lists/{list_id}/items", json={"name": "Sparkling Water", "desired_quantity": 1, "must_have": False})
+    client.post(
+        f"/shopping-lists/{list_id}/items", json={"name": "Fresh Lemons", "desired_quantity": 1, "must_have": True}
+    )
+    client.post(
+        f"/shopping-lists/{list_id}/items", json={"name": "Fresh Eggs 10s", "desired_quantity": 1, "must_have": True}
+    )
+    client.post(
+        f"/shopping-lists/{list_id}/items", json={"name": "Sparkling Water", "desired_quantity": 1, "must_have": False}
+    )
 
     # 2. Trigger comparison run
-    run_resp = client.post("/comparison-runs", json={
-        "shopping_list_id": list_id,
-        "retailer_ids": ["fairprice", "shengsiong", "littlefarms", "redmart"]
-    })
+    run_resp = client.post(
+        "/comparison-runs",
+        json={"shopping_list_id": list_id, "retailer_ids": ["fairprice", "shengsiong", "littlefarms", "redmart"]},
+    )
     assert run_resp.status_code == 202
     run_id = run_resp.json()["run_id"]
     snapshot_id = run_resp.json()["snapshot_id"]
@@ -289,10 +355,26 @@ def test_master_scenario_qa_06(client, monkeypatch):
     # Run the 4 mock stores through execute_live_retailer_worker concurrently
     async def run_all_stores():
         await asyncio.gather(
-            execute_live_retailer_worker(run_id, "shengsiong", frozen_items, lambda: Session(test_engine), adapter_override=MockStoreA_ShengSiong()),
-            execute_live_retailer_worker(run_id, "fairprice", frozen_items, lambda: Session(test_engine), adapter_override=MockStoreB_FairPrice()),
-            execute_live_retailer_worker(run_id, "redmart", frozen_items, lambda: Session(test_engine), adapter_override=MockStoreC_RedMart()),
-            execute_live_retailer_worker(run_id, "littlefarms", frozen_items, lambda: Session(test_engine), adapter_override=MockStoreD_LittleFarms()),
+            execute_live_retailer_worker(
+                run_id,
+                "shengsiong",
+                frozen_items,
+                lambda: Session(test_engine),
+                adapter_override=MockStoreA_ShengSiong(),
+            ),
+            execute_live_retailer_worker(
+                run_id, "fairprice", frozen_items, lambda: Session(test_engine), adapter_override=MockStoreB_FairPrice()
+            ),
+            execute_live_retailer_worker(
+                run_id, "redmart", frozen_items, lambda: Session(test_engine), adapter_override=MockStoreC_RedMart()
+            ),
+            execute_live_retailer_worker(
+                run_id,
+                "littlefarms",
+                frozen_items,
+                lambda: Session(test_engine),
+                adapter_override=MockStoreD_LittleFarms(),
+            ),
         )
 
     asyncio.run(run_all_stores())
@@ -328,6 +410,7 @@ def test_master_scenario_qa_06(client, monkeypatch):
     # 5. Step 7: Simulate Eggs going out of stock during pre-submission revalidation
     # Re-wire adapter to simulate cart diff
     from apps.api import main as api_module
+
     api_module.ADAPTER_MAP["fairprice"] = lambda: MockStoreB_FairPrice(simulate_out_of_stock_on_revalidate=True)
 
     # Submitting should fail with REAPPROVAL_REQUIRED (409 Conflict)

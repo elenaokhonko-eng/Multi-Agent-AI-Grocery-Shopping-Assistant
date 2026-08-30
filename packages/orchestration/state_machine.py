@@ -63,7 +63,7 @@ class StateMachine:
         challenge_type: str | None = None,
         resume_token: str | None = None,
         quote_id: str | None = None,
-        error_code: str | None = None
+        error_code: str | None = None,
     ) -> StoreStateEvent:
         prev_state = self.current_state
         self.current_state = new_state
@@ -78,7 +78,7 @@ class StateMachine:
             challenge_type=challenge_type,
             resume_token=resume_token,
             quote_id=quote_id,
-            error_code=error_code
+            error_code=error_code,
         )
         self.history.append(event)
         if self.event_callback:

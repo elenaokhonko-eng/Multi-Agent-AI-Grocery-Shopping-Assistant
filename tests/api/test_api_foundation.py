@@ -14,6 +14,7 @@ def test_health_endpoint(client):
     assert data["status"] == "ok"
     assert "live_purchase_enabled" in data
 
+
 def test_shopping_list_crud(client):
     # 1. Create list
     create_resp = client.post("/shopping-lists", json={"name": "Weekly Test List", "description": "Testing"})
@@ -24,15 +25,18 @@ def test_shopping_list_crud(client):
     assert list_data["version"] == 1
 
     # 2. Add item
-    item_resp = client.post(f"/shopping-lists/{list_id}/items", json={
-        "name": "Meiji Milk 2L",
-        "category": "Dairy",
-        "desired_quantity": 2,
-        "unit_measure": "L",
-        "must_have": True,
-        "preferred_brands": ["Meiji"],
-        "pinned_skus": {"fairprice": "FP_123"}
-    })
+    item_resp = client.post(
+        f"/shopping-lists/{list_id}/items",
+        json={
+            "name": "Meiji Milk 2L",
+            "category": "Dairy",
+            "desired_quantity": 2,
+            "unit_measure": "L",
+            "must_have": True,
+            "preferred_brands": ["Meiji"],
+            "pinned_skus": {"fairprice": "FP_123"},
+        },
+    )
     assert item_resp.status_code == 201
     item_data = item_resp.json()
     item_id = item_data["id"]
@@ -54,6 +58,7 @@ def test_shopping_list_crud(client):
     del_resp = client.delete(f"/shopping-lists/{list_id}/items/{item_id}")
     assert del_resp.status_code == 204
 
+
 def test_comparison_run_and_approval_flow(client):
     # 1. Create list and item
     list_resp = client.post("/shopping-lists", json={"name": "Run List"})
@@ -61,10 +66,9 @@ def test_comparison_run_and_approval_flow(client):
     client.post(f"/shopping-lists/{list_id}/items", json={"name": "Eggs 10s", "desired_quantity": 1, "must_have": True})
 
     # 2. Start comparison run
-    run_resp = client.post("/comparison-runs", json={
-        "shopping_list_id": list_id,
-        "retailer_ids": ["fairprice", "shengsiong"]
-    })
+    run_resp = client.post(
+        "/comparison-runs", json={"shopping_list_id": list_id, "retailer_ids": ["fairprice", "shengsiong"]}
+    )
     assert run_resp.status_code == 202
     run_data = run_resp.json()
     run_id = run_data["run_id"]
@@ -74,6 +78,7 @@ def test_comparison_run_and_approval_flow(client):
     # 3. Fetch comparison run
     get_run_resp = client.get(f"/comparison-runs/{run_id}")
     assert get_run_resp.status_code == 200
+
 
 def test_live_purchase_safety_guard(client):
     list_resp = client.post("/shopping-lists", json={"name": "Safety List"})
@@ -103,7 +108,7 @@ def test_live_purchase_safety_guard(client):
             derived_net_cents=917,
             gst_cents=83,
             is_complete=True,
-            expires_at=datetime.now(UTC) + timedelta(minutes=30)
+            expires_at=datetime.now(UTC) + timedelta(minutes=30),
         )
         session.add(quote)
         session.commit()
@@ -120,6 +125,7 @@ def test_live_purchase_safety_guard(client):
     sub_resp = client.post(f"/approvals/{approval_id}/submit", json={"approval_token": approval_token})
     assert sub_resp.status_code == 503
     assert sub_resp.json()["detail"]["error"] == "LIVE_CHECKOUT_NOT_IMPLEMENTED"
+
 
 def test_quote_fingerprint_determinism():
     lines = [

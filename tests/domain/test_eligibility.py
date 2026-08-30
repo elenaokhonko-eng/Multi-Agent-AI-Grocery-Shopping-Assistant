@@ -13,11 +13,14 @@ def _create_mock_shopping_list():
     sl_id = uuid.uuid4()
     item1 = ShoppingListItem(id=uuid.uuid4(), name="eggs", desired_quantity=1, must_have=True, shopping_list_id=sl_id)
     item2 = ShoppingListItem(id=uuid.uuid4(), name="milk", desired_quantity=1, must_have=True, shopping_list_id=sl_id)
-    item3 = ShoppingListItem(id=uuid.uuid4(), name="apples", desired_quantity=1, must_have=False, shopping_list_id=sl_id)
+    item3 = ShoppingListItem(
+        id=uuid.uuid4(), name="apples", desired_quantity=1, must_have=False, shopping_list_id=sl_id
+    )
 
     sl = ShoppingList(id=sl_id, name="Groceries")
     sl.items = [item1, item2, item3]
     return sl, item1, item2, item3
+
 
 def test_evaluate_quote_completeness_complete():
     sl, item1, item2, _item3 = _create_mock_shopping_list()
@@ -32,7 +35,7 @@ def test_evaluate_quote_completeness_complete():
         gross_total_cents=800,
         derived_net_cents=734,
         gst_cents=66,
-        expires_at=datetime.now(UTC)
+        expires_at=datetime.now(UTC),
     )
     ql1 = QuoteLine(
         id=uuid.uuid4(),
@@ -46,7 +49,7 @@ def test_evaluate_quote_completeness_complete():
         is_in_stock=True,
         is_exact_match=True,
         unit_price_cents=500,
-        line_total_cents=500
+        line_total_cents=500,
     )
     ql2 = QuoteLine(
         id=uuid.uuid4(),
@@ -60,12 +63,13 @@ def test_evaluate_quote_completeness_complete():
         is_in_stock=True,
         is_exact_match=True,
         unit_price_cents=300,
-        line_total_cents=300
+        line_total_cents=300,
     )
 
     quote.lines = [ql1, ql2]
 
     assert evaluate_quote_completeness(sl, quote) is True
+
 
 def test_evaluate_quote_completeness_incomplete():
     sl, item1, _item2, _item3 = _create_mock_shopping_list()
@@ -81,7 +85,7 @@ def test_evaluate_quote_completeness_incomplete():
         gross_total_cents=500,
         derived_net_cents=459,
         gst_cents=41,
-        expires_at=datetime.now(UTC)
+        expires_at=datetime.now(UTC),
     )
     ql1 = QuoteLine(
         id=uuid.uuid4(),
@@ -95,12 +99,13 @@ def test_evaluate_quote_completeness_incomplete():
         is_in_stock=True,
         is_exact_match=True,
         unit_price_cents=500,
-        line_total_cents=500
+        line_total_cents=500,
     )
 
     quote.lines = [ql1]
 
     assert evaluate_quote_completeness(sl, quote) is False
+
 
 def test_rank_quotes_partial_never_outranks_complete():
     # Quote A: Incomplete but cheaper (S$30)
@@ -115,7 +120,7 @@ def test_rank_quotes_partial_never_outranks_complete():
         derived_net_cents=2752,
         gst_cents=248,
         is_complete=False,
-        expires_at=datetime.now(UTC)
+        expires_at=datetime.now(UTC),
     )
 
     # Quote B: Complete but more expensive (S$40)
@@ -130,7 +135,7 @@ def test_rank_quotes_partial_never_outranks_complete():
         derived_net_cents=3670,
         gst_cents=330,
         is_complete=True,
-        expires_at=datetime.now(UTC)
+        expires_at=datetime.now(UTC),
     )
 
     ranked = rank_quotes([quote_a, quote_b])
@@ -138,10 +143,47 @@ def test_rank_quotes_partial_never_outranks_complete():
     assert ranked[0].id == quote_b.id
     assert ranked[1].id == quote_a.id
 
+
 def test_cheapest_complete_quote():
-    q1 = StoreQuote(id=uuid.uuid4(), run_id=uuid.uuid4(), retailer_id="StoreA", cart_fingerprint="fp1", subtotal_cents=3000, delivery_fee_cents=0, gross_total_cents=3000, derived_net_cents=2752, gst_cents=248, is_complete=False, expires_at=datetime.now(UTC))
-    q2 = StoreQuote(id=uuid.uuid4(), run_id=uuid.uuid4(), retailer_id="StoreB", cart_fingerprint="fp2", subtotal_cents=5000, delivery_fee_cents=0, gross_total_cents=5000, derived_net_cents=4587, gst_cents=413, is_complete=True, expires_at=datetime.now(UTC))
-    q3 = StoreQuote(id=uuid.uuid4(), run_id=uuid.uuid4(), retailer_id="StoreC", cart_fingerprint="fp3", subtotal_cents=4500, delivery_fee_cents=0, gross_total_cents=4500, derived_net_cents=4128, gst_cents=372, is_complete=True, expires_at=datetime.now(UTC))
+    q1 = StoreQuote(
+        id=uuid.uuid4(),
+        run_id=uuid.uuid4(),
+        retailer_id="StoreA",
+        cart_fingerprint="fp1",
+        subtotal_cents=3000,
+        delivery_fee_cents=0,
+        gross_total_cents=3000,
+        derived_net_cents=2752,
+        gst_cents=248,
+        is_complete=False,
+        expires_at=datetime.now(UTC),
+    )
+    q2 = StoreQuote(
+        id=uuid.uuid4(),
+        run_id=uuid.uuid4(),
+        retailer_id="StoreB",
+        cart_fingerprint="fp2",
+        subtotal_cents=5000,
+        delivery_fee_cents=0,
+        gross_total_cents=5000,
+        derived_net_cents=4587,
+        gst_cents=413,
+        is_complete=True,
+        expires_at=datetime.now(UTC),
+    )
+    q3 = StoreQuote(
+        id=uuid.uuid4(),
+        run_id=uuid.uuid4(),
+        retailer_id="StoreC",
+        cart_fingerprint="fp3",
+        subtotal_cents=4500,
+        delivery_fee_cents=0,
+        gross_total_cents=4500,
+        derived_net_cents=4128,
+        gst_cents=372,
+        is_complete=True,
+        expires_at=datetime.now(UTC),
+    )
 
     best = get_cheapest_complete_quote([q1, q2, q3])
 
