@@ -110,3 +110,4 @@
 1. Check out branch `fix/failed-release-remediation`.
 2. Verify git status and review `docs/release/FAILED_RELEASE_REMEDIATION_PLAN.md`.
 3. Proceed directly with **PR-R0** (adapter `NotImplementedError` rollback, 503 endpoint handling, documentation update to NO-GO, test creation) followed by **PR-R1** (additive migration 0003, packaging files, CI workflow split).
+
