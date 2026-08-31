@@ -1,5 +1,5 @@
 import asyncio
-import os
+
 import pytest
 
 from packages.retailers.base import AuthoritativeCart

@@ -1,6 +1,6 @@
-import os
 import subprocess
 import sys
+
 from fastapi.testclient import TestClient
 
 from apps.api.main import app

@@ -1,5 +1,4 @@
 import logging
-import re
 from urllib.parse import quote_plus
 
 import httpx

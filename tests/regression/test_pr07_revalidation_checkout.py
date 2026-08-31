@@ -1,22 +1,19 @@
 import asyncio
-import os
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import pytest
-from domain.models.core import Approval, OrderReceipt, QuoteLine, StoreQuote, SubmissionAttempt
+from domain.models.core import Approval, QuoteLine, StoreQuote
 from domain.services.fingerprint import (
-    build_canonical_payload_v2,
     compute_quote_fingerprint,
     compute_quote_fingerprint_v2,
     explain_fingerprint_diff,
 )
-from sqlmodel import Session, select
+from sqlmodel import Session
 
-from packages.retailers.base import AuthoritativeCart, CartLine
+from packages.retailers.base import CartLine
 from packages.retailers.fairprice.adapter import FairPriceAdapter
 from tests.conftest import test_engine
-
 
 # =============================================================================
 # PR-07 / Gate 12: Fingerprint V2 & Exact Revalidation Tests
@@ -242,9 +239,10 @@ def test_order_submission_idempotency_on_duplicate_api_request(client, monkeypat
 
         approval_id = str(approval.id)
 
+    import asyncio
+
     from apps.api.core import ADAPTER_MAP
     from packages.retailers.base import SessionStatus
-    import asyncio
 
     test_adapter = FairPriceAdapter()
     asyncio.run(test_adapter.add_item_to_cart('FP_102030', 1))
