@@ -14,22 +14,15 @@ import { StoreProgressGrid, StoreProgressInfo } from '@/components/StoreProgress
 import { StoreQuoteCard } from '@/components/StoreQuoteCard';
 import { ChallengeActionPanel } from '@/components/ChallengeActionPanel';
 import { ApprovalDialog } from '@/components/ApprovalDialog';
+import { OrderStatusPanel } from '@/components/OrderStatusPanel';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import {
   ShoppingCart,
   Sparkles,
   RefreshCw,
   Store,
-  Receipt,
-  ExternalLink,
-  ShieldCheck,
-  CheckCircle2,
-  AlertTriangle,
-  Play,
-  RotateCcw
 } from 'lucide-react';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
@@ -46,7 +39,9 @@ export const CanonicalShoppingJourney: React.FC = () => {
 
   // 2. Comparison & Real-Time Stepper State
   const [isComparing, setIsComparing] = useState(false);
-  const [currentRunId, setCurrentRunId] = useState<string | null>(null);
+  const [currentRunId, setCurrentRunId] = useState<string | null>(() => {
+    return localStorage.getItem('last_comparison_run_id') || null;
+  });
   const [storeStates, setStoreStates] = useState<Record<string, StoreProgressInfo>>({
     fairprice: { state: 'QUEUED', progress: 0 },
     shengsiong: { state: 'QUEUED', progress: 0 },
@@ -67,6 +62,8 @@ export const CanonicalShoppingJourney: React.FC = () => {
   const [approvalData, setApprovalData] = useState<ApprovalResponse | null>(null);
   const [showApprovalDialog, setShowApprovalDialog] = useState(false);
   const [confirmedOrder, setConfirmedOrder] = useState<OrderConfirmationResponse | null>(null);
+  const [orderStatusState, setOrderStatusState] = useState<'IDLE' | 'SUBMITTING' | 'CONFIRMED' | 'SUBMISSION_UNCERTAIN' | 'FAILED' | 'REVALIDATION_FAILED'>('IDLE');
+  const [revalidationDiff, setRevalidationDiff] = useState<any | null>(null);
 
   const eventSourceRef = useRef<EventSource | null>(null);
 
@@ -119,6 +116,13 @@ export const CanonicalShoppingJourney: React.FC = () => {
     }
   }, []);
 
+  // Recover active run on refresh
+  useEffect(() => {
+    if (currentRunId && !runDetails) {
+      pollRunDetails(currentRunId);
+    }
+  }, [currentRunId, pollRunDetails, runDetails]);
+
   // Launch Comparison Run
   const handleStartComparison = async () => {
     if (!activeList || isComparing) return;
@@ -129,6 +133,8 @@ export const CanonicalShoppingJourney: React.FC = () => {
       setApprovalData(null);
       setSelectedQuote(null);
       setActiveChallenge(null);
+      setOrderStatusState('IDLE');
+      setRevalidationDiff(null);
 
       // Reset store states
       const initialStates: Record<string, StoreProgressInfo> = {};
@@ -139,6 +145,7 @@ export const CanonicalShoppingJourney: React.FC = () => {
 
       const runInit = await api.startComparison(activeList.id, DEFAULT_STORES);
       setCurrentRunId(runInit.run_id);
+      localStorage.setItem('last_comparison_run_id', runInit.run_id);
 
       // Setup Server-Sent Events (SSE) Stream
       if (eventSourceRef.current) {
@@ -303,64 +310,21 @@ export const CanonicalShoppingJourney: React.FC = () => {
           />
         )}
 
-        {/* Confirmed Order Receipt Banner */}
-        {confirmedOrder && (
-          <Card className="border-emerald-500/40 bg-emerald-500/10 shadow-xl backdrop-blur-md rounded-2xl overflow-hidden animate-in fade-in slide-in-from-top-4 duration-300">
-            <CardHeader className="p-6 pb-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-                    <CheckCircle2 className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-xl font-bold text-foreground">
-                      Order Confirmed & Placed!
-                    </CardTitle>
-                    <CardDescription className="text-xs text-muted-foreground">
-                      Authoritative Supermarket Transaction Receipt
-                    </CardDescription>
-                  </div>
-                </div>
-                <Badge className="bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-sm font-bold px-3 py-1">
-                  CONFIRMED
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="p-6 pt-2 space-y-4">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 bg-background/60 rounded-xl border border-border/40 text-xs">
-                <div>
-                  <div className="text-muted-foreground uppercase text-[10px] font-semibold">Retailer Order ID</div>
-                  <div className="font-mono font-bold text-foreground text-sm mt-0.5">{confirmedOrder.retailer_order_id}</div>
-                </div>
-                <div>
-                  <div className="text-muted-foreground uppercase text-[10px] font-semibold">Store</div>
-                  <div className="font-bold text-foreground text-sm mt-0.5 capitalize">{confirmedOrder.retailer_id}</div>
-                </div>
-                <div>
-                  <div className="text-muted-foreground uppercase text-[10px] font-semibold">Confirmed Total</div>
-                  <div className="font-bold text-foreground text-sm mt-0.5">${(confirmedOrder.confirmed_total_cents / 100).toFixed(2)}</div>
-                </div>
-                <div>
-                  <div className="text-muted-foreground uppercase text-[10px] font-semibold">Delivery Window</div>
-                  <div className="font-bold text-foreground text-sm mt-0.5">{confirmedOrder.confirmed_delivery_slot}</div>
-                </div>
-              </div>
-
-              {confirmedOrder.receipt_url && (
-                <div className="flex justify-end">
-                  <a
-                    href={confirmedOrder.receipt_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center text-xs text-primary hover:underline font-semibold"
-                  >
-                    View Official Retailer Receipt <ExternalLink className="w-3.5 h-3.5 ml-1" />
-                  </a>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
+        {/* Order Status & Recovery Panel */}
+        <OrderStatusPanel
+          order={confirmedOrder}
+          quote={selectedQuote}
+          statusState={orderStatusState}
+          revalidationDiff={revalidationDiff}
+          onRequote={() => {
+            setOrderStatusState('IDLE');
+            setRevalidationDiff(null);
+            if (currentRunId) pollRunDetails(currentRunId);
+          }}
+          onRefreshStatus={() => {
+            if (currentRunId) pollRunDetails(currentRunId);
+          }}
+        />
 
         {/* Store Comparison Progress Grid (Visible during or after run) */}
         {(isComparing || currentRunId) && (
@@ -446,6 +410,7 @@ export const CanonicalShoppingJourney: React.FC = () => {
             onOrderSuccess={(receipt) => {
               setShowApprovalDialog(false);
               setConfirmedOrder(receipt);
+              setOrderStatusState('CONFIRMED');
             }}
           />
         )}

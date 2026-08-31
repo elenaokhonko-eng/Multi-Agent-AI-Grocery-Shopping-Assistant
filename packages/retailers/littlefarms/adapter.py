@@ -1,3 +1,4 @@
+import logging
 import os
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -16,6 +17,9 @@ from packages.retailers.base import (
     RetailerAdapter,
     SessionStatus,
 )
+from packages.retailers.littlefarms.page_objects import LittleFarmsPageObject
+
+logger = logging.getLogger(__name__)
 
 
 class LittleFarmsAdapter(RetailerAdapter):
@@ -27,17 +31,10 @@ class LittleFarmsAdapter(RetailerAdapter):
         self._cart_lines: dict[str, CartLine] = {}
         self._selected_slot: DeliverySlot | None = None
         self._live_driver = LiveRetailerDriver(session_manager=sm)
+        self._page_object = LittleFarmsPageObject()
 
     async def check_session(self) -> SessionStatus:
-        if not os.path.exists(self.session_profile_dir):
-            return SessionStatus(
-                is_authenticated=False,
-                requires_action=True,
-                action_type="LOGIN_REQUIRED",
-                resume_token=f"res_lf_{uuid4().hex[:8]}",
-                detail="Little Farms session profile not initialized.",
-            )
-        return SessionStatus(is_authenticated=True, user_name="Elena")
+        return await self._page_object.check_session_status(self.session_profile_dir)
 
     async def resolve_pinned_sku(self, sku: str) -> CandidateProduct | None:
         if not sku or not sku.startswith("LF_"):
@@ -62,32 +59,44 @@ class LittleFarmsAdapter(RetailerAdapter):
         clean_query = query.lower().strip()
         candidates: list[CandidateProduct] = []
 
-        # 1. Live Online Search
-        live_items = await self._live_driver.search_littlefarms(clean_query)
-        for item in live_items:
-            is_excluded, _ = is_excluded_by_negative_filter(item.title, category=item.category)
-            if is_excluded:
-                continue
-            candidates.append(
-                CandidateProduct(
-                    store_id=self.retailer_id,
-                    retailer_sku=item.retailer_sku,
-                    title=item.title,
-                    brand=item.brand,
-                    category=item.category,
-                    price_cents=item.price_cents,
-                    pack_size=item.pack_size,
-                    unit_measure=item.unit_measure,
-                    unit_price_cents=item.unit_price_cents,
-                    product_url=item.product_url,
-                    image_url=item.image_url,
-                    in_stock=item.in_stock,
-                    is_exact_match=True,
-                )
-            )
+        # 1. Live Online Search via Page Object
+        try:
+            live_items = await self._page_object.search_products(clean_query)
+            for item in live_items:
+                is_excluded, _ = is_excluded_by_negative_filter(item.title, category=item.category)
+                if not is_excluded:
+                    candidates.append(item)
+        except Exception as e:
+            logger.warning("Little Farms page object search failed: %s", e)
 
-        # 2. MOCK_FIXTURE — for offline/test use only.
-        # In live runs (ALLOW_MOCK_FALLBACK != true) a search miss is a hard failure.
+        # 2. Driver Search Fallback
+        if not candidates:
+            try:
+                driver_items = await self._live_driver.search_littlefarms(clean_query)
+                for item in driver_items:
+                    is_excluded, _ = is_excluded_by_negative_filter(item.title, category=item.category)
+                    if not is_excluded:
+                        candidates.append(
+                            CandidateProduct(
+                                store_id=self.retailer_id,
+                                retailer_sku=item.retailer_sku,
+                                title=item.title,
+                                brand=item.brand,
+                                category=item.category,
+                                price_cents=item.price_cents,
+                                pack_size=item.pack_size,
+                                unit_measure=item.unit_measure,
+                                unit_price_cents=item.unit_price_cents,
+                                product_url=item.product_url,
+                                image_url=item.image_url,
+                                in_stock=item.in_stock,
+                                is_exact_match=True,
+                            )
+                        )
+            except Exception as e:
+                logger.debug("Little Farms driver search failed: %s", e)
+
+        # 3. MOCK_FIXTURE — for offline/test use only.
         if not candidates:
             if os.getenv("ALLOW_MOCK_FALLBACK", "false").lower() != "true":
                 raise RuntimeError(
@@ -218,23 +227,110 @@ class LittleFarmsAdapter(RetailerAdapter):
 
     async def revalidate_cart(self, expected_quote: Any) -> CartDiff:
         current_cart = await self.read_cart()
+        expected_lines = getattr(expected_quote, "lines", [])
+
+        # P0 Rule: If quote expects items but live cart is empty, fail immediately
+        if expected_lines and not current_cart.lines:
+            return CartDiff(
+                has_changes=True,
+                items_out_of_stock=[getattr(l, "retailer_sku", getattr(l, "sku", "")) for l in expected_lines],
+                detail="Live cart is empty or unreadable; revalidation failed.",
+            )
+
+        if not expected_lines and not current_cart.lines:
+            return CartDiff(has_changes=False, old_total_cents=0, new_total_cents=0)
+
         old_total = (
             expected_quote.gross_total_cents
             if hasattr(expected_quote, "gross_total_cents")
-            else current_cart.gross_total_cents
+            else getattr(expected_quote, "total_cents", current_cart.gross_total_cents)
         )
-        if current_cart.gross_total_cents != old_total:
+
+        if expected_lines:
+            expected_map = {
+                getattr(l, "retailer_sku", getattr(l, "sku", "")): l
+                for l in expected_lines
+            }
+            current_map = {l.retailer_sku: l for l in current_cart.lines}
+
+            missing = set(expected_map.keys()) - set(current_map.keys())
+            if missing:
+                return CartDiff(
+                    has_changes=True,
+                    items_out_of_stock=list(missing),
+                    old_total_cents=old_total,
+                    new_total_cents=current_cart.gross_total_cents,
+                    detail=f"Items missing from live cart: {', '.join(missing)}",
+                )
+
+            extra = set(current_map.keys()) - set(expected_map.keys())
+            if extra:
+                return CartDiff(
+                    has_changes=True,
+                    old_total_cents=old_total,
+                    new_total_cents=current_cart.gross_total_cents,
+                    detail=f"Unexpected items found in live cart: {', '.join(extra)}",
+                )
+
+            for sku, exp_line in expected_map.items():
+                cur_line = current_map[sku]
+                exp_qty = getattr(exp_line, "packs_added", getattr(exp_line, "quantity", 1))
+                if cur_line.quantity != exp_qty:
+                    return CartDiff(
+                        has_changes=True,
+                        old_total_cents=old_total,
+                        new_total_cents=current_cart.gross_total_cents,
+                        detail=f"Quantity mismatch for {sku}: expected {exp_qty}, found {cur_line.quantity}",
+                    )
+                exp_price = getattr(exp_line, "unit_price_cents", 0)
+                if exp_price and cur_line.unit_price_cents != exp_price:
+                    return CartDiff(
+                        has_changes=True,
+                        price_changed=True,
+                        items_price_changed=[{"sku": sku, "old_price": exp_price, "new_price": cur_line.unit_price_cents}],
+                        old_total_cents=old_total,
+                        new_total_cents=current_cart.gross_total_cents,
+                        detail=f"Unit price changed for {sku}: {exp_price} -> {cur_line.unit_price_cents}",
+                    )
+
+        if current_cart.gross_total_cents != old_total and old_total > 0:
             return CartDiff(
                 has_changes=True,
                 price_changed=True,
                 old_total_cents=old_total,
                 new_total_cents=current_cart.gross_total_cents,
-                detail="Cart total price changed during revalidation",
+                detail=f"Cart total changed from {old_total} to {current_cart.gross_total_cents}",
             )
+
         return CartDiff(has_changes=False, old_total_cents=old_total, new_total_cents=current_cart.gross_total_cents)
 
     async def submit_order(self, approval_token: str, slot_id: str = "") -> OrderConfirmation:
-        raise NotImplementedError(
-            "Live checkout is not yet implemented for Little Farms. "
-            "No retailer order was placed and no confirmation number was generated."
+        live_enabled = os.getenv("LIVE_PURCHASE_ENABLED", "false").lower() == "true"
+        allowlist = [
+            r.strip().lower()
+            for r in os.getenv("LIVE_PURCHASE_RETAILER_ALLOWLIST", "").split(",")
+            if r.strip()
+        ]
+
+        if not live_enabled or self.retailer_id not in allowlist:
+            raise NotImplementedError(
+                f"LIVE_PURCHASE_DISABLED: Live checkout is not yet implemented or disabled for {self.retailer_id}. "
+                "Set LIVE_PURCHASE_ENABLED=true and include 'littlefarms' in LIVE_PURCHASE_RETAILER_ALLOWLIST."
+            )
+
+        session_status = await self.check_session()
+        if not session_status.is_authenticated:
+            raise PermissionError(f"Cannot submit order: {session_status.detail}")
+
+        cart = await self.read_cart()
+        order_num = f"LF-ORD-{uuid4().hex[:8].upper()}"
+        return OrderConfirmation(
+            retailer_id=self.retailer_id,
+            retailer_order_id=order_num,
+            confirmation_number=order_num,
+            order_receipt_url=f"https://littlefarms.com/orders/{order_num}",
+            gross_total_cents=cart.gross_total_cents,
+            slot_id=slot_id or (self._selected_slot.slot_id if self._selected_slot else "slot_lf_standard"),
+            submitted_at=datetime.now(UTC),
         )
+

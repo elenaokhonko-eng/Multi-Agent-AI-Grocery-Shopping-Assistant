@@ -1,0 +1,60 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: grocery-assistant-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: grocery_assistant
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d grocery_assistant"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: grocery-assistant-api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://postgres:postgrespassword@db:5432/grocery_assistant
+      RETAILER_DATA_MODE: live
+      ALLOW_MOCK_FALLBACK: "false"
+      LIVE_PURCHASE_ENABLED: "false"
+      LIVE_PURCHASE_RETAILER_ALLOWLIST: ""
+      CORS_ALLOW_ORIGINS: "http://localhost:5173,http://127.0.0.1:5173"
+      PORT: "8000"
+    ports:
+      - "127.0.0.1:8000:8000"
+
+  browser-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: grocery-assistant-worker
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://postgres:postgrespassword@db:5432/grocery_assistant
+      RETAILER_DATA_MODE: live
+      ALLOW_MOCK_FALLBACK: "false"
+      LIVE_PURCHASE_ENABLED: "false"
+      LIVE_PURCHASE_RETAILER_ALLOWLIST: ""
+      WORKER_POLL_INTERVAL_SEC: "1.0"
+    command: ["python", "-m", "apps.browser_worker.main"]
+
+volumes:
+  pgdata:
+

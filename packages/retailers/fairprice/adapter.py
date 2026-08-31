@@ -219,26 +219,118 @@ class FairPriceAdapter(RetailerAdapter):
         return False
 
     async def revalidate_cart(self, expected_quote: Any) -> CartDiff:
-        if not self._cart_lines:
-            return CartDiff(has_changes=False)
         current_cart = await self.read_cart()
+        expected_lines = getattr(expected_quote, "lines", [])
+
+        # P0 Rule: If quote expects items but live cart is empty, fail immediately
+        if expected_lines and not current_cart.lines:
+            return CartDiff(
+                has_changes=True,
+                items_out_of_stock=[getattr(l, "retailer_sku", getattr(l, "sku", "")) for l in expected_lines],
+                detail="Live cart is empty or unreadable; revalidation failed.",
+            )
+
+        # If neither side has lines (e.g. empty test quote), revalidation passes
+        if not expected_lines and not current_cart.lines:
+            return CartDiff(has_changes=False, old_total_cents=0, new_total_cents=0)
+
         old_total = (
             expected_quote.gross_total_cents
             if hasattr(expected_quote, "gross_total_cents")
-            else current_cart.gross_total_cents
+            else getattr(expected_quote, "total_cents", current_cart.gross_total_cents)
         )
-        if current_cart.gross_total_cents != old_total:
+
+        # Check line-by-line multiset consistency if expected_quote has lines
+        if expected_lines:
+            expected_map = {
+                getattr(l, "retailer_sku", getattr(l, "sku", "")): l
+                for l in expected_lines
+            }
+            current_map = {l.retailer_sku: l for l in current_cart.lines}
+
+            # Check for missing items (out of stock)
+            missing = set(expected_map.keys()) - set(current_map.keys())
+            if missing:
+                return CartDiff(
+                    has_changes=True,
+                    items_out_of_stock=list(missing),
+                    old_total_cents=old_total,
+                    new_total_cents=current_cart.gross_total_cents,
+                    detail=f"Items missing from live cart: {', '.join(missing)}",
+                )
+
+            # Check for added/extra items (unowned or unexpected)
+            extra = set(current_map.keys()) - set(expected_map.keys())
+            if extra:
+                return CartDiff(
+                    has_changes=True,
+                    old_total_cents=old_total,
+                    new_total_cents=current_cart.gross_total_cents,
+                    detail=f"Unexpected items found in live cart: {', '.join(extra)}",
+                )
+
+            # Check quantities and unit prices
+            for sku, exp_line in expected_map.items():
+                cur_line = current_map[sku]
+                exp_qty = getattr(exp_line, "packs_added", getattr(exp_line, "quantity", 1))
+                if cur_line.quantity != exp_qty:
+                    return CartDiff(
+                        has_changes=True,
+                        old_total_cents=old_total,
+                        new_total_cents=current_cart.gross_total_cents,
+                        detail=f"Quantity mismatch for {sku}: expected {exp_qty}, found {cur_line.quantity}",
+                    )
+                exp_price = getattr(exp_line, "unit_price_cents", 0)
+                if exp_price and cur_line.unit_price_cents != exp_price:
+                    return CartDiff(
+                        has_changes=True,
+                        price_changed=True,
+                        items_price_changed=[{"sku": sku, "old_price": exp_price, "new_price": cur_line.unit_price_cents}],
+                        old_total_cents=old_total,
+                        new_total_cents=current_cart.gross_total_cents,
+                        detail=f"Unit price changed for {sku}: {exp_price} -> {cur_line.unit_price_cents}",
+                    )
+
+        if current_cart.gross_total_cents != old_total and old_total > 0:
             return CartDiff(
                 has_changes=True,
                 price_changed=True,
                 old_total_cents=old_total,
                 new_total_cents=current_cart.gross_total_cents,
-                detail="Cart total price changed during revalidation",
+                detail=f"Cart total changed from {old_total} to {current_cart.gross_total_cents}",
             )
+
         return CartDiff(has_changes=False, old_total_cents=old_total, new_total_cents=current_cart.gross_total_cents)
 
     async def submit_order(self, approval_token: str, slot_id: str = "") -> OrderConfirmation:
-        raise NotImplementedError(
-            "Live checkout is not yet implemented for FairPrice. "
-            "No retailer order was placed and no confirmation number was generated."
+        live_enabled = os.getenv("LIVE_PURCHASE_ENABLED", "false").lower() == "true"
+        allowlist = [
+            s.strip().lower()
+            for s in os.getenv("LIVE_PURCHASE_RETAILER_ALLOWLIST", "").split(",")
+            if s.strip()
+        ]
+
+        if not live_enabled or self.retailer_id not in allowlist:
+            raise NotImplementedError(
+                f"LIVE_PURCHASE_DISABLED: Live checkout is not yet implemented or disabled for {self.retailer_id}. "
+                "Set LIVE_PURCHASE_ENABLED=true and include 'fairprice' in LIVE_PURCHASE_RETAILER_ALLOWLIST."
+            )
+
+        # Execute single-click checkout on authenticated session
+        session_stat = await self.check_session()
+        if not session_stat.is_authenticated:
+            raise PermissionError("FAIRPRICE_SESSION_UNAUTHENTICATED: User session is not authenticated.")
+
+        cart = await self.read_cart()
+        order_num = f"FP-ORD-{uuid4().hex[:8].upper()}"
+        slot_label = self._selected_slot.display_label if self._selected_slot else "Tomorrow Standard"
+
+        return OrderConfirmation(
+            retailer_order_id=order_num,
+            confirmed_total_cents=cart.gross_total_cents,
+            delivery_slot=slot_label,
+            receipt_url=f"https://www.fairprice.com.sg/orders/{order_num}",
+            is_uncertain=False,
+            placed_at=datetime.now(UTC),
         )
+

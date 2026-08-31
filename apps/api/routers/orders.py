@@ -49,6 +49,42 @@ async def submit_order_approval(
     if not approval:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Approval not found")
 
+    if approval.approval_token != submit_req.approval_token:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid approval token")
+
+    # Idempotency / Duplicate Submission Check (AD-10):
+    # If already confirmed, return existing receipt immediately without re-clicking.
+    existing_receipt = session.exec(select(OrderReceipt).where(OrderReceipt.approval_id == approval.id)).first()
+    if existing_receipt:
+        return {
+            "status": "CONFIRMED",
+            "order_id": str(existing_receipt.id),
+            "receipt_id": str(existing_receipt.id),
+            "retailer_order_id": existing_receipt.retailer_order_id,
+            "retailer_id": existing_receipt.retailer_id,
+            "confirmed_total_cents": existing_receipt.confirmed_total_cents,
+            "confirmed_delivery_slot": existing_receipt.confirmed_delivery_slot,
+            "placed_at": existing_receipt.placed_at,
+            "receipt_url": existing_receipt.receipt_url,
+        }
+
+    # Check for pending or uncertain submission attempts
+    existing_uncertain = session.exec(
+        select(SubmissionAttempt).where(
+            SubmissionAttempt.approval_id == approval.id, SubmissionAttempt.status == "UNCERTAIN"
+        )
+    ).first()
+    if existing_uncertain:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "error": "SUBMISSION_UNCERTAIN",
+                "message": "Previous checkout attempt ended in an uncertain state. Reconciliation required before re-trying.",
+                "attempt_id": str(existing_uncertain.id),
+                "error_detail": existing_uncertain.error_detail,
+            },
+        )
+
     if approval.is_used:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -57,9 +93,6 @@ async def submit_order_approval(
 
     if ensure_utc(approval.expires_at) < datetime.now(UTC):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Approval token has expired.")
-
-    if approval.approval_token != submit_req.approval_token:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid approval token")
 
     quote = session.get(StoreQuote, approval.quote_id)
     if not quote:
@@ -87,13 +120,19 @@ async def submit_order_approval(
             for ql in lines
             if ql.packs_added > 0
         ]
-        fees_total = quote.delivery_fee_cents + quote.service_fee_cents + quote.bag_fee_cents + quote.slot_fee_cents
         recalculated_fp = compute_quote_fingerprint(
             retailer_id=quote.retailer_id,
             lines=raw_fingerprint_lines,
             delivery_slot_id=approval.delivery_slot_id,
+            delivery_slot_window=quote.selected_delivery_slot_window,
+            retailer_cart_id=quote.retailer_cart_id,
+            currency=quote.currency or "SGD",
+            promotions_discount_cents=quote.promotions_discount_cents,
+            delivery_fee_cents=quote.delivery_fee_cents,
+            service_fee_cents=quote.service_fee_cents,
+            bag_fee_cents=quote.bag_fee_cents,
+            slot_fee_cents=quote.slot_fee_cents,
             subtotal_cents=quote.subtotal_cents,
-            fees_total_cents=fees_total,
             gross_total_cents=quote.gross_total_cents,
         )
         if recalculated_fp != approval.expected_fingerprint:
@@ -123,7 +162,7 @@ async def submit_order_approval(
                     status_code=status.HTTP_409_CONFLICT,
                     detail={
                         "error": "REAPPROVAL_REQUIRED",
-                        "message": "Cart changed during revalidation. Re-approval required.",
+                        "message": f"Cart changed during revalidation: {getattr(diff, 'detail', 'Re-approval required.')}",
                     },
                 )
         except HTTPException:

@@ -185,8 +185,43 @@ class LiveRetailerDriver:
 
         return results
 
-    # -------------------------------------------------------------------------
-    # RedMart Real Search & Scraper
-    # -------------------------------------------------------------------------
     async def search_redmart(self, query: str) -> list[LiveProductResult]:
-        raise NotImplementedError("Live RedMart scraping is not yet implemented.")
+        results: list[LiveProductResult] = []
+        try:
+            url = f"https://www.lazada.sg/redmart/?q={query}&ajax=true"
+            resp = await self.http_client.get(url, headers={"User-Agent": "Mozilla/5.0"})
+            if resp.status_code == 200:
+                data = resp.json()
+                items = data.get("mods", {}).get("listItems", []) or []
+                for item in items:
+                    sku = str(item.get("itemId") or item.get("sku") or "RM_000")
+                    title = item.get("name") or "RedMart Product"
+                    price_num = float(item.get("price") or item.get("originalPrice") or 0.0)
+                    price_cents = round(price_num * 100)
+                    image = item.get("image")
+                    in_stock = not bool(item.get("isOutOfStock", False))
+                    pack_spec = parse_pack_size(title)
+                    unit_measure = pack_spec.unit if pack_spec else "pack"
+                    unit_price = (
+                        round(price_cents / pack_spec.amount) if pack_spec and pack_spec.amount > 0 else price_cents
+                    )
+
+                    results.append(
+                        LiveProductResult(
+                            retailer_sku=f"RM_{sku}",
+                            title=title,
+                            brand=item.get("brandName", "RedMart"),
+                            category="Groceries",
+                            price_cents=price_cents,
+                            pack_size=pack_spec.raw_text if pack_spec else "1 unit",
+                            unit_measure=unit_measure,
+                            unit_price_cents=unit_price,
+                            image_url=image,
+                            product_url=f"https://www.lazada.sg/products/{item.get('itemUrl', sku)}",
+                            in_stock=in_stock,
+                        )
+                    )
+        except Exception as e:
+            logger.warning(f"Live RedMart search failed: {e}")
+
+        return results

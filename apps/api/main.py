@@ -129,3 +129,12 @@ def health_check(session: Session = Depends(get_session)):
         "live_purchase_enabled": live_enabled,
         "live_purchasing_enabled": live_enabled,
     }
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    host = os.getenv("API_HOST", os.getenv("HOST", "127.0.0.1"))
+    port = int(os.getenv("API_PORT", os.getenv("PORT", "8000")))
+    uvicorn.run("apps.api.main:app", host=host, port=port, reload=True)
+
