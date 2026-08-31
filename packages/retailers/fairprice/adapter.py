@@ -226,7 +226,7 @@ class FairPriceAdapter(RetailerAdapter):
         if expected_lines and not current_cart.lines:
             return CartDiff(
                 has_changes=True,
-                items_out_of_stock=[getattr(line, "retailer_sku", getattr(line, "sku", "")) for line in expected_lines],
+                items_out_of_stock=[getattr(l, "retailer_sku", getattr(l, "sku", "")) for l in expected_lines],
                 detail="Live cart is empty or unreadable; revalidation failed.",
             )
 
@@ -243,10 +243,10 @@ class FairPriceAdapter(RetailerAdapter):
         # Check line-by-line multiset consistency if expected_quote has lines
         if expected_lines:
             expected_map = {
-                getattr(line, "retailer_sku", getattr(line, "sku", "")): line
-                for line in expected_lines
+                getattr(l, "retailer_sku", getattr(l, "sku", "")): l
+                for l in expected_lines
             }
-            current_map = {line.retailer_sku: line for line in current_cart.lines}
+            current_map = {l.retailer_sku: l for l in current_cart.lines}
 
             # Check for missing items (out of stock)
             missing = set(expected_map.keys()) - set(current_map.keys())

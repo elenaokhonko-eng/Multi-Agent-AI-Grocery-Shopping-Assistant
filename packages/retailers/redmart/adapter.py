@@ -73,23 +73,23 @@ class RedMartAdapter(RetailerAdapter):
         if not candidates:
             try:
                 driver_items = await self._live_driver.search_redmart(clean_query)
-                for driver_item in driver_items:
-                    is_excluded, _ = is_excluded_by_negative_filter(driver_item.title, category=driver_item.category)
+                for item in driver_items:
+                    is_excluded, _ = is_excluded_by_negative_filter(item.title, category=item.category)
                     if not is_excluded:
                         candidates.append(
                             CandidateProduct(
                                 store_id=self.retailer_id,
-                                retailer_sku=driver_item.retailer_sku,
-                                title=driver_item.title,
-                                brand=driver_item.brand,
-                                category=driver_item.category,
-                                price_cents=driver_item.price_cents,
-                                pack_size=driver_item.pack_size,
-                                unit_measure=driver_item.unit_measure,
-                                unit_price_cents=driver_item.unit_price_cents,
-                                product_url=driver_item.product_url,
-                                image_url=driver_item.image_url,
-                                in_stock=driver_item.in_stock,
+                                retailer_sku=item.retailer_sku,
+                                title=item.title,
+                                brand=item.brand,
+                                category=item.category,
+                                price_cents=item.price_cents,
+                                pack_size=item.pack_size,
+                                unit_measure=item.unit_measure,
+                                unit_price_cents=item.unit_price_cents,
+                                product_url=item.product_url,
+                                image_url=item.image_url,
+                                in_stock=item.in_stock,
                                 is_exact_match=True,
                             )
                         )
@@ -241,7 +241,7 @@ class RedMartAdapter(RetailerAdapter):
         if expected_lines and not current_cart.lines:
             return CartDiff(
                 has_changes=True,
-                items_out_of_stock=[getattr(line, "retailer_sku", getattr(line, "sku", "")) for line in expected_lines],
+                items_out_of_stock=[getattr(l, "retailer_sku", getattr(l, "sku", "")) for l in expected_lines],
                 detail="Live cart is empty or unreadable; revalidation failed.",
             )
 
@@ -256,10 +256,10 @@ class RedMartAdapter(RetailerAdapter):
 
         if expected_lines:
             expected_map = {
-                getattr(line, "retailer_sku", getattr(line, "sku", "")): line
-                for line in expected_lines
+                getattr(l, "retailer_sku", getattr(l, "sku", "")): l
+                for l in expected_lines
             }
-            current_map = {line.retailer_sku: line for line in current_cart.lines}
+            current_map = {l.retailer_sku: l for l in current_cart.lines}
 
             missing = set(expected_map.keys()) - set(current_map.keys())
             if missing:
@@ -332,12 +332,12 @@ class RedMartAdapter(RetailerAdapter):
 
         cart = await self.read_cart()
         order_num = f"RM-ORD-{uuid4().hex[:8].upper()}"
-        slot_label = self._selected_slot.display_label if self._selected_slot else "RedMart Standard Delivery"
         return OrderConfirmation(
+            retailer_id=self.retailer_id,
             retailer_order_id=order_num,
-            confirmed_total_cents=cart.gross_total_cents,
-            delivery_slot=slot_id or slot_label,
-            receipt_url=f"https://redmart.lazada.sg/orders/{order_num}",
-            is_uncertain=False,
-            placed_at=datetime.now(UTC),
+            confirmation_number=order_num,
+            order_receipt_url=f"https://redmart.lazada.sg/orders/{order_num}",
+            gross_total_cents=cart.gross_total_cents,
+            slot_id=slot_id or (self._selected_slot.slot_id if self._selected_slot else "slot_rm_1"),
+            submitted_at=datetime.now(UTC),
         )

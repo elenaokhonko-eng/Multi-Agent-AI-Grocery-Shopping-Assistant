@@ -174,8 +174,8 @@ def explain_fingerprint_diff(payload_a: dict[str, Any], payload_b: dict[str, Any
         )
 
     # Line comparison
-    lines_a = {item["sku"]: item for item in payload_a.get("lines", [])}
-    lines_b = {item["sku"]: item for item in payload_b.get("lines", [])}
+    lines_a = {l["sku"]: l for l in payload_a.get("lines", [])}
+    lines_b = {l["sku"]: l for l in payload_b.get("lines", [])}
 
     added_skus = set(lines_b.keys()) - set(lines_a.keys())
     removed_skus = set(lines_a.keys()) - set(lines_b.keys())

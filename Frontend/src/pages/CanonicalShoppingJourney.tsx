@@ -29,15 +29,6 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000
 
 const DEFAULT_STORES = ['fairprice', 'shengsiong', 'littlefarms', 'redmart'];
 
-interface RevalidationDiffData {
-  has_changes?: boolean;
-  price_changed?: boolean;
-  old_total_cents?: number;
-  new_total_cents?: number;
-  items_out_of_stock?: string[];
-  detail?: string;
-}
-
 export const CanonicalShoppingJourney: React.FC = () => {
   const { toast } = useToast();
 
@@ -72,7 +63,7 @@ export const CanonicalShoppingJourney: React.FC = () => {
   const [showApprovalDialog, setShowApprovalDialog] = useState(false);
   const [confirmedOrder, setConfirmedOrder] = useState<OrderConfirmationResponse | null>(null);
   const [orderStatusState, setOrderStatusState] = useState<'IDLE' | 'SUBMITTING' | 'CONFIRMED' | 'SUBMISSION_UNCERTAIN' | 'FAILED' | 'REVALIDATION_FAILED'>('IDLE');
-  const [revalidationDiff, setRevalidationDiff] = useState<RevalidationDiffData | null>(null);
+  const [revalidationDiff, setRevalidationDiff] = useState<any | null>(null);
 
   const eventSourceRef = useRef<EventSource | null>(null);
 
